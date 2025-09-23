@@ -1,0 +1,64 @@
+# ──────────────
+# Node / npm / pnpm / yarn
+# ──────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ──────────────
+# Build outputs
+# ──────────────
+frontend/dist/
+backend/build/
+dist/
+dist-ssr/
+
+# ──────────────
+# Cache / Temp
+# ──────────────
+*.cache
+.cache/
+.vite/
+.next/
+*.tsbuildinfo
+
+# ──────────────
+# Environment files
+# ──────────────
+.env
+.env.local
+.env.*.local
+
+# ──────────────
+# Logs
+# ──────────────
+logs
+*.log
+logs/*.log
+
+# ──────────────
+# Test / Coverage
+# ──────────────
+coverage/
+*.lcov
+
+# ──────────────
+# OS / IDE files
+# ──────────────
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ──────────────
+# Misc
+# ──────────────
+*.tgz
