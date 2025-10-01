@@ -68,22 +68,21 @@ internconnect/
 
 ## 📸 Mockups
 
-Landing Page
-Student Dashboard
-Employer Dashboard
-Login/Registration Pages
-(Designed with Figma & Canva)
+- Landing Page
+- Student Dashboard
+- Employer Dashboard
+- Login/Registration Pages
+- (Designed with Figma & Canva)
 
 ---
 
 ## 👨‍💻 Team Members
 
-Project Manager: Lim, Frances Aura
-Frontend Developer: Bugayong, Klein William
-Backend Developer: Aliman, Jachin Adam
-UI/UX Designer: Lalata, Christine
-Quality Assurance: Paragas, Jerwin Claus 
- Developer: 
+- Project Manager: Lim, Frances Aura
+- Frontend Developer: Bugayong, Klein William
+- Backend Developer: Aliman, Jachin Adam
+- UI/UX Designer: Lalata, Christine
+- Quality Assurance: Paragas, Jerwin Claus  
 
 ---
 
