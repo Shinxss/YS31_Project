@@ -77,7 +77,6 @@ internconnect/
 ---
 
 ## 👨‍💻 Team Members
-
 **Project Manager:** Lim, Frances Aura
 **Frontend Developer:** Bugayong, Klein William
 **Backend Developer:** Aliman, Jachin Adam
