@@ -1,25 +1,24 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import "../styles/LandingPage.css";
+import Navbar from "../components/Navbar";
+import Hero from "../components/Hero";
+import Stats from "../components/Stats";
+import Features from "../components/Features";
+import Featured from "../components/FeaturedOpportunities";
+import CTASection from "../components/CTASection";
+import Footer from "../components/Footer";  
 
-const LandingPage = () => {
+function LandingPage() {
   return (
-    <div>
-      <header className="site-header">
-        <h1 className="logo">InternConnect</h1>
-
-        <nav className="nav-links">
-          <Link to="/internships">Find Internships</Link>
-          <Link to="/companies">For Companies</Link>
-          <Link to="/about">About Us</Link>
-        </nav>
-
-        <nav className="nav-buttons">
-          
-        </nav>
-      </header>
+    <div className="font-sans">
+      <Navbar />
+      <Hero />
+      <Stats />
+      <Features />
+      <Featured />
+      <CTASection />
+      <Footer />
     </div>
   );
-};
+}
 
 export default LandingPage;

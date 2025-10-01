@@ -1,3 +1,39 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+
+/* Custom reusable classes */
+.btn-primary {
+  @apply bg-orange-500 text-white px-6 py-3 rounded-md font-medium hover:bg-[#F2AD83] transition;
+}
+
+.btn-primary-2 {
+  @apply bg-[#1A33A2] text-white px-6 py-3 rounded-md font-medium hover:bg-[#3E56BF] transition;
+}
+
+.btn-outline {
+  @apply border px-6 py-3 rounded-md font-medium text-white hover:bg-gray-100 hover:text-gray-800 transition;
+}
+
+.btn-outline-2 {
+  @apply border px-6 py-3 rounded-md font-medium text-gray-800 hover:bg-[#F37526] hover:text-white transition;
+}
+
+.input-field {
+  @apply flex-1 px-4 py-3 rounded-md border focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+
+.nav-link {
+  @apply hover:text-orange-500 cursor-pointer transition;
+}
+
+.section-title {
+  @apply text-3xl md:text-4xl font-bold text-center;
+}
+
+.section-subtitle {
+  @apply text-gray-600 text-center mt-3 max-w-2xl mx-auto;
+}
+
+.card {
+  @apply bg-white shadow-md rounded-xl p-6 hover:shadow-lg transition;
+}
