@@ -63,3 +63,30 @@ internconnect/
 │── assets/            # Images, logos, icons
 │── docs/              # Documentation, diagrams
 │── README.md          # Project documentation
+
+---
+
+## 📸 Mockups
+
+Landing Page
+Student Dashboard
+Employer Dashboard
+Login/Registration Pages
+(Designed with Figma & Canva)
+
+---
+
+## 👨‍💻 Team Members
+
+Project Manager: Lim, Frances Aura
+Frontend Developer: Bugayong, Klein William
+Backend Developer: Aliman, Jachin Adam
+UI/UX Designer: Lalata, Christine
+Quality Assurance: Paragas, Jerwin Claus 
+ Developer: 
+
+---
+
+📜 License
+This project is for academic purposes.
+Feel free to use and modify with proper credits.
