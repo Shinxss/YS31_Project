@@ -63,7 +63,7 @@ internconnect/
 │── assets/            # Images, logos, icons
 │── docs/              # Documentation, diagrams
 │── README.md          # Project documentation
-
+```
 ---
 
 ## 📸 Mockups
