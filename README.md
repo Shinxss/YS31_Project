@@ -78,11 +78,11 @@ internconnect/
 
 ## 👨‍💻 Team Members
 
-- Project Manager: Lim, Frances Aura
-- Frontend Developer: Bugayong, Klein William
-- Backend Developer: Aliman, Jachin Adam
-- UI/UX Designer: Lalata, Christine
-- Quality Assurance: Paragas, Jerwin Claus  
+**Project Manager:** Lim, Frances Aura
+**Frontend Developer:** Bugayong, Klein William
+**Backend Developer:** Aliman, Jachin Adam
+**UI/UX Designer:** Lalata, Christine
+**Quality Assurance:** Paragas, Jerwin Claus  
 
 ---
 
