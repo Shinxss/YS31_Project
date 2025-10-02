@@ -1,40 +1,65 @@
 import React from "react";
-import { User, Building2, BriefcaseBusiness } from "lucide-react";
+import { Briefcase, User, Building2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function Navbar() {
   return (
-    <nav className="bg-blue-900 text-white shadow-sm">
-      <div className="max-w-full mx-auto pl-30 pr-20 py-4 flex justify-between items-center">
-        {/* Logo */}
-        <h1 className="text-2xl font-bold flex items-center gap-1">
-           <BriefcaseBusiness size={30} color="orange"/>InternConnect
-        </h1>
+    <header className="bg-[#173B8A] text-white">
+      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        {/* Logo (always visible) */}
+        <Link to="/" className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-md bg-[#F37526] flex items-center justify-center">
+            <Briefcase className="w-4 h-4 text-white" />
+          </div>
+          <span className="text-xl font-bold">InternConnect</span>
+        </Link>
 
-        {/* Desktop Menu */}
-        <div className="hidden md:flex items-center gap-20">
-          <ul className="flex gap-6 text-gray-200 font-medium">
-            <li><Link to="/Internships" className="nav-link">Find Internships</Link></li>
-            <li><Link to="/Companies" className="nav-link">For Companies</Link></li>
-            <li><Link to="/About" className="nav-link">About Us</Link></li>
-          </ul>
+        {/* MOBILE: Only "Get Started" (visible below md) */}
+        <Link
+          to="/get-started"
+          className="md:hidden inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[#F37526] hover:bg-[#e56818] transition text-sm font-medium"
+        >
+          Get Started
+        </Link>
 
-          <div className="flex gap-3 items-center">
-            <button className="btn-outline flex items-center gap-2 text-white-">
-              <User size={18} /> Student Login
-            </button>
-            <button className="btn-outline flex items-center gap-2">
-              <Building2 size={18} /> Employer Login
-            </button>
-            <button className="btn-primary">Get Started</button>
+        {/* DESKTOP/TABLET: Full nav + actions (hidden on mobile) */}
+        <div className="hidden md:flex items-center gap-10">
+          <nav className="flex items-center gap-10 text-sm">
+            <Link to="/internships" className="hover:text-[#F5A66E] transition">
+              Find Internships
+            </Link>
+            <Link to="/companies" className="hover:text-[#F5A66E] transition">
+              For Companies
+            </Link>
+            <Link to="/about" className="hover:text-[#F5A66E] transition">
+              About Us
+            </Link>
+          </nav>
+
+          <div className="flex items-center gap-3">
+            <Link
+              to="/Login"
+              className="px-4 py-2 border border-white/30 rounded-md hover:bg-white hover:text-[#173B8A] transition text-sm inline-flex items-center gap-2"
+            >
+              <User className="w-4 h-4" />
+              Student Login
+            </Link>
+            <Link
+              to="/Login"
+              className="px-4 py-2 border border-white/30 rounded-md hover:bg-white hover:text-[#173B8A] transition text-sm inline-flex items-center gap-2"
+            >
+              <Building2 className="w-4 h-4" />
+              Employer Login
+            </Link>
+            <Link
+              to="/Signup"
+              className="px-4 py-2 rounded-md bg-[#F37526] hover:bg-[#e56818] transition text-sm font-medium"
+            >
+              Get Started
+            </Link>
           </div>
         </div>
-
-        {/* Mobile Only */}
-        <div className="md:hidden">
-          <button className="btn-primary">Get Started</button>
-        </div>
       </div>
-    </nav>
+    </header>
   );
 }

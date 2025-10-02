@@ -1,47 +1,39 @@
 import React from "react";
-import { Facebook, Instagram, Twitter, Music2 } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="bg-blue-900 text-gray-200 py-12 px-6">
-      <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-10">
-        {/* Brand */}
+    <footer className="bg-[#173B8A] text-gray-200">
+      <div className="max-w-7xl mx-auto px-6 py-12 grid md:grid-cols-3 gap-10">
         <div>
-          <h2 className="text-white font-bold text-2xl">InternConnect</h2>
-          <p className="text-gray-400 mt-3">
+          <h3 className="text-2xl font-bold text-white">InternConnect</h3>
+          <p className="mt-3 text-gray-300">
             Connecting students with their dream internships and companies with top talent.
           </p>
-          <div className="flex gap-4 mt-4 text-xl">
-            <a href="#"><Facebook /></a>
-            <a href="#"><Instagram /></a>
-            <a href="#"><Twitter /></a>
-          </div>
         </div>
 
-        {/* Site Map */}
         <div>
-          <h3 className="text-white font-semibold mb-3">Site Map</h3>
+          <h4 className="text-white font-semibold mb-3">Site Map</h4>
           <ul className="space-y-2">
-            <li><a href="#" className="hover:text-orange-400">Create Profile</a></li>
-            <li><a href="#" className="hover:text-orange-400">Find Internships</a></li>
-            <li><a href="#" className="hover:text-orange-400">Post Opportunities</a></li>
-            <li><a href="#" className="hover:text-orange-400">About Us</a></li>
-            <li><a href="#" className="hover:text-orange-400">Contact Us</a></li>
+            <li><a href="#" className="hover:text-white">Create Profile</a></li>
+            <li><a href="#" className="hover:text-white">Find Internships</a></li>
+            <li><a href="#" className="hover:text-white">Post Opportunities</a></li>
+            <li><a href="#" className="hover:text-white">About Us</a></li>
+            <li><a href="#" className="hover:text-white">Contact Us</a></li>
           </ul>
         </div>
 
-        {/* Legal */}
         <div>
-          <h3 className="text-white font-semibold mb-3">Legal</h3>
+          <h4 className="text-white font-semibold mb-3">Legal</h4>
           <ul className="space-y-2">
-            <li><a href="#" className="hover:text-orange-400">Privacy Policy</a></li>
-            <li><a href="#" className="hover:text-orange-400">Terms of Service</a></li>
+            <li><a href="#" className="hover:text-white">Privacy Policy</a></li>
+            <li><a href="#" className="hover:text-white">Terms of Service</a></li>
           </ul>
         </div>
       </div>
 
-      <div className="border-t border-gray-600 mt-10 pt-6 text-center text-gray-400 text-sm">
-        © 2025 InternConnect. All rights reserved.
+      <div className="max-w-7xl mx-auto px-6 pb-10">
+        <div className="h-px bg-white/20 mb-6" />
+        <p className="text-sm text-gray-300">© 2025 InternConnect. All rights reserved.</p>
       </div>
     </footer>
   );
