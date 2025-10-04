@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { User, Building2, Mail, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../utils/auth";
@@ -6,30 +6,48 @@ import { auth } from "../utils/auth";
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
 export default function Login() {
-  const [tab, setTab] = useState("student");
+  const [tab, setTab] = useState("student"); // 'student' | 'company'
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // If already logged in, bounce to the proper dashboard
+  useEffect(() => {
+    const token = localStorage.getItem("ic_token");
+    const role = localStorage.getItem("ic_role");
+    if (token && role) {
+      navigate(role === "company" ? "/company" : "/student", { replace: true });
+    }
+  }, [navigate]);
+
   async function handleSubmit(e) {
     e.preventDefault();
     setMsg(null);
+
     try {
       setLoading(true);
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, role: tab })
+        body: JSON.stringify({ email, password, role: tab }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "Login failed");
 
+      const data = await res.json();
+
+      if (!res.ok) {
+        // helpful messages for common auth statuses
+        if (res.status === 401) throw new Error("Invalid email or password");
+        if (res.status === 403) throw new Error("Invalid role selected");
+        throw new Error(data?.message || "Login failed");
+      }
+
+      // save: {token, role, profile}
       auth.save({ token: data.token, role: data.role, profile: data.profile });
 
-      if (data.role === "student") navigate("/student", { replace: true });
-      else navigate("/company", { replace: true });
+      // go to correct dashboard & prevent going back to login
+      navigate(data.role === "company" ? "/company" : "/student", { replace: true });
     } catch (err) {
       setMsg(`❌ ${err.message}`);
     } finally {
@@ -52,32 +70,66 @@ export default function Login() {
 
         <div className="grid grid-cols-2 gap-3 mb-6">
           <button
-            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md border ${tab==="student" ? "bg-indigo-50 border-indigo-200 text-indigo-700" : "bg-gray-100 border-gray-200 text-gray-700"}`}
-            onClick={() => setTab("student")} type="button">
+            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md border ${
+              tab === "student"
+                ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                : "bg-gray-100 border-gray-200 text-gray-700"
+            }`}
+            onClick={() => setTab("student")}
+            type="button"
+          >
             <User className="w-4 h-4" /> Student
           </button>
           <button
-            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md border ${tab==="company" ? "bg-indigo-50 border-indigo-200 text-indigo-700" : "bg-gray-100 border-gray-200 text-gray-700"}`}
-            onClick={() => setTab("company")} type="button">
+            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md border ${
+              tab === "company"
+                ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                : "bg-gray-100 border-gray-200 text-gray-700"
+            }`}
+            onClick={() => setTab("company")}
+            type="button"
+          >
             <Building2 className="w-4 h-4" /> Employer
           </button>
         </div>
 
-        {msg && <div className="mb-4 text-sm">{msg}</div>}
+        {msg && (
+          <div className="mb-4 text-sm rounded-md bg-red-50 border border-red-200 text-red-700 px-3 py-2">
+            {msg}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Input icon={<Mail />} placeholder="Enter your email" type="email" value={email} onChange={setEmail} />
-          <Input icon={<Lock />} placeholder="Enter your password" type="password" value={password} onChange={setPassword} />
+          <Input
+            icon={<Mail />}
+            placeholder="Enter your email"
+            type="email"
+            value={email}
+            onChange={setEmail}
+          />
+          <Input
+            icon={<Lock />}
+            placeholder="Enter your password"
+            type="password"
+            value={password}
+            onChange={setPassword}
+          />
           <button
             disabled={loading}
-            className="w-full bg-[#F37526] text-white py-3 rounded-md font-medium hover:bg-orange-600 transition disabled:opacity-60">
-            {loading ? "Signing in..." : (tab === "student" ? "Sign in as Student" : "Sign in as Employer")}
+            className="w-full bg-[#F37526] text-white py-3 rounded-md font-medium hover:bg-orange-600 transition disabled:opacity-60"
+          >
+            {loading ? "Signing in..." : tab === "student" ? "Sign in as Student" : "Sign in as Employer"}
           </button>
+
           <p className="text-center text-sm text-gray-600">
-            Don’t have an account? <a href="/signup" className="text-blue-700 hover:underline">Sign up</a>
+            Don’t have an account?{" "}
+            <a href="/signup" className="text-blue-700 hover:underline">
+              Sign up
+            </a>
           </p>
           <p className="text-xs text-gray-500 text-center">
-            By signing in, you agree to our <a className="underline">Terms of Service</a> and <a className="underline">Privacy Policy</a>
+            By signing in, you agree to our <a className="underline">Terms of Service</a> and{" "}
+            <a className="underline">Privacy Policy</a>
           </p>
         </form>
       </div>
@@ -85,7 +137,7 @@ export default function Login() {
   );
 }
 
-function Input({ icon, placeholder, type="text", value, onChange }) {
+function Input({ icon, placeholder, type = "text", value, onChange }) {
   return (
     <div className="relative">
       <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">{icon}</div>
@@ -94,7 +146,8 @@ function Input({ icon, placeholder, type="text", value, onChange }) {
         placeholder={placeholder}
         type={type}
         value={value}
-        onChange={(e)=>onChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
+        autoComplete={type === "password" ? "current-password" : "email"}
       />
     </div>
   );
