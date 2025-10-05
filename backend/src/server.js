@@ -7,11 +7,11 @@ import { connectDB } from "./config/db.js";
 
 // routes
 import authRoutes from "./routes/auth.routes.js";
-import companyRoutes from "./routes/company.routes.js"; // <— add this
+import companyRoutes from "./routes/company.routes.js";
+import jobRoutes from "./routes/job.routes.js";
 
 const app = express();
 
-// --- middleware
 app.use(
   cors({
     origin: process.env.CLIENT_URL || "http://localhost:5173",
@@ -21,19 +21,17 @@ app.use(
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
 
-// --- routes
 app.use("/api/auth", authRoutes);
-app.use("/api/company", companyRoutes); // <— enable company API
+app.use("/api/company", companyRoutes);
+app.use("/api/jobs", jobRoutes);
 
-// health check
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-// 404
 app.use((req, res) => res.status(404).json({ message: "Not found" }));
 
-// start
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/internconnect";
+const MONGO_URI =
+  process.env.MONGO_URI || "mongodb://127.0.0.1:27017/internconnect";
 
 connectDB(MONGO_URI).then(() => {
   app.listen(PORT, () =>
