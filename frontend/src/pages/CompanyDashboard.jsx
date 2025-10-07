@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import HeaderBar from "../components/dashboard/HeaderBar.jsx";
 import Sidebar from "../components/dashboard/Sidebar.jsx";
-import PostJobModal from "../components/dashboard/PostJobModal.jsx";
-import JobList from "../components/dashboard/JobList.jsx";
+import PostJobModal from "@/components/dashboard/PostJobModal.jsx";
+import JobList from "@/components/dashboard/JobList.jsx";
+import PillTabs from "@/components/dashboard/PillTabs.jsx";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
@@ -36,6 +37,16 @@ export default function CompanyDashboard() {
   const [openPost, setOpenPost] = useState(false);
   const [active, setActive] = useState("Dashboard");
 
+  const tabDefs = useMemo(
+    () => [
+      { key: "Dashboard", label: "Overview" },
+      { key: "Job Postings", label: "Job Postings" },
+      { key: "Applications", label: "Applications" },
+    ],
+    []
+  );
+  const activeIndex = Math.max(0, tabDefs.findIndex((t) => t.key === active));
+
   useEffect(() => {
     if (!token || role !== "company") {
       navigate("/login", { replace: true });
@@ -44,7 +55,6 @@ export default function CompanyDashboard() {
 
   useEffect(() => {
     if (!token || role !== "company") return;
-
     let ignore = false;
     const ctrl = new AbortController();
 
@@ -109,21 +119,58 @@ export default function CompanyDashboard() {
             <div className="text-gray-600">Loading...</div>
           ) : (
             <>
-              {active === "Dashboard" && (
-                <div className="text-gray-700">Welcome back, {person.firstName || "User"}.</div>
-              )}
+              {/* centered welcome */}
+              <div className="mb-4 max-w-5xl mx-auto">
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
+                  Welcome back{person.firstName ? `, ${person.firstName}!` : "!"}
+                </h2>
+                <p className="text-gray-500 mt-1">
+                  Manage your internship program and track recruitment progress
+                </p>
+              </div>
 
-              {active === "Job Postings" && (
-                <JobList token={token} />
-              )}
+              {/* centered pill tabs */}
+              <div className="max-w-5xl mx-auto mb-6">
+                <PillTabs
+                  tabs={tabDefs}
+                  active={activeIndex}
+                  onChange={(idx) => setActive(tabDefs[idx].key)}
+                />
+              </div>
 
-              {/* placeholders for future tabs */}
-              {active === "Applications" && (
-                <div className="text-gray-600">Applications view coming soon…</div>
-              )}
-              {active === "Analytics" && (
-                <div className="text-gray-600">Analytics view coming soon…</div>
-              )}
+              {/* centered panels */}
+              <div className="max-w-5xl mx-auto">
+                {active === "Dashboard" && (
+                  <section className="bg-white rounded-xl shadow-sm border p-6">
+                    <h3 className="text-lg font-semibold mb-2">Overview</h3>
+                    <p className="text-gray-600">
+                      High-level stats and recent activity will be shown here.
+                    </p>
+                  </section>
+                )}
+
+                {active === "Job Postings" && (
+                  <section className="bg-white rounded-xl shadow-sm border p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold">Job Postings</h3>
+                      <button
+                        onClick={() => setOpenPost(true)}
+                        className="px-3 py-2 rounded-md bg-[#F37526] text-white hover:bg-orange-600"
+                      >
+                        Post New Job
+                      </button>
+                    </div>
+                    <JobList token={token} />
+                  </section>
+                )}
+
+                {active === "Applications" && (
+                  <section className="bg-white rounded-xl shadow-sm border p-6">
+                    <h3 className="text-lg font-semibold mb-2">Applications</h3>
+                    <p className="text-gray-600">Applications view coming soon…</p>
+                  </section>
+                )}
+              </div>
             </>
           )}
         </main>
@@ -133,10 +180,7 @@ export default function CompanyDashboard() {
         open={openPost}
         onClose={() => setOpenPost(false)}
         token={token}
-        onCreated={() => {
-          // after creating, jump to Job Postings and allow JobList to refetch itself if desired
-          setActive("Job Postings");
-        }}
+        onCreated={() => setActive("Job Postings")}
       />
     </div>
   );

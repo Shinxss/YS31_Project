@@ -1,6 +1,15 @@
 // frontend/src/pages/Signup.jsx
 import React, { useEffect, useRef, useState } from "react";
-import { User, Building2, Mail, Lock, University, BookOpen, ChevronDown, Check } from "lucide-react";
+import {
+  User,
+  Building2,
+  Mail,
+  Lock,
+  University,
+  BookOpen,
+  ChevronDown,
+  Check,
+} from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
@@ -15,33 +24,58 @@ export default function Signup() {
 
   // Student state
   const [student, setStudent] = useState({
-    firstName: "", lastName: "", email: "",
-    school: "", course: "", major: "",
-    password: "", confirmPassword: ""
+    firstName: "",
+    lastName: "",
+    email: "",
+    school: "",
+    course: "",
+    major: "",
+    password: "",
+    confirmPassword: "",
   });
 
   // Company state (no location/description here)
   const [company, setCompany] = useState({
-    companyName: "", firstName: "", lastName: "",
-    companyRole: "Owner", email: "", industry: "Technology",
-    password: "", confirmPassword: ""
+    companyName: "",
+    firstName: "",
+    lastName: "",
+    companyRole: "Owner",
+    companyRoleOther: "",
+    email: "",
+    industry: "Technology",
+    industryOther: "",
+    password: "",
+    confirmPassword: "",
   });
 
   // holds last email used (to verify OTP against)
   const [pendingEmail, setPendingEmail] = useState("");
 
+  function requireIf(condition, value, label) {
+    if (!condition) return;
+    if (!value || !String(value).trim()) throw new Error(`${label} is required`);
+  }
+
   async function handleSendOtp(e) {
     e.preventDefault();
     setMsg(null);
+
     try {
       setLoading(true);
 
       let body;
+
       if (tab === "student") {
-        if (student.password !== student.confirmPassword) {
-          setMsg("Passwords do not match");
-          return;
-        }
+        if (student.password !== student.confirmPassword)
+          throw new Error("Passwords do not match");
+
+        ["firstName", "lastName", "email", "school", "course", "password"].forEach(
+          (k) => {
+            if (!String(student[k] || "").trim())
+              throw new Error(`${k} is required`);
+          }
+        );
+
         body = {
           role: "student",
           email: student.email,
@@ -53,10 +87,28 @@ export default function Signup() {
           major: student.major,
         };
       } else {
-        if (company.password !== company.confirmPassword) {
-          setMsg("Passwords do not match");
-          return;
-        }
+        if (company.password !== company.confirmPassword)
+          throw new Error("Passwords do not match");
+
+        const finalRole =
+          company.companyRole === "Others"
+            ? company.companyRoleOther.trim()
+            : company.companyRole;
+
+        const finalIndustry =
+          company.industry === "Others"
+            ? company.industryOther.trim()
+            : company.industry;
+
+        ["companyName", "firstName", "lastName", "email", "password"].forEach(
+          (k) => {
+            if (!String(company[k] || "").trim())
+              throw new Error(`${k} is required`);
+          }
+        );
+        requireIf(company.companyRole === "Others", finalRole, "Custom role");
+        requireIf(company.industry === "Others", finalIndustry, "Custom industry");
+
         body = {
           role: "company",
           email: company.email,
@@ -64,8 +116,8 @@ export default function Signup() {
           companyName: company.companyName,
           firstName: company.firstName,
           lastName: company.lastName,
-          companyRole: company.companyRole, // Owner/Recruiter/HR/Manager
-          industry: company.industry,
+          companyRole: finalRole,
+          industry: finalIndustry,
         };
       }
 
@@ -104,8 +156,28 @@ export default function Signup() {
       setOtpOpen(false);
 
       // reset forms
-      setStudent({ firstName:"", lastName:"", email:"", school:"", course:"", major:"", password:"", confirmPassword:"" });
-      setCompany({ companyName:"", firstName:"", lastName:"", companyRole:"Owner", email:"", industry:"Technology", password:"", confirmPassword:"" });
+      setStudent({
+        firstName: "",
+        lastName: "",
+        email: "",
+        school: "",
+        course: "",
+        major: "",
+        password: "",
+        confirmPassword: "",
+      });
+      setCompany({
+        companyName: "",
+        firstName: "",
+        lastName: "",
+        companyRole: "Owner",
+        companyRoleOther: "",
+        email: "",
+        industry: "Technology",
+        industryOther: "",
+        password: "",
+        confirmPassword: "",
+      });
     } catch (err) {
       setMsg(`❌ ${err.message}`);
     } finally {
@@ -125,14 +197,22 @@ export default function Signup() {
 
         <div className="grid grid-cols-2 gap-3 mb-6">
           <button
-            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md border ${tab==="student" ? "bg-indigo-50 border-indigo-200 text-indigo-700" : "bg-gray-100 border-gray-200 text-gray-700"}`}
+            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md border ${
+              tab === "student"
+                ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                : "bg-gray-100 border-gray-200 text-gray-700"
+            }`}
             onClick={() => setTab("student")}
             type="button"
           >
             <User className="w-4 h-4" /> Student
           </button>
           <button
-            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md border ${tab==="company" ? "bg-indigo-50 border-indigo-200 text-indigo-700" : "bg-gray-100 border-gray-200 text-gray-700"}`}
+            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md border ${
+              tab === "company"
+                ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                : "bg-gray-100 border-gray-200 text-gray-700"
+            }`}
             onClick={() => setTab("company")}
             type="button"
           >
@@ -146,51 +226,181 @@ export default function Signup() {
           {tab === "student" ? (
             <>
               <TwoCols>
-                <Input icon={<User />} placeholder="First Name" value={student.firstName} onChange={v=>setStudent(s=>({...s, firstName:v}))}/>
-                <Input icon={<User />} placeholder="Last Name" value={student.lastName} onChange={v=>setStudent(s=>({...s, lastName:v}))}/>
+                <Input
+                  label="First Name"
+                  icon={<User />}
+                  placeholder="First Name"
+                  value={student.firstName}
+                  onChange={(v) => setStudent((s) => ({ ...s, firstName: v }))}
+                />
+                <Input
+                  label="Last Name"
+                  icon={<User />}
+                  placeholder="Last Name"
+                  value={student.lastName}
+                  onChange={(v) => setStudent((s) => ({ ...s, lastName: v }))}
+                />
               </TwoCols>
-              <Input icon={<Mail />} placeholder="Enter your email" type="email" value={student.email} onChange={v=>setStudent(s=>({...s, email:v}))}/>
-              <Input icon={<University />} placeholder="University" value={student.school} onChange={v=>setStudent(s=>({...s, school:v}))}/>
-              <Input icon={<BookOpen />} placeholder="Course" value={student.course} onChange={v=>setStudent(s=>({...s, course:v}))}/>
-              <Input icon={<BookOpen />} placeholder="Major (optional)" value={student.major} onChange={v=>setStudent(s=>({...s, major:v}))}/>
-              <Input icon={<Lock />} placeholder="Create a strong password" type="password" value={student.password} onChange={v=>setStudent(s=>({...s, password:v}))}/>
-              <Input icon={<Lock />} placeholder="Confirm your password" type="password" value={student.confirmPassword} onChange={v=>setStudent(s=>({...s, confirmPassword:v}))}/>
+              <Input
+                label="Email"
+                icon={<Mail />}
+                placeholder="Enter your email"
+                type="email"
+                value={student.email}
+                onChange={(v) => setStudent((s) => ({ ...s, email: v }))}
+              />
+              <Input
+                label="University"
+                icon={<University />}
+                placeholder="University"
+                value={student.school}
+                onChange={(v) => setStudent((s) => ({ ...s, school: v }))}
+              />
+              <Input
+                label="Course"
+                icon={<BookOpen />}
+                placeholder="Course"
+                value={student.course}
+                onChange={(v) => setStudent((s) => ({ ...s, course: v }))}
+              />
+              <Input
+                label="Major (optional)"
+                icon={<BookOpen />}
+                placeholder="Major (optional)"
+                value={student.major}
+                onChange={(v) => setStudent((s) => ({ ...s, major: v }))}
+              />
+              <Input
+                label="Password"
+                icon={<Lock />}
+                placeholder="Create a strong password"
+                type="password"
+                value={student.password}
+                onChange={(v) => setStudent((s) => ({ ...s, password: v }))}
+              />
+              <Input
+                label="Confirm Password"
+                icon={<Lock />}
+                placeholder="Confirm your password"
+                type="password"
+                value={student.confirmPassword}
+                onChange={(v) =>
+                  setStudent((s) => ({ ...s, confirmPassword: v }))
+                }
+              />
             </>
           ) : (
             <>
-              <Input icon={<Building2 />} placeholder="Company Name" value={company.companyName} onChange={v=>setCompany(s=>({...s, companyName:v}))}/>
+              <Input
+                label="Company Name"
+                icon={<Building2 />}
+                placeholder="Company Name"
+                value={company.companyName}
+                onChange={(v) => setCompany((s) => ({ ...s, companyName: v }))}
+              />
               <TwoCols>
-                <Input icon={<User />} placeholder="First Name" value={company.firstName} onChange={v=>setCompany(s=>({...s, firstName:v}))}/>
-                <Input icon={<User />} placeholder="Last Name" value={company.lastName} onChange={v=>setCompany(s=>({...s, lastName:v}))}/>
+                <Input
+                  label="First Name"
+                  icon={<User />}
+                  placeholder="First Name"
+                  value={company.firstName}
+                  onChange={(v) => setCompany((s) => ({ ...s, firstName: v }))}
+                />
+                <Input
+                  label="Last Name"
+                  icon={<User />}
+                  placeholder="Last Name"
+                  value={company.lastName}
+                  onChange={(v) => setCompany((s) => ({ ...s, lastName: v }))}
+                />
               </TwoCols>
 
-              {/* NEW: pretty dropdowns */}
               <PrettySelect
                 label="Role"
                 value={company.companyRole}
-                onChange={(v)=>setCompany(s=>({...s, companyRole:v}))}
-                options={["Owner","Recruiter","HR","Manager"]}
+                onChange={(v) => setCompany((s) => ({ ...s, companyRole: v }))}
+                options={["Owner", "Recruiter", "HR", "Manager", "Others"]}
               />
-              <Input icon={<Mail />} placeholder="Enter your email" type="email" value={company.email} onChange={v=>setCompany(s=>({...s, email:v}))}/>
+              {company.companyRole === "Others" && (
+                <Input
+                  label="Custom Role"
+                  icon={<User />}
+                  placeholder="Enter your role"
+                  value={company.companyRoleOther}
+                  onChange={(v) =>
+                    setCompany((s) => ({ ...s, companyRoleOther: v }))
+                  }
+                />
+              )}
+
+              <Input
+                label="Email"
+                icon={<Mail />}
+                placeholder="Enter your email"
+                type="email"
+                value={company.email}
+                onChange={(v) => setCompany((s) => ({ ...s, email: v }))}
+              />
 
               <PrettySelect
                 label="Industry"
                 value={company.industry}
-                onChange={(v)=>setCompany(s=>({...s, industry:v}))}
-                options={["Technology","Finance","Healthcare","Education","Retail"]}
+                onChange={(v) => setCompany((s) => ({ ...s, industry: v }))}
+                options={[
+                  "Technology",
+                  "Finance",
+                  "Healthcare",
+                  "Education",
+                  "Retail",
+                  "Others",
+                ]}
               />
+              {company.industry === "Others" && (
+                <Input
+                  label="Custom Industry"
+                  icon={<Building2 />}
+                  placeholder="Enter your industry"
+                  value={company.industryOther}
+                  onChange={(v) =>
+                    setCompany((s) => ({ ...s, industryOther: v }))
+                  }
+                />
+              )}
 
-              <Input icon={<Lock />} placeholder="Create a strong password" type="password" value={company.password} onChange={v=>setCompany(s=>({...s, password:v}))}/>
-              <Input icon={<Lock />} placeholder="Confirm your password" type="password" value={company.confirmPassword} onChange={v=>setCompany(s=>({...s, confirmPassword:v}))}/>
+              <Input
+                label="Password"
+                icon={<Lock />}
+                placeholder="Create a strong password"
+                type="password"
+                value={company.password}
+                onChange={(v) => setCompany((s) => ({ ...s, password: v }))}
+              />
+              <Input
+                label="Confirm Password"
+                icon={<Lock />}
+                placeholder="Confirm your password"
+                type="password"
+                value={company.confirmPassword}
+                onChange={(v) =>
+                  setCompany((s) => ({ ...s, confirmPassword: v }))
+                }
+              />
             </>
           )}
 
-          <button disabled={loading} className="w-full bg-[#F37526] text-white py-3 rounded-md font-medium hover:bg-orange-600 transition disabled:opacity-60">
+          <button
+            disabled={loading}
+            className="w-full bg-[#F37526] text-white py-3 rounded-md font-medium hover:bg-orange-600 transition disabled:opacity-60"
+          >
             {loading ? "Sign up..." : "Sign up"}
           </button>
 
+          {/* <<< restored line >>> */}
           <p className="text-center text-sm text-gray-600">
-            Already have an account? <a href="/login" className="text-blue-700 hover:underline">Sign In</a>
+            Already have an account?{" "}
+            <a href="/login" className="text-blue-700 hover:underline">
+              Sign In
+            </a>
           </p>
         </form>
       </div>
@@ -201,22 +411,40 @@ export default function Signup() {
           <div className="bg-white w-full max-w-md rounded-xl shadow-lg">
             <div className="px-6 py-4 border-b flex items-center justify-between">
               <h3 className="text-lg font-semibold">Enter Verification Code</h3>
-              <button onClick={()=>setOtpOpen(false)} className="text-gray-500 hover:text-gray-700" type="button">✕</button>
+              <button
+                onClick={() => setOtpOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+                type="button"
+              >
+                ✕
+              </button>
             </div>
             <form onSubmit={handleVerifyOtp} className="p-6 space-y-4">
-              <p className="text-sm text-gray-600">We sent a 6-digit code to <span className="font-medium">{pendingEmail}</span>.</p>
+              <p className="text-sm text-gray-600">
+                We sent a 6-digit code to{" "}
+                <span className="font-medium">{pendingEmail}</span>.
+              </p>
               <input
                 className="w-full border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 tracking-widest text-center text-lg"
                 placeholder="••••••"
                 value={otp}
-                onChange={(e)=>setOtp(e.target.value)}
+                onChange={(e) => setOtp(e.target.value)}
                 maxLength={6}
                 inputMode="numeric"
                 required
               />
               <div className="flex justify-end gap-3">
-                <button type="button" onClick={()=>setOtpOpen(false)} className="px-4 py-2 rounded-md border">Cancel</button>
-                <button disabled={loading || otp.length !== 6} className="px-4 py-2 rounded-md bg-[#173B8A] text-white disabled:opacity-60">
+                <button
+                  type="button"
+                  onClick={() => setOtpOpen(false)}
+                  className="px-4 py-2 rounded-md border"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={loading || otp.length !== 6}
+                  className="px-4 py-2 rounded-md bg-[#173B8A] text-white disabled:opacity-60"
+                >
                   Verify
                 </button>
               </div>
@@ -229,32 +457,40 @@ export default function Signup() {
 }
 
 /* ---- small UI helpers ---- */
-function TwoCols({children}) {
+function TwoCols({ children }) {
   return <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{children}</div>;
 }
 
-function Input({ icon, placeholder, type="text", value, onChange }) {
+function Input({ label, icon, placeholder, type = "text", value, onChange }) {
   return (
     <div className="relative">
-      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">{icon}</div>
+      {label && (
+        <div className="mb-1 font-semibold text-gray-900 text-[0.95rem]">
+          {label}
+        </div>
+      )}
+      <div className="absolute left-3 top-[2.85rem] -translate-y-1/2 text-gray-400 pointer-events-none">
+        {icon}
+      </div>
       <input
         className="w-full border rounded-md pl-10 pr-3 py-2 outline-none focus:ring-2 focus:ring-blue-200"
         placeholder={placeholder}
         type={type}
         value={value}
-        onChange={(e)=>onChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
       />
     </div>
   );
 }
 
-/** A11y-friendly custom select (styled dropdown) */
+/** Custom select with ONLY a right chevron (left icon removed) */
 function PrettySelect({ label, value, onChange, options }) {
   const [open, setOpen] = useState(false);
-  const [highlight, setHighlight] = useState(() => Math.max(0, options.indexOf(value)));
+  const [highlight, setHighlight] = useState(() =>
+    Math.max(0, options.indexOf(value))
+  );
   const containerRef = useRef(null);
 
-  // close on outside click
   useEffect(() => {
     function onClick(e) {
       if (!containerRef.current) return;
@@ -264,7 +500,6 @@ function PrettySelect({ label, value, onChange, options }) {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  // keep highlight in range if options change
   useEffect(() => {
     const idx = options.indexOf(value);
     if (idx >= 0) setHighlight(idx);
@@ -280,10 +515,10 @@ function PrettySelect({ label, value, onChange, options }) {
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setHighlight(h => (h + 1) % options.length);
+      setHighlight((h) => (h + 1) % options.length);
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setHighlight(h => (h - 1 + options.length) % options.length);
+      setHighlight((h) => (h - 1 + options.length) % options.length);
     } else if (e.key === "Enter") {
       e.preventDefault();
       onChange(options[highlight]);
@@ -296,20 +531,25 @@ function PrettySelect({ label, value, onChange, options }) {
 
   return (
     <div className="relative" ref={containerRef}>
-      <div className="text-xs text-gray-600 mb-1">{label}</div>
+      {label && (
+        <div className="mb-1 font-semibold text-gray-900 text-[0.95rem]">
+          {label}
+        </div>
+      )}
       <button
         type="button"
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpen((o) => !o)}
         onKeyDown={handleKeyDown}
         className="w-full border rounded-md px-3 py-2 text-left flex items-center justify-between hover:border-gray-300 focus:ring-2 focus:ring-blue-200"
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className="truncate flex items-center gap-2">
-          <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
-          {value}
-        </span>
-        <span className="text-gray-400 text-xs">Press ⌄</span>
+        <span className="truncate">{value}</span>
+        <ChevronDown
+          className={`w-4 h-4 text-gray-400 transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
+        />
       </button>
 
       {open && (
