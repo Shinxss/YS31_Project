@@ -1,4 +1,3 @@
-// backend/src/server.js
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -9,12 +8,13 @@ import { connectDB } from "./config/db.js";
 import authRoutes from "./routes/auth.routes.js";
 import companyRoutes from "./routes/company.routes.js";
 import jobRoutes from "./routes/job.routes.js";
+import statsRoutes from "./routes/stats.routes.js";
 
 const app = express();
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
     credentials: true,
   })
 );
@@ -24,8 +24,9 @@ app.use(morgan("dev"));
 app.use("/api/auth", authRoutes);
 app.use("/api/company", companyRoutes);
 app.use("/api/jobs", jobRoutes);
+app.use("/api/stats", statsRoutes);
 
-app.get("/api/health", (_req, res) => res.json({ ok: true }));
+app.get("/api/health", (_req, res) => res.json({ ok: true, app: process.env.APP_NAME || "App" }));
 
 app.use((req, res) => res.status(404).json({ message: "Not found" }));
 

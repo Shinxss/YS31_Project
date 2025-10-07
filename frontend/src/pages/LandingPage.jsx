@@ -1,4 +1,5 @@
-import React from "react";
+// frontend/src/pages/LandingPage.jsx
+import React, { useEffect, useState, useMemo } from "react";
 import Header from "../components/Navbar";
 import Footer from "../components/Footer";
 import {
@@ -17,7 +18,53 @@ import {
   ClipboardList,
 } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+
 export default function LandingPage() {
+  // ---- Stats state (from backend) ----
+  const [stats, setStats] = useState({
+    activeStudents: 0,
+    companies: 0,
+    internships: 0,
+  });
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [statsError, setStatsError] = useState("");
+
+  useEffect(() => {
+    let ignore = false;
+    const ctrl = new AbortController();
+
+    (async () => {
+      try {
+        setLoadingStats(true);
+        setStatsError("");
+        const res = await fetch(`${API_BASE}/api/stats/public`, {
+          signal: ctrl.signal,
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.message || "Failed to load stats");
+        if (!ignore) {
+          setStats({
+            activeStudents: data.activeStudents ?? 0,
+            companies: data.companies ?? 0,
+            internships: data.internships ?? 0,
+          });
+        }
+      } catch (e) {
+        if (!ignore && e.name !== "AbortError") {
+          setStatsError(e.message || "Failed to load stats");
+        }
+      } finally {
+        if (!ignore) setLoadingStats(false);
+      }
+    })();
+
+    return () => {
+      ignore = true;
+      ctrl.abort();
+    };
+  }, []);
+
   return (
     <>
       <Header />
@@ -66,12 +113,30 @@ export default function LandingPage() {
           </button>
         </div>
 
-        {/* Stats */}
+        {/* Stats (live) */}
         <div className="max-w-[1000px] mx-auto mt-8 flex justify-between text-center">
-          <Stat num="10K+" label="Active Students" />
-          <Stat num="2K+" label="Companies" />
-          <Stat num="5K+" label="Internships" />
-          <Stat num="95%" label="Success Rate" />
+          <Stat
+            label="Active Students"
+            value={stats.activeStudents}
+            loading={loadingStats}
+            error={statsError}
+          />
+          <Stat
+            label="Companies"
+            value={stats.companies}
+            loading={loadingStats}
+            error={statsError}
+          />
+          <Stat
+            label="Internships"
+            value={stats.internships}
+            loading={loadingStats}
+            error={statsError}
+          />
+          <div>
+            <h3 className="text-2xl font-bold text-blue-900">95%</h3>
+            <p className="text-gray-600">Success Rate</p>
+          </div>
         </div>
       </section>
 
@@ -258,6 +323,8 @@ export default function LandingPage() {
     </>
   );
 }
+
+/* ---------- helpers ---------- */
 function SectionTitle({ title, gradient, subtitle }) {
   return (
     <div className="text-center max-w-4xl mx-auto mb-10 px-6">
@@ -271,14 +338,28 @@ function SectionTitle({ title, gradient, subtitle }) {
     </div>
   );
 }
-function Stat({ num, label }) {
+
+function Stat({ value, label, loading, error }) {
+  const formatted =
+    typeof value === "number"
+      ? Intl.NumberFormat("en", { notation: "compact" }).format(value)
+      : value;
+
   return (
-    <div>
-      <h3 className="text-2xl font-bold text-blue-900">{num}</h3>
+    <div className="min-w-[160px]">
+      <h3 className="text-2xl font-bold text-blue-900">
+        {loading ? "…" : error ? "—" : formatted}
+      </h3>
       <p className="text-gray-600">{label}</p>
+      {error && (
+        <p className="text-xs text-red-500 mt-1" title={error}>
+          couldn’t load
+        </p>
+      )}
     </div>
   );
 }
+
 function FeatureCard({ icon, iconBg, title, text }) {
   return (
     <div className="bg-white border border-gray-200 shadow-lg rounded-2xl p-7 mb-6 min-h-[160px]">

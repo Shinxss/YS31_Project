@@ -1,9 +1,15 @@
-import { Router } from "express";
-import { register, login } from "../controllers/auth.controller.js";
+import express from "express";
+import {
+  login,
+  sendSignupOtp,
+  verifySignupOtp,
+  resendSignupOtp,
+} from "../controllers/auth.controller.js";
 
-const router = Router();
-
-// POST /api/auth/register
-router.post("/register", register);
+const router = express.Router();
+router.post("/signup-otp/send", sendSignupOtp);
+router.post("/signup-otp/verify", verifySignupOtp);
+router.post("/signup-otp/resend", resendSignupOtp);  
 router.post("/login", login);
+
 export default router;

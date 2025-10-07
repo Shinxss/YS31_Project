@@ -7,7 +7,6 @@ export default function auth(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "devsecret");
-    // Support both shapes: { sub } or { id }
     const userId = decoded.sub || decoded.id;
     if (!userId) return res.status(401).json({ message: "Invalid token payload" });
 

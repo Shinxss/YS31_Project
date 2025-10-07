@@ -10,7 +10,7 @@ const companySchema = new mongoose.Schema(
     password:    { type: String, required: true }, // hashed
     industry:    { type: String, required: true },
     location:    { type: String },
-    companyDescription: { type: String, required: true }, // required for owner per your note
+    companyDescription: { type: String }, 
   },
   { timestamps: true, collection: "company_users" }
 );

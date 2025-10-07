@@ -146,5 +146,5 @@ function doLogout(navigate) {
   localStorage.removeItem("ic_token");
   localStorage.removeItem("ic_role");
   localStorage.removeItem("ic_profile");
-  navigate("/login", { replace: true });
+  navigate("/", { replace: true });
 }
