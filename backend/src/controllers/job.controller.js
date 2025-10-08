@@ -1,4 +1,3 @@
-// backend/src/controllers/job.controller.js
 import User from "../models/user.model.js";
 import Company from "../models/company.model.js";
 import Job from "../models/job.model.js";
@@ -121,5 +120,24 @@ export const myJobs = async (req, res) => {
   } catch (err) {
     console.error("myJobs error:", err);
     res.status(400).json({ message: err.message || "Server error" });
+  }
+};
+
+// ✅ NEWLY ADDED FUNCTION — PUBLIC route for students
+// GET /api/jobs
+export const getAllJobs = async (req, res) => {
+  try {
+    const jobs = await Job.find({ status: "open" })
+      .sort({ createdAt: -1 })
+      .select(
+        "title companyName location salaryMax salaryCurrency durationMonths workType description skills createdAt"
+      )
+      .lean();
+
+    // 👇 wrap in { jobs } so frontend matches expected structure
+    res.json({ jobs });
+  } catch (err) {
+    console.error("getAllJobs error:", err);
+    res.status(500).json({ message: "Failed to fetch jobs" });
   }
 };

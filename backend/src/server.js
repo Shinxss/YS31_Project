@@ -9,6 +9,7 @@ import authRoutes from "./routes/auth.routes.js";
 import companyRoutes from "./routes/company.routes.js";
 import jobRoutes from "./routes/job.routes.js";
 import statsRoutes from "./routes/stats.routes.js";
+import studentRoutes from "./routes/studentRoutes.js"
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/company", companyRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/stats", statsRoutes);
+app.use("/api/student", studentRoutes);
 
 app.get("/api/health", (_req, res) => res.json({ ok: true, app: process.env.APP_NAME || "App" }));
 

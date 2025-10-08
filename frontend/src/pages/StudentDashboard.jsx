@@ -1,45 +1,72 @@
-// src/pages/StudentDashboard.jsx
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import StudentSidebar from "@/components/studentDashboard/StudentSidebar";
+import StudentHeaderBar from "@/components/studentDashboard/StudentHeaderBar";
+import { getStudentProfile } from "@/services/api";
+import { toast } from "react-toastify";
+import BrowseJobs from "@/components/studentDashboard/BrowseJobs"; // ✅ import
 
-const StudentDashboard = () => {
-  const navigate = useNavigate();
+export default function StudentDashboard() {
+  const [collapsed, setCollapsed] = useState(false);
+  const [activeTab, setActiveTab] = useState("Dashboard");
+  const [student, setStudent] = useState(null);
 
   const handleLogout = () => {
-    // clear client auth
     localStorage.removeItem("ic_token");
     localStorage.removeItem("ic_role");
     localStorage.removeItem("ic_profile");
-
-    // go to login and replace history (so back button won't return here)
-    navigate("/", { replace: true });
+    window.location.href = "/";
   };
 
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const data = await getStudentProfile();
+        setStudent(data);
+      } catch (err) {
+        toast.error("Failed to load student profile");
+      }
+    };
+    fetchProfile();
+  }, []);
+
   return (
-    <div className="min-h-screen bg-[#ECF3FC]">
-      <div className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-blue-900">
-          🎓 Student Dashboard
-        </h1>
+    <div className="flex h-screen bg-[#ECF3FC] overflow-hidden">
+      {/* Sidebar stays fixed height */}
+      <StudentSidebar
+        collapsed={collapsed}
+        active={activeTab}
+        onLogout={handleLogout}
+        onNav={setActiveTab}
+      />
 
-        <button
-          onClick={handleLogout}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[#F37526] text-white hover:bg-[#e56818] transition"
-        >
-          <LogOut className="w-4 h-4" />
-          Logout
-        </button>
-      </div>
+      {/* Main Section (Header + Scrollable Content) */}
+      <div className="flex flex-col flex-1 h-screen">
+        {/* HeaderBar fixed at top */}
+        <div className="flex-shrink-0">
+          <StudentHeaderBar
+            student={student || { firstName: "", lastName: "", course: "" }}
+            onToggleSidebar={() => setCollapsed(!collapsed)}
+          />
+        </div>
 
-      {/* your dashboard content here */}
-      <div className="max-w-6xl mx-auto px-6 pb-16">
-        <p className="text-gray-700">
-          Welcome! Put your student widgets/content here.
-        </p>
+        {/* Scrollable Content Area */}
+        <main className="flex-1 overflow-y-auto p-6">
+          {activeTab === "Browse Jobs" && (
+            <div className="text-left">
+              <BrowseJobs />
+            </div>
+          )}
+
+          {activeTab === "Dashboard" && (
+            <div className="bg-white rounded-lg p-6 shadow">
+              <h2 className="text-lg font-semibold text-blue-900 mb-2">
+                Welcome, {student?.firstName || "Student"}!
+              </h2>
+              <p className="text-gray-700">This is your student dashboard.</p>
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );
-};
-
-export default StudentDashboard;
+}
