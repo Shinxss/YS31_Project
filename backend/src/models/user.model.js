@@ -10,4 +10,19 @@ const userSchema = new mongoose.Schema(
   { timestamps: true, collection: "users" }
 );
 
+userSchema.pre("save", function (next) {
+  if (this.isModified("email") && typeof this.email === "string") {
+    this.email = this.email.toLowerCase().trim();
+  }
+  next();
+});
+
+userSchema.set("toJSON", {
+  transform: (_doc, ret) => {
+    delete ret.password;
+    return ret;
+  },
+});
+// ADD <<<
+
 export default mongoose.model("User", userSchema);

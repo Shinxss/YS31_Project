@@ -14,13 +14,9 @@ import {
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
 export default function Signup() {
-  const [tab, setTab] = useState("student"); // student | company
+  const [tab, setTab] = useState("student"); // "student" | "company"
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
-
-  // OTP modal
-  const [otpOpen, setOtpOpen] = useState(false);
-  const [otp, setOtp] = useState("");
 
   // Student state
   const [student, setStudent] = useState({
@@ -48,9 +44,6 @@ export default function Signup() {
     confirmPassword: "",
   });
 
-  // holds last email used (to verify OTP against)
-  const [pendingEmail, setPendingEmail] = useState("");
-
   function requireIf(condition, value, label) {
     if (!condition) return;
     if (!value || !String(value).trim()) throw new Error(`${label} is required`);
@@ -64,17 +57,15 @@ export default function Signup() {
       setLoading(true);
 
       let body;
+      let emailToUse;
 
       if (tab === "student") {
         if (student.password !== student.confirmPassword)
           throw new Error("Passwords do not match");
 
-        ["firstName", "lastName", "email", "school", "course", "password"].forEach(
-          (k) => {
-            if (!String(student[k] || "").trim())
-              throw new Error(`${k} is required`);
-          }
-        );
+        ["firstName", "lastName", "email", "school", "course", "password"].forEach((k) => {
+          if (!String(student[k] || "").trim()) throw new Error(`${k} is required`);
+        });
 
         body = {
           role: "student",
@@ -86,6 +77,7 @@ export default function Signup() {
           course: student.course,
           major: student.major,
         };
+        emailToUse = student.email;
       } else {
         if (company.password !== company.confirmPassword)
           throw new Error("Passwords do not match");
@@ -100,12 +92,9 @@ export default function Signup() {
             ? company.industryOther.trim()
             : company.industry;
 
-        ["companyName", "firstName", "lastName", "email", "password"].forEach(
-          (k) => {
-            if (!String(company[k] || "").trim())
-              throw new Error(`${k} is required`);
-          }
-        );
+        ["companyName", "firstName", "lastName", "email", "password"].forEach((k) => {
+          if (!String(company[k] || "").trim()) throw new Error(`${k} is required`);
+        });
         requireIf(company.companyRole === "Others", finalRole, "Custom role");
         requireIf(company.industry === "Others", finalIndustry, "Custom industry");
 
@@ -119,9 +108,11 @@ export default function Signup() {
           companyRole: finalRole,
           industry: finalIndustry,
         };
+        emailToUse = company.email;
       }
 
-      const res = await fetch(`${API_BASE}/api/auth/send-otp`, {
+      // ✅ Correct backend endpoint for OTP send
+      const res = await fetch(`${API_BASE}/api/auth/signup-otp/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -129,55 +120,9 @@ export default function Signup() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.message || "Failed to send OTP");
 
-      setPendingEmail(tab === "student" ? student.email : company.email);
-      setOtpOpen(true);
-      setMsg("🔐 OTP sent to your email. Check your inbox.");
-    } catch (err) {
-      setMsg(`❌ ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleVerifyOtp(e) {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: pendingEmail, code: otp }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "Verification failed");
-
-      setMsg("✅ Account verified & created. You can now sign in.");
-      setOtp("");
-      setOtpOpen(false);
-
-      // reset forms
-      setStudent({
-        firstName: "",
-        lastName: "",
-        email: "",
-        school: "",
-        course: "",
-        major: "",
-        password: "",
-        confirmPassword: "",
-      });
-      setCompany({
-        companyName: "",
-        firstName: "",
-        lastName: "",
-        companyRole: "Owner",
-        companyRoleOther: "",
-        email: "",
-        industry: "Technology",
-        industryOther: "",
-        password: "",
-        confirmPassword: "",
-      });
+      // Store the email and redirect to standalone verification page
+      localStorage.setItem("ic_pending_email", emailToUse);
+      location.href = `/verify?email=${encodeURIComponent(emailToUse)}`;
     } catch (err) {
       setMsg(`❌ ${err.message}`);
     } finally {
@@ -346,14 +291,7 @@ export default function Signup() {
                 label="Industry"
                 value={company.industry}
                 onChange={(v) => setCompany((s) => ({ ...s, industry: v }))}
-                options={[
-                  "Technology",
-                  "Finance",
-                  "Healthcare",
-                  "Education",
-                  "Retail",
-                  "Others",
-                ]}
+                options={["Technology", "Finance", "Healthcare", "Education", "Retail", "Others"]}
               />
               {company.industry === "Others" && (
                 <Input
@@ -395,7 +333,6 @@ export default function Signup() {
             {loading ? "Sign up..." : "Sign up"}
           </button>
 
-          {/* <<< restored line >>> */}
           <p className="text-center text-sm text-gray-600">
             Already have an account?{" "}
             <a href="/login" className="text-blue-700 hover:underline">
@@ -404,59 +341,11 @@ export default function Signup() {
           </p>
         </form>
       </div>
-
-      {/* OTP modal */}
-      {otpOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-xl shadow-lg">
-            <div className="px-6 py-4 border-b flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Enter Verification Code</h3>
-              <button
-                onClick={() => setOtpOpen(false)}
-                className="text-gray-500 hover:text-gray-700"
-                type="button"
-              >
-                ✕
-              </button>
-            </div>
-            <form onSubmit={handleVerifyOtp} className="p-6 space-y-4">
-              <p className="text-sm text-gray-600">
-                We sent a 6-digit code to{" "}
-                <span className="font-medium">{pendingEmail}</span>.
-              </p>
-              <input
-                className="w-full border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 tracking-widest text-center text-lg"
-                placeholder="••••••"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                maxLength={6}
-                inputMode="numeric"
-                required
-              />
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setOtpOpen(false)}
-                  className="px-4 py-2 rounded-md border"
-                >
-                  Cancel
-                </button>
-                <button
-                  disabled={loading || otp.length !== 6}
-                  className="px-4 py-2 rounded-md bg-[#173B8A] text-white disabled:opacity-60"
-                >
-                  Verify
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-/* ---- small UI helpers ---- */
+/* ---------- small UI helpers ---------- */
 function TwoCols({ children }) {
   return <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{children}</div>;
 }
@@ -483,7 +372,7 @@ function Input({ label, icon, placeholder, type = "text", value, onChange }) {
   );
 }
 
-/** Custom select with ONLY a right chevron (left icon removed) */
+/** Custom select with ONLY a right chevron */
 function PrettySelect({ label, value, onChange, options }) {
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(() =>

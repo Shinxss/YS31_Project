@@ -1,4 +1,3 @@
-
 import mongoose from "mongoose";
 
 const OtpSchema = new mongoose.Schema(
@@ -14,5 +13,11 @@ const OtpSchema = new mongoose.Schema(
 
 // TTL index (Mongo will auto-purge after expiry). We also keep expiresAt for logic.
 OtpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+// ADD >>> quick helper to check expiry
+OtpSchema.methods.isExpired = function () {
+  return this.expiresAt && this.expiresAt < new Date();
+};
+// ADD <<<
 
 export default mongoose.model("OtpToken", OtpSchema);
