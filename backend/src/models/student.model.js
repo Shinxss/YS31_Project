@@ -11,7 +11,7 @@ const studentSchema = new mongoose.Schema(
     major:     { type: String },
     applications: [{ type: mongoose.Schema.Types.ObjectId, ref: "Application" }],
   },
-  { timestamps: true, collection: "students_users" }
+  { timestamps: true, collection: "student_users" }
 );
 
 studentSchema.add({

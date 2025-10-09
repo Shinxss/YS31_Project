@@ -165,7 +165,7 @@ export const verifySignupOtp = async (req, res) => {
         school: payload.school,
         course: payload.course,
         major: payload.major || "",
-        user: createdUser._id, // optional ref
+        user: createdUser._id,
       });
     } else {
       await Company.create({
@@ -175,7 +175,7 @@ export const verifySignupOtp = async (req, res) => {
         role: payload.companyRole,
         email,
         industry: payload.industry,
-        user: createdUser._id, // optional ref
+        user: createdUser._id, 
       });
 
       if (payload.companyRole === "Owner") {
@@ -239,7 +239,7 @@ export const resendSignupOtp = async (req, res) => {
       return res.status(404).json({ message: "No pending signup for this email. Please start again." });
     }
 
-    // 60s cooldown (requires timestamps: true on schema)
+    // 60s cooldown before resending
     const last = tokenDoc.updatedAt?.getTime?.() || 0;
     if (Date.now() - last < 60 * 1000) {
       const wait = Math.ceil((60 * 1000 - (Date.now() - last)) / 1000);
@@ -273,7 +273,7 @@ export const resendSignupOtp = async (req, res) => {
   }
 };
 
-// ------------------ Classic Login ------------------
+// ------------------ Login ------------------
 export const login = async (req, res) => {
   try {
     const { email = "", password = "", role } = req.body;

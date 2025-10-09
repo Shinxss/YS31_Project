@@ -80,8 +80,7 @@ export const createJob = async (req, res) => {
     const ad = new Date(applicationDeadline);
     if (isNaN(sd.getTime())) throw new Error("startDate is invalid");
     if (isNaN(ad.getTime())) throw new Error("applicationDeadline is invalid");
-    // If you want to enforce deadline <= start date, uncomment next line:
-    // if (ad > sd) throw new Error("applicationDeadline must be on/before startDate");
+  
 
     const job = await Job.create({
       companyId: company._id,
@@ -123,8 +122,7 @@ export const myJobs = async (req, res) => {
   }
 };
 
-// ✅ NEWLY ADDED FUNCTION — PUBLIC route for students
-// GET /api/jobs
+// GET /api/jobs for students
 export const getAllJobs = async (req, res) => {
   try {
     const jobs = await Job.find({ status: "open" })

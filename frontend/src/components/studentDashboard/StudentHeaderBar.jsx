@@ -18,7 +18,7 @@ export default function StudentHeaderBar({
   const fullName = `${student.firstName || ""} ${student.lastName || ""}`.trim();
 
   return (
-    <header className="h-16 bg-[#173B8A] text-white flex items-center justify-between px-4 md:px-6 ml-[2px]">
+    <header className="h-16 bg-[#173B8A] text-white flex items-center justify-between px-4 md:px-6">
       <div className="flex items-center gap-3">
         <button
           onClick={onToggleSidebar}
@@ -29,7 +29,7 @@ export default function StudentHeaderBar({
         >
           <PanelLeft className="w-4 h-4" />
         </button>
-        <div className="text-xl font-bold leading-none">InternConnect</div>
+        <div className="text-xl font-bold leading-none">Dashboard</div>
       </div>
 
       <div className="flex items-center gap-6">

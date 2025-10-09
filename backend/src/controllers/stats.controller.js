@@ -1,4 +1,3 @@
-// backend/src/controllers/stats.controller.js
 import Student from "../models/student.model.js";
 import Company from "../models/company.model.js";
 import CompanyEmployees from "../models/companyEmployees.model.js";
