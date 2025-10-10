@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { User, Building2, Mail, Lock } from "lucide-react";
+import { User, Building2, Mail, Lock, Eye, EyeOff } from "lucide-react"; // 👁️ added Eye icons
 import { useNavigate } from "react-router-dom";
 import { auth } from "../utils/auth";
 
@@ -11,6 +11,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // 👁️ password visibility state
   const navigate = useNavigate();
 
   // If already logged in, bounce to the proper dashboard
@@ -37,16 +38,12 @@ export default function Login() {
       const data = await res.json();
 
       if (!res.ok) {
-        // helpful messages for common auth statuses
         if (res.status === 401) throw new Error("Invalid email or password");
         if (res.status === 403) throw new Error("Invalid role selected");
         throw new Error(data?.message || "Login failed");
       }
 
-      // save: {token, role, profile}
       auth.save({ token: data.token, role: data.role, profile: data.profile });
-
-      // go to correct dashboard & prevent going back to login
       navigate(data.role === "company" ? "/company" : "/student", { replace: true });
     } catch (err) {
       setMsg(`❌ ${err.message}`);
@@ -107,18 +104,38 @@ export default function Login() {
             value={email}
             onChange={setEmail}
           />
-          <Input
-            icon={<Lock />}
-            placeholder="Enter your password"
-            type="password"
-            value={password}
-            onChange={setPassword}
-          />
+
+          {/* 👁️ Password field with show/hide toggle */}
+          <div className="relative">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <Lock />
+            </div>
+            <input
+              className="w-full border rounded-md pl-10 pr-10 py-2 outline-none focus:ring-2 focus:ring-blue-200"
+              placeholder="Enter your password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+
           <button
             disabled={loading}
             className="w-full bg-[#F37526] text-white py-3 rounded-md font-medium hover:bg-orange-600 transition disabled:opacity-60"
           >
-            {loading ? "Signing in..." : tab === "student" ? "Sign in as Student" : "Sign in as Employer"}
+            {loading
+              ? "Signing in..."
+              : tab === "student"
+              ? "Sign in as Student"
+              : "Sign in as Employer"}
           </button>
 
           <p className="text-center text-sm text-gray-600">
@@ -128,7 +145,8 @@ export default function Login() {
             </a>
           </p>
           <p className="text-xs text-gray-500 text-center">
-            By signing in, you agree to our <a className="underline">Terms of Service</a> and{" "}
+            By signing in, you agree to our{" "}
+            <a className="underline">Terms of Service</a> and{" "}
             <a className="underline">Privacy Policy</a>
           </p>
         </form>

@@ -36,13 +36,13 @@ export const sendSignupOtp = async (req, res) => {
     let payload = { role, email, hashedPassword };
 
     if (role === "student") {
-      const { firstName, lastName, school, course, major } = req.body;
+      // ✅ Removed school and major (only keep required fields)
+      const { firstName, lastName, course } = req.body;
       reqd(firstName, "firstName");
       reqd(lastName, "lastName");
-      reqd(school, "school");
       reqd(course, "course");
 
-      payload = { ...payload, firstName, lastName, school, course, major: major || "" };
+      payload = { ...payload, firstName, lastName, course };
     } else {
       const { companyName, firstName, lastName, companyRole, industry } = req.body;
       reqd(companyName, "companyName");
@@ -56,10 +56,13 @@ export const sendSignupOtp = async (req, res) => {
         .collation({ locale: "en", strength: 2 });
 
       if (companyRole === "Owner") {
-        if (existingCompanyDoc) return res.status(409).json({ message: "Company name already exists" });
+        if (existingCompanyDoc)
+          return res.status(409).json({ message: "Company name already exists" });
       } else {
         if (!existingCompanyDoc) {
-          return res.status(404).json({ message: "Company not found. Ask your owner to create it first." });
+          return res.status(404).json({
+            message: "Company not found. Ask your owner to create it first.",
+          });
         }
       }
 
@@ -74,7 +77,7 @@ export const sendSignupOtp = async (req, res) => {
     }
 
     // Create OTP
-    const code = (Math.floor(100000 + Math.random() * 900000)).toString(); // 6 digits
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
     const codeHash = await bcrypt.hash(code, 10);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
 
@@ -158,13 +161,12 @@ export const verifySignupOtp = async (req, res) => {
 
     // 2) Role-specific document (no password duplication)
     if (payload.role === "student") {
+      // ✅ Cleaned: no school or major
       await Student.create({
         firstName: payload.firstName,
         lastName: payload.lastName,
         email,
-        school: payload.school,
         course: payload.course,
-        major: payload.major || "",
         user: createdUser._id,
       });
     } else {
@@ -175,7 +177,7 @@ export const verifySignupOtp = async (req, res) => {
         role: payload.companyRole,
         email,
         industry: payload.industry,
-        user: createdUser._id, 
+        user: createdUser._id,
       });
 
       if (payload.companyRole === "Owner") {
@@ -221,7 +223,9 @@ export const verifySignupOtp = async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
     );
 
-    return res.status(201).json({ message: "Account verified & created", token, role: createdUser.role });
+    return res
+      .status(201)
+      .json({ message: "Account verified & created", token, role: createdUser.role });
   } catch (err) {
     console.error("verifySignupOtp error:", err);
     return res.status(400).json({ message: err.message || "Verification failed" });
@@ -236,7 +240,9 @@ export const resendSignupOtp = async (req, res) => {
 
     const tokenDoc = await OtpToken.findOne({ email });
     if (!tokenDoc) {
-      return res.status(404).json({ message: "No pending signup for this email. Please start again." });
+      return res
+        .status(404)
+        .json({ message: "No pending signup for this email. Please start again." });
     }
 
     // 60s cooldown before resending
@@ -246,7 +252,7 @@ export const resendSignupOtp = async (req, res) => {
       return res.status(429).json({ message: `Please wait ${wait}s before resending.` });
     }
 
-    const code = (Math.floor(100000 + Math.random() * 900000)).toString();
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
     tokenDoc.codeHash = await bcrypt.hash(code, 10);
     tokenDoc.expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     tokenDoc.attempts = 0;
@@ -283,7 +289,8 @@ export const login = async (req, res) => {
 
     const user = await User.findOne({ email: email.toLowerCase().trim() });
     if (!user) return res.status(401).json({ message: "Invalid credentials" });
-    if (user.role !== role) return res.status(403).json({ message: "Role does not match this account" });
+    if (user.role !== role)
+      return res.status(403).json({ message: "Role does not match this account" });
 
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) return res.status(401).json({ message: "Invalid credentials" });

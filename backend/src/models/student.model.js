@@ -1,3 +1,4 @@
+// backend/models/student.model.js
 import mongoose from "mongoose";
 
 const studentSchema = new mongoose.Schema(
@@ -6,24 +7,24 @@ const studentSchema = new mongoose.Schema(
     lastName: { type: String, required: true },
     email: { type: String, required: true, unique: true, index: true },
     password: { type: String, required: true }, // hashed
-    school: { type: String, required: true },
+
+    // Removed school & major
     course: { type: String, required: true },
-    major: { type: String },
+
     applications: [{ type: mongoose.Schema.Types.ObjectId, ref: "Application" }],
 
-   
-    profilePicture: { type: String, default: "" }, // Base64 or URL
+    // Profile and personal info
+    profilePicture: { type: String, default: "" },
     bio: { type: String, default: "" },
     skills: [{ type: String, default: [] }],
 
- 
     age: { type: Number, default: null },
     location: { type: String, default: "" },
     contactNumber: { type: String, default: "" },
     gender: { type: String, enum: ["Male", "Female", "Other", ""], default: "" },
     race: { type: String, default: "" },
 
-
+    // Experience section
     experience: [
       {
         jobTitle: { type: String, required: true },
@@ -44,15 +45,17 @@ const studentSchema = new mongoose.Schema(
       },
     ],
 
+    // Education section (school kept only here for education history)
     education: [
       {
         school: { type: String, required: true },
         degree: { type: String, required: true },
         startDate: { type: String, required: true },
-        endDate: { type: String, default: "" }, // (expected)
+        endDate: { type: String, default: "" },
       },
     ],
 
+    // Certification section
     certification: [
       {
         title: { type: String, required: true },
@@ -69,11 +72,12 @@ studentSchema.add({
   user: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
 });
 
-// Keep your existing logic
+// Keep password optional for linked-user accounts
 if (studentSchema.path("password")) {
   studentSchema.path("password").required(false);
 }
 
+// Normalize email before save
 studentSchema.pre("save", function (next) {
   if (this.isModified("email") && typeof this.email === "string") {
     this.email = this.email.toLowerCase().trim();
@@ -81,6 +85,7 @@ studentSchema.pre("save", function (next) {
   next();
 });
 
+// Hide password in responses
 studentSchema.set("toJSON", {
   transform: (_doc, ret) => {
     delete ret.password;

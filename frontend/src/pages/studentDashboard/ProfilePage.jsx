@@ -235,48 +235,38 @@ export default function ProfilePage() {
           </p>
 
           {/* Bio */}
-            <div className="w-full mt-4">
-              <h4 className="text-sm font-semibold text-gray-700 text-left">About:</h4>
-              {isEditing ? (
-                <>
-                  <textarea
-                    name="bio"
-                    value={profile.bio}
-                    onChange={(e) => {
-                      if (e.target.value.length <= 500) handleChange(e);
-                    }}
-                    rows={5}
-                    className="w-full border rounded-md p-2 text-sm resize-none break-words overflow-y-auto"
-                    placeholder="Write a short description about yourself..."
-                    style={{
-                      wordWrap: "break-word",
-                      overflowWrap: "break-word",
-                      whiteSpace: "pre-wrap",
-                      maxHeight: "150px",
-                    }}
-                  />
-                  <p
-                    className={`text-xs text-right mt-1 ${
-                      profile.bio.length > 480 ? "text-red-500" : "text-gray-500"
-                    }`}
-                  >
-                    {profile.bio.length}/500 characters
-                  </p>
-                </>
-              ) : (
-                <p
-                  className={`text-gray-700 text-sm mt-1 whitespace-pre-wrap break-words leading-relaxed ${
-                    profile.bio.length > 400 ? "mb-6" : "mb-3"
-                  }`}
-                  style={{
-                    wordWrap: "break-word",
-                    overflowWrap: "break-word",
+          <div className="w-full mt-4">
+            <h4 className="text-sm font-semibold text-gray-700 text-left">
+              About:
+            </h4>
+            {isEditing ? (
+              <>
+                <textarea
+                  name="bio"
+                  value={profile.bio}
+                  onChange={(e) => {
+                    if (e.target.value.length <= 500) handleChange(e);
                   }}
+                  rows={4}
+                  className="w-full border rounded-md p-2 text-sm resize-none"
+                  placeholder="Write a short description about yourself..."
+                />
+                <p
+                  className={`text-xs text-right mt-1 ${
+                    profile.bio.length > 480
+                      ? "text-red-500"
+                      : "text-gray-500"
+                  }`}
                 >
-                  {profile.bio || "Add a short description about yourself..."}
+                  {profile.bio.length}/500 characters
                 </p>
-              )}
-            </div>
+              </>
+            ) : (
+              <p className="text-gray-700 text-sm mt-1 whitespace-pre-line">
+                {profile.bio || "Add a short description about yourself..."}
+              </p>
+            )}
+          </div>
 
           {/* Skills */}
           <div className="w-full mt-4">
@@ -336,7 +326,7 @@ export default function ProfilePage() {
 
           {/* BASIC INFO CARD */}
           <div className="bg-white shadow-lg rounded-xl p-6">
-            <h4 className="text-xl font-black text-[#0B1E61] mb-4 tracking-tight">
+            <h4 className="text-lg font-bold text-blue-900 mb-4">
               Basic Information
             </h4>
 
@@ -477,7 +467,7 @@ export default function ProfilePage() {
 function renderField(label, name, profile, onChange, isEditing) {
   return (
     <div>
-      <label className="text-sm text-gray-600">{label}</label>
+      <label className="text-sm font-semibold text-gray-800">{label}</label>
       {isEditing && name !== "email" ? (
         <input
           type="text"
@@ -487,7 +477,7 @@ function renderField(label, name, profile, onChange, isEditing) {
           className="w-full border rounded-md p-2 text-sm"
         />
       ) : (
-        <p className="text-gray-800 text-sm mt-1">{profile[name] || "—"}</p>
+        <p className="text-gray-900 text-sm mt-1">{profile[name] || "—"}</p>
       )}
     </div>
   );
@@ -496,7 +486,7 @@ function renderField(label, name, profile, onChange, isEditing) {
 function renderSelect(label, name, profile, onChange, isEditing, options) {
   return (
     <div>
-      <label className="text-sm text-gray-600">{label}</label>
+      <label className="text-sm font-semibold text-gray-800">{label}</label>
       {isEditing ? (
         <select
           name={name}
@@ -512,7 +502,7 @@ function renderSelect(label, name, profile, onChange, isEditing, options) {
           ))}
         </select>
       ) : (
-        <p className="text-gray-800 text-sm mt-1">{profile[name] || "—"}</p>
+        <p className="text-gray-900 text-sm mt-1">{profile[name] || "—"}</p>
       )}
     </div>
   );

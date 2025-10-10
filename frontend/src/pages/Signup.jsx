@@ -9,28 +9,28 @@ import {
   BookOpen,
   ChevronDown,
   Check,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
 export default function Signup() {
-  const [tab, setTab] = useState("student"); // "student" | "company"
+  const [tab, setTab] = useState("student");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
 
-  // Student state
+  // Student state (removed school and major)
   const [student, setStudent] = useState({
     firstName: "",
     lastName: "",
     email: "",
-    school: "",
     course: "",
-    major: "",
     password: "",
     confirmPassword: "",
   });
 
-  // Company state (no location/description here)
+  // Company state
   const [company, setCompany] = useState({
     companyName: "",
     firstName: "",
@@ -43,6 +43,12 @@ export default function Signup() {
     password: "",
     confirmPassword: "",
   });
+
+  // 👁️ password visibility states
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [showCompanyPassword, setShowCompanyPassword] = useState(false);
+  const [showCompanyConfirm, setShowCompanyConfirm] = useState(false);
 
   function requireIf(condition, value, label) {
     if (!condition) return;
@@ -63,7 +69,7 @@ export default function Signup() {
         if (student.password !== student.confirmPassword)
           throw new Error("Passwords do not match");
 
-        ["firstName", "lastName", "email", "school", "course", "password"].forEach((k) => {
+        ["firstName", "lastName", "email", "course", "password"].forEach((k) => {
           if (!String(student[k] || "").trim()) throw new Error(`${k} is required`);
         });
 
@@ -73,9 +79,7 @@ export default function Signup() {
           password: student.password,
           firstName: student.firstName,
           lastName: student.lastName,
-          school: student.school,
           course: student.course,
-          major: student.major,
         };
         emailToUse = student.email;
       } else {
@@ -111,7 +115,6 @@ export default function Signup() {
         emailToUse = company.email;
       }
 
-      // ✅ Correct backend endpoint for OTP send
       const res = await fetch(`${API_BASE}/api/auth/signup-otp/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -120,7 +123,6 @@ export default function Signup() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.message || "Failed to send OTP");
 
-      // Store the email and redirect to standalone verification page
       localStorage.setItem("ic_pending_email", emailToUse);
       location.href = `/verify?email=${encodeURIComponent(emailToUse)}`;
     } catch (err) {
@@ -186,6 +188,7 @@ export default function Signup() {
                   onChange={(v) => setStudent((s) => ({ ...s, lastName: v }))}
                 />
               </TwoCols>
+
               <Input
                 label="Email"
                 icon={<Mail />}
@@ -194,13 +197,7 @@ export default function Signup() {
                 value={student.email}
                 onChange={(v) => setStudent((s) => ({ ...s, email: v }))}
               />
-              <Input
-                label="University"
-                icon={<University />}
-                placeholder="University"
-                value={student.school}
-                onChange={(v) => setStudent((s) => ({ ...s, school: v }))}
-              />
+
               <Input
                 label="Course"
                 icon={<BookOpen />}
@@ -208,30 +205,23 @@ export default function Signup() {
                 value={student.course}
                 onChange={(v) => setStudent((s) => ({ ...s, course: v }))}
               />
-              <Input
-                label="Major (optional)"
-                icon={<BookOpen />}
-                placeholder="Major (optional)"
-                value={student.major}
-                onChange={(v) => setStudent((s) => ({ ...s, major: v }))}
-              />
-              <Input
+
+              {/* 👁️ Password fields with toggle */}
+              <PasswordInput
                 label="Password"
-                icon={<Lock />}
-                placeholder="Create a strong password"
-                type="password"
                 value={student.password}
                 onChange={(v) => setStudent((s) => ({ ...s, password: v }))}
+                show={showPassword}
+                setShow={setShowPassword}
               />
-              <Input
+              <PasswordInput
                 label="Confirm Password"
-                icon={<Lock />}
-                placeholder="Confirm your password"
-                type="password"
                 value={student.confirmPassword}
                 onChange={(v) =>
                   setStudent((s) => ({ ...s, confirmPassword: v }))
                 }
+                show={showConfirm}
+                setShow={setShowConfirm}
               />
             </>
           ) : (
@@ -291,7 +281,14 @@ export default function Signup() {
                 label="Industry"
                 value={company.industry}
                 onChange={(v) => setCompany((s) => ({ ...s, industry: v }))}
-                options={["Technology", "Finance", "Healthcare", "Education", "Retail", "Others"]}
+                options={[
+                  "Technology",
+                  "Finance",
+                  "Healthcare",
+                  "Education",
+                  "Retail",
+                  "Others",
+                ]}
               />
               {company.industry === "Others" && (
                 <Input
@@ -305,23 +302,22 @@ export default function Signup() {
                 />
               )}
 
-              <Input
+              {/* 👁️ Company password fields with toggle */}
+              <PasswordInput
                 label="Password"
-                icon={<Lock />}
-                placeholder="Create a strong password"
-                type="password"
                 value={company.password}
                 onChange={(v) => setCompany((s) => ({ ...s, password: v }))}
+                show={showCompanyPassword}
+                setShow={setShowCompanyPassword}
               />
-              <Input
+              <PasswordInput
                 label="Confirm Password"
-                icon={<Lock />}
-                placeholder="Confirm your password"
-                type="password"
                 value={company.confirmPassword}
                 onChange={(v) =>
                   setCompany((s) => ({ ...s, confirmPassword: v }))
                 }
+                show={showCompanyConfirm}
+                setShow={setShowCompanyConfirm}
               />
             </>
           )}
@@ -368,6 +364,36 @@ function Input({ label, icon, placeholder, type = "text", value, onChange }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
+    </div>
+  );
+}
+
+/* Reusable password input with toggle visibility */
+function PasswordInput({ label, value, onChange, show, setShow }) {
+  return (
+    <div className="relative">
+      {label && (
+        <div className="mb-1 font-semibold text-gray-900 text-[0.95rem]">
+          {label}
+        </div>
+      )}
+      <div className="absolute left-3 top-[2.85rem] -translate-y-1/2 text-gray-400 pointer-events-none">
+        <Lock />
+      </div>
+      <input
+        className="w-full border rounded-md pl-10 pr-10 py-2 outline-none focus:ring-2 focus:ring-blue-200"
+        placeholder={label}
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <button
+        type="button"
+        onClick={() => setShow(!show)}
+        className="absolute right-3 top-[3rem] -translate-y-1/2 text-gray-500 hover:text-gray-700"
+      >
+        {show ? <EyeOff size={18} /> : <Eye size={18} />}
+      </button>
     </div>
   );
 }
