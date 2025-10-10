@@ -4,7 +4,6 @@ import auth from "../middlewares/auth.js";
 
 const router = express.Router();
 
-// ✅ GET /api/student/me – fetch logged-in student profile
 router.get("/me", auth, async (req, res) => {
   try {
     const student = await Student.findOne({ email: req.user.email }).select(
@@ -20,23 +19,24 @@ router.get("/me", auth, async (req, res) => {
   }
 });
 
-// ✅ PUT /api/student/profile – update student profile fields
 router.put("/profile", auth, async (req, res) => {
   try {
+    const body = req.body;
     const updates = {
-      bio: req.body.bio,
-      skills: req.body.skills,
-      age: req.body.age,
-      location: req.body.location,
-      contactNumber: req.body.contactNumber,
-      gender: req.body.gender,
-      race: req.body.race,
-      experience: req.body.experience,
-      education: req.body.education,
-      certification: req.body.certification,
-      profilePicture: req.body.profilePicture,
-      course: req.body.course, // ✅ Added here
+      bio: body.bio,
+      skills: body.skills,
+      age: body.age,
+      location: body.location,
+      contactNumber: body.contactNumber,
+      gender: body.gender,
+      race: body.race,
+      profilePicture: body.profilePicture,
+      course: body.course,
     };
+
+    if (Array.isArray(body.experience)) updates.experience = body.experience;
+    if (Array.isArray(body.education)) updates.education = body.education;
+    if (Array.isArray(body.certification)) updates.certification = body.certification;
 
     const student = await Student.findOneAndUpdate(
       { email: req.user.email },
@@ -56,6 +56,83 @@ router.put("/profile", auth, async (req, res) => {
     });
   } catch (err) {
     console.error("Error updating student profile:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.post("/:type/add", auth, async (req, res) => {
+  try {
+    const { type } = req.params;
+    const validTypes = ["experience", "education", "certification"];
+
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({ message: "Invalid type" });
+    }
+
+    const student = await Student.findOne({ email: req.user.email });
+    if (!student) return res.status(404).json({ message: "Student not found" });
+
+    student[type].push(req.body);
+    await student.save();
+
+    res.status(201).json({
+      message: `${type} added successfully`,
+      [type]: student[type],
+    });
+  } catch (err) {
+    console.error("Error adding entry:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.put("/:type/:id", auth, async (req, res) => {
+  try {
+    const { type, id } = req.params;
+    const validTypes = ["experience", "education", "certification"];
+    if (!validTypes.includes(type))
+      return res.status(400).json({ message: "Invalid type" });
+
+    const student = await Student.findOne({ email: req.user.email });
+    if (!student) return res.status(404).json({ message: "Student not found" });
+
+    const item = student[type].id(id);
+    if (!item) return res.status(404).json({ message: "Item not found" });
+
+  
+    Object.assign(item, req.body);
+    await student.save();
+
+    res.json({
+      message: `${type} updated successfully`,
+      [type]: student[type],
+    });
+  } catch (err) {
+    console.error("Error editing entry:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.delete("/:type/:id", auth, async (req, res) => {
+  try {
+    const { type, id } = req.params;
+    const validTypes = ["experience", "education", "certification"];
+    if (!validTypes.includes(type))
+      return res.status(400).json({ message: "Invalid type" });
+
+    const student = await Student.findOne({ email: req.user.email });
+    if (!student) return res.status(404).json({ message: "Student not found" });
+
+    student[type] = student[type].filter(
+      (entry) => entry._id.toString() !== id
+    );
+    await student.save();
+
+    res.json({
+      message: `${type} deleted successfully`,
+      [type]: student[type],
+    });
+  } catch (err) {
+    console.error("Error deleting entry:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
