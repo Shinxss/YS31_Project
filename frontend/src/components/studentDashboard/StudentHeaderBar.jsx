@@ -12,7 +12,7 @@ function getInitials(name) {
 }
 
 export default function StudentHeaderBar({
-  student = { firstName: "", lastName: "", course: "" },
+  student = { firstName: "", lastName: "", course: "", profilePicture: "" }, // ✅ added profilePicture
   onToggleSidebar,
 }) {
   const fullName = `${student.firstName || ""} ${student.lastName || ""}`.trim();
@@ -33,15 +33,30 @@ export default function StudentHeaderBar({
       </div>
 
       <div className="flex items-center gap-6">
-        <button className="relative hover:opacity-90" title="Notifications" type="button">
+        <button
+          className="relative hover:opacity-90"
+          title="Notifications"
+          type="button"
+        >
           <Bell className="w-5 h-5" />
         </button>
 
         {/* Avatar + name/course */}
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded bg-white/80 text-[#173B8A] font-semibold grid place-items-center shrink-0">
-            {getInitials(fullName || "User")}
-          </div>
+          {/* ✅ ADDED: Show uploaded profile picture if available */}
+          {student?.profilePicture ? (
+            <img
+              src={student.profilePicture}
+              alt="Profile"
+              className="w-8 h-8 rounded-full object-cover border-2 border-white shrink-0"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded bg-white/80 text-[#173B8A] font-semibold grid place-items-center shrink-0">
+              {getInitials(fullName || "User")}
+            </div>
+          )}
+          {/* ✅ END added */}
+
           <div className="leading-tight text-left min-w-0">
             <div className="font-medium truncate">{fullName || "Student"}</div>
             <div className="text-xs text-white/80 truncate">

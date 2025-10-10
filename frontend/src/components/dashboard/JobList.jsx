@@ -1,7 +1,7 @@
+// frontend/src/components/dashboard/JobList.jsx
 import React, { useEffect, useState } from "react";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
-const CURRENCY_SYMBOLS = { PHP: "₱", USD: "$", EUR: "€", GBP: "£", JPY: "¥" };
 
 export default function JobList({ token }) {
   const [loading, setLoading] = useState(true);
@@ -11,6 +11,7 @@ export default function JobList({ token }) {
   useEffect(() => {
     let ignore = false;
     const ctrl = new AbortController();
+
     (async () => {
       try {
         setLoading(true);
@@ -27,7 +28,11 @@ export default function JobList({ token }) {
         if (!ignore) setLoading(false);
       }
     })();
-    return () => { ignore = true; ctrl.abort(); };
+
+    return () => {
+      ignore = true;
+      ctrl.abort();
+    };
   }, [token]);
 
   if (loading) return <div className="text-gray-600">Loading jobs…</div>;
@@ -43,29 +48,46 @@ export default function JobList({ token }) {
   return (
     <div className="space-y-3">
       {jobs.map((j) => (
-        <div key={j._id} className="bg-white rounded-xl border p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div
+          key={j._id}
+          className="bg-white rounded-xl border p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+        >
           <div>
             <div className="text-lg font-semibold">{j.title}</div>
+
             <div className="text-sm text-gray-600 mt-0.5">
               {j.workType || "On-site"} • {j.location || "—"}
             </div>
+
             <div className="text-sm text-gray-600 mt-0.5">
-              {formatSalary(j)}
+              {formatSalaryMax(j.salaryMax)}
+              {/* Back-compat: show old fields if they exist */}
               {j.durationMonths != null && <> • {j.durationMonths} mo.</>}
               {j.startDate && <> • Starts {formatDate(j.startDate)}</>}
             </div>
+
             {Array.isArray(j.tags) && j.tags.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
                 {j.tags.map((t, i) => (
-                  <span key={i} className="text-xs px-2 py-1 bg-indigo-50 text-indigo-700 rounded">
+                  <span
+                    key={i}
+                    className="text-xs px-2 py-1 bg-indigo-50 text-indigo-700 rounded"
+                  >
                     {t}
                   </span>
                 ))}
               </div>
             )}
           </div>
+
           <div className="flex items-center gap-2">
-            <span className={`px-2 py-1 rounded text-xs ${j.status === "open" ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-700"}`}>
+            <span
+              className={`px-2 py-1 rounded text-xs ${
+                j.status === "open"
+                  ? "bg-green-100 text-green-700"
+                  : "bg-gray-200 text-gray-700"
+              }`}
+            >
               {j.status || "open"}
             </span>
             {/* Future: Edit/Delete buttons go here */}
@@ -74,21 +96,39 @@ export default function JobList({ token }) {
       ))}
     </div>
   );
+}
 
-  function formatSalary(j) {
-    const sym = CURRENCY_SYMBOLS[j.salaryCurrency] || "";
-    const min = isNum(j.salaryMin) ? `${sym}${Number(j.salaryMin).toLocaleString()}` : "";
-    const max = isNum(j.salaryMax) ? `${sym}${Number(j.salaryMax).toLocaleString()}` : "";
-    if (min && max) return `${min} – ${max}`;
-    if (min) return min;
-    if (max) return max;
-    return "Salary not specified";
+/** Format salaryMax with a peso sign.
+ * Accepts:
+ *  - "₱50000" (kept as is)
+ *  - "50000"  (converted to ₱50,000)
+ *  - 50000    (converted to ₱50,000)
+ */
+function formatSalaryMax(value) {
+  if (value == null || value === "") return "Salary not specified";
+
+  // Already a peso string
+  if (typeof value === "string" && value.trim().startsWith("₱")) {
+    return value.trim();
   }
-  function isNum(x) { return typeof x === "number" && !isNaN(x); }
-  function formatDate(iso) {
-    try {
-      const d = new Date(iso);
-      return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-    } catch { return iso; }
-    }
+
+  // Numeric (or numeric string) -> format with peso
+  const n = Number(
+    typeof value === "string" ? value.replace(/[^\d.]/g, "") : value
+  );
+  if (!Number.isFinite(n)) return "Salary not specified";
+  return `₱${n.toLocaleString("en-PH")}`;
+}
+
+function formatDate(iso) {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return iso;
+  }
 }

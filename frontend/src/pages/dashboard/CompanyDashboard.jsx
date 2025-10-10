@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import HeaderBar from "../../components/dashboard/HeaderBar.jsx";
 import Sidebar from "../../components/dashboard/Sidebar.jsx";
+import { Outlet } from "react-router-dom";
 
 // Pages
 import DashboardHome from "./DashboardHome.jsx";
@@ -108,16 +109,20 @@ export default function CompanyDashboard() {
           {loading ? (
             <div className="text-gray-600">Loading...</div>
           ) : (
-            <Routes>
-              {/* ✅ All subpages inside dashboard */}
-              <Route path="/" element={<DashboardHome person={person} />} />
-              <Route path="postings" element={<JobPostingsPage token={token} />} />
-              <Route path="applications" element={<ApplicationsPage token={token} />} />
-              <Route path="analytics" element={<AnalyticsPage token={token} />} />
-              <Route path="post-job" element={<PostJobPage token={token} />} />
-            </Routes>
+            <>
+
+              <Routes>
+                {/* All subpages inside dashboard */}
+                <Route path="/" element={<DashboardHome />} />
+                <Route path="postings" element={<JobPostingsPage token={token} />} />
+                <Route path="applications" element={<ApplicationsPage token={token} />} />
+                <Route path="analytics" element={<AnalyticsPage token={token} />} />
+                <Route path="post-job" element={<PostJobPage token={token} />} />
+              </Routes>
+            </>
           )}
-        </main>
+        </main>                                                     
+
       </div>
     </div>
   );

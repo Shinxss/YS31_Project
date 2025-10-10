@@ -3,7 +3,8 @@ import StudentSidebar from "@/components/studentDashboard/StudentSidebar";
 import StudentHeaderBar from "@/components/studentDashboard/StudentHeaderBar";
 import { getStudentProfile } from "@/services/api";
 import { toast } from "react-toastify";
-import BrowseJobs from "@/components/studentDashboard/BrowseJobs"; // ✅ import
+import BrowseJobs from "@/components/studentDashboard/BrowseJobs";
+import StudentProfile from "@/pages/studentDashboard/ProfilePage";
 
 export default function StudentDashboard() {
   const [collapsed, setCollapsed] = useState(false);
@@ -21,7 +22,9 @@ export default function StudentDashboard() {
     const fetchProfile = async () => {
       try {
         const data = await getStudentProfile();
-        setStudent(data);
+        // ✅ Make sure it supports both raw and nested response
+        const studentData = data.student || data;
+        setStudent(studentData);
       } catch (err) {
         toast.error("Failed to load student profile");
       }
@@ -44,7 +47,14 @@ export default function StudentDashboard() {
         {/* HeaderBar fixed at top */}
         <div className="flex-shrink-0">
           <StudentHeaderBar
-            student={student || { firstName: "", lastName: "", course: "" }}
+            student={
+              student || {
+                firstName: "",
+                lastName: "",
+                course: "",
+                profilePicture: "", // ✅ add this!
+              }
+            }
             onToggleSidebar={() => setCollapsed(!collapsed)}
           />
         </div>
@@ -63,6 +73,13 @@ export default function StudentDashboard() {
                 Welcome, {student?.firstName || "Student"}!
               </h2>
               <p className="text-gray-700">This is your student dashboard.</p>
+            </div>
+          )}
+
+          {/* ✅ Profile Page */}
+          {activeTab === "Profile" && (
+            <div className="text-left">
+              <StudentProfile />
             </div>
           )}
         </main>

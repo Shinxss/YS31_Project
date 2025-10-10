@@ -8,8 +8,12 @@ const reqd = (v, name) => {
 };
 
 const toList = (v) => {
-  if (Array.isArray(v)) return v.map(s => String(s).trim()).filter(Boolean);
-  if (typeof v === "string") return v.split(",").map(s => s.trim()).filter(Boolean);
+  if (Array.isArray(v)) return v.map((s) => String(s).trim()).filter(Boolean);
+  if (typeof v === "string")
+    return v
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
   return [];
 };
 
@@ -26,6 +30,8 @@ async function getCompanyForUser(userId) {
   return company;
 }
 
+const PESO = "₱";
+
 // POST /api/jobs
 export const createJob = async (req, res) => {
   try {
@@ -35,11 +41,8 @@ export const createJob = async (req, res) => {
       title,
       workType,
       location,
-      durationMonths,
-      salaryCurrency,
-      salaryMax,
-      startDate,
-      applicationDeadline,
+      jobType,           // NEW
+      salaryMax,        // number or string
       skills,
       description,
       requirements,
@@ -51,11 +54,8 @@ export const createJob = async (req, res) => {
     reqd(title, "title");
     reqd(workType, "workType");
     reqd(location, "location");
-    reqd(durationMonths, "durationMonths");
-    reqd(salaryCurrency, "salaryCurrency");
+    reqd(jobType, "jobType");
     reqd(salaryMax, "salaryMax");
-    reqd(startDate, "startDate");
-    reqd(applicationDeadline, "applicationDeadline");
     reqd(description, "description");
 
     // Lists
@@ -69,30 +69,22 @@ export const createJob = async (req, res) => {
     if (!respArr.length) throw new Error("responsibilities is required");
     if (!offersArr.length) throw new Error("offers is required");
 
-    // Numbers
-    const dur = Number(durationMonths);
-    const sMax = Number(salaryMax);
-    if (!Number.isFinite(dur) || dur <= 0) throw new Error("durationMonths must be a positive number");
-    if (!Number.isFinite(sMax) || sMax <= 0) throw new Error("salaryMax must be a positive number");
+    // Salary validation and formatting with peso sign
+    const sMaxNum = Number(salaryMax);
+    if (!Number.isFinite(sMaxNum) || sMaxNum < 0)
+      throw new Error("salaryMax must be a number ≥ 0");
 
-    // Dates
-    const sd = new Date(startDate);
-    const ad = new Date(applicationDeadline);
-    if (isNaN(sd.getTime())) throw new Error("startDate is invalid");
-    if (isNaN(ad.getTime())) throw new Error("applicationDeadline is invalid");
-  
+    // Save salary with peso sign (e.g., "₱50000")
+    const salaryMaxStored = `${PESO}${sMaxNum}`;
 
     const job = await Job.create({
       companyId: company._id,
       companyName: company.companyName,
       title: String(title).trim(),
       workType,
+      jobType, // NEW
       location: String(location).trim(),
-      durationMonths: dur,
-      salaryCurrency,
-      salaryMax: sMax,
-      startDate: sd,
-      applicationDeadline: ad,
+      salaryMax: salaryMaxStored, // string with peso sign
       description: String(description).trim(),
       skills: skillsArr,
       requirements: reqArr,
@@ -128,11 +120,10 @@ export const getAllJobs = async (req, res) => {
     const jobs = await Job.find({ status: "open" })
       .sort({ createdAt: -1 })
       .select(
-        "title companyName location salaryMax salaryCurrency durationMonths workType description skills createdAt"
+        "title companyName location salaryMax workType jobType description skills createdAt"
       )
       .lean();
 
-    // 👇 wrap in { jobs } so frontend matches expected structure
     res.json({ jobs });
   } catch (err) {
     console.error("getAllJobs error:", err);
