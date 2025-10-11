@@ -3,7 +3,7 @@ import StudentSidebar from "@/components/studentDashboard/StudentSidebar";
 import StudentHeaderBar from "@/components/studentDashboard/StudentHeaderBar";
 import { getStudentProfile } from "@/services/api";
 import { toast } from "react-toastify";
-import BrowseJobs from "@/components/studentDashboard/BrowseJobs";
+import BrowseJobs from "@/pages/studentDashboard/BrowseJobs";
 import StudentProfile from "@/pages/studentDashboard/ProfilePage";
 
 export default function StudentDashboard() {

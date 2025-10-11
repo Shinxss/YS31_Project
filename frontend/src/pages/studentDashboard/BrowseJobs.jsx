@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { MapPin, Clock, Briefcase, Search } from "lucide-react";
+import { MapPin, Clock, Briefcase, Search, Star } from "lucide-react";
 import { getAllJobs } from "@/services/api";
 import { toast } from "react-toastify";
 
@@ -15,10 +15,7 @@ export default function BrowseJobs() {
     const fetchJobs = async () => {
       try {
         const data = await getAllJobs();
-
-        // ✅ ADD THIS SAFE HANDLING LINE
         const list = Array.isArray(data) ? data : data.jobs || [];
-
         setJobs(list);
       } catch (err) {
         console.error(err);
@@ -30,6 +27,7 @@ export default function BrowseJobs() {
     fetchJobs();
   }, []);
 
+  // ✅ UPDATED FILTER FUNCTION
   const filteredJobs = jobs.filter((job) => {
     const matchesQuery =
       job.title?.toLowerCase().includes(query.toLowerCase()) ||
@@ -40,10 +38,11 @@ export default function BrowseJobs() {
       field === "All Fields" ||
       (job.workType && job.workType.toLowerCase() === field.toLowerCase());
 
+    // ✅ FIXED: Detects jobType or workType (instead of durationMonths)
     const matchesType =
       type === "All Types" ||
-      (job.durationMonths &&
-        String(job.durationMonths).includes(type.replace(" months", "")));
+      (job.jobType && job.jobType.toLowerCase() === type.toLowerCase()) ||
+      (job.workType && job.workType.toLowerCase() === type.toLowerCase());
 
     const matchesLocation =
       location === "All Locations" ||
@@ -124,39 +123,80 @@ export default function BrowseJobs() {
           Loading job listings...
         </div>
       ) : filteredJobs.length === 0 ? (
-        <div className="text-center text-gray-500 mt-10">No job postings yet.</div>
+        <div className="text-center text-gray-500 mt-10">
+          No job postings yet.
+        </div>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-4">
           {filteredJobs.map((job) => (
             <div
               key={job._id}
-              className="bg-white rounded-lg shadow p-5 border border-gray-100"
+              className="border border-blue-200 rounded-lg bg-white p-5 shadow-sm hover:shadow-md transition"
             >
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h3 className="font-semibold text-lg text-gray-900">
-                    {job.title}
-                  </h3>
-                  <p className="text-gray-600 text-sm">
-                    {job.companyName} • {job.location}
-                  </p>
+              <div className="flex justify-between items-start">
+                {/* LEFT SIDE */}
+                <div className="flex gap-4">
+                  <div className="w-10 h-10 rounded-md bg-blue-900 text-white flex items-center justify-center font-bold text-lg">
+                    {job.companyName?.[0] || "C"}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-blue-900 text-[16px]">
+                      {job.title}
+                    </h3>
+                    <div className="flex items-center gap-1 text-sm text-gray-600">
+                      <span>{job.companyName}</span>
+                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500 ml-1" />
+                      <span>4.8</span>
+                    </div>
+                    <p className="text-gray-600 text-sm mt-1 max-w-xl">
+                      {job.description?.slice(0, 120) ||
+                        "Join our engineering team to build cutting-edge web applications using React and Node.js."}
+                    </p>
+
+                    {/* Info row */}
+                    <div className="flex flex-wrap gap-5 mt-2 text-gray-600 text-sm">
+                      <div className="flex items-center gap-1">
+                        <MapPin className="w-4 h-4" />
+                        <span>{job.location || "Pangasinan"}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        <span>Full-time</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Briefcase className="w-4 h-4" />
+                        <span>{job.workType || "Technology"}</span>
+                      </div>
+                    </div>
+
+                    {/* Skills */}
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {(job.skills || ["React", "Javascript", "Node.js"]).map(
+                        (skill) => (
+                          <span
+                            key={skill}
+                            className="bg-gray-100 text-gray-800 text-xs px-3 py-1 rounded-full border border-gray-200"
+                          >
+                            {skill}
+                          </span>
+                        )
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <p className="text-blue-700 font-semibold text-sm">
-                  {job.salaryCurrency} {job.salaryMax}/month
-                </p>
-              </div>
-              <p className="text-gray-600 text-sm mb-3">
-                {job.description || "No description available."}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {(job.skills || []).map((skill) => (
-                  <span
-                    key={skill}
-                    className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full"
-                  >
-                    {skill}
+
+                {/* RIGHT SIDE */}
+                <div className="flex flex-col items-end gap-2">
+                  <span className="text-blue-800 text-sm bg-blue-100 px-2 py-0.5 rounded-full">
+                    2 days ago
                   </span>
-                ))}
+                  <p className="text-blue-900 font-semibold text-lg">
+                    {job.salaryMax || "4,000"}/month
+                  </p>
+                  <button className="bg-[#F37526] hover:bg-[#e36210] text-white text-sm px-4 py-1.5 rounded-md font-medium">
+                    View Details
+                  </button>
+                </div>
               </div>
             </div>
           ))}

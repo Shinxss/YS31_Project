@@ -1,5 +1,6 @@
 // frontend/src/components/dashboard/JobList.jsx
 import React, { useEffect, useState } from "react";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
@@ -46,51 +47,49 @@ export default function JobList({ token }) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {jobs.map((j) => (
         <div
           key={j._id}
-          className="bg-white rounded-xl border p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+          className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 p-6 flex flex-col gap-4"
         >
-          <div>
-            <div className="text-lg font-semibold">{j.title}</div>
-
-            <div className="text-sm text-gray-600 mt-0.5">
-              {j.workType || "On-site"} • {j.location || "—"}
-            </div>
-
-            <div className="text-sm text-gray-600 mt-0.5">
-              {formatSalaryMax(j.salaryMax)}
-              {/* Back-compat: show old fields if they exist */}
-              {j.durationMonths != null && <> • {j.durationMonths} mo.</>}
-              {j.startDate && <> • Starts {formatDate(j.startDate)}</>}
-            </div>
-
-            {Array.isArray(j.tags) && j.tags.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {j.tags.map((t, i) => (
-                  <span
-                    key={i}
-                    className="text-xs px-2 py-1 bg-indigo-50 text-indigo-700 rounded"
-                  >
-                    {t}
-                  </span>
-                ))}
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-lg font-semibold text-gray-900">
+                {j.title}
               </div>
-            )}
-          </div>
+              <div className="text-sm text-gray-600 mt-0.5">
+                {`${j.applicants?.length || 0} applicants • Posted ${formatDaysAgo(
+                  j.createdAt
+                )}`}
+              </div>
+            </div>
 
-          <div className="flex items-center gap-2">
             <span
-              className={`px-2 py-1 rounded text-xs ${
+              className={`px-3 py-1 rounded-full text-sm font-medium ${
                 j.status === "open"
                   ? "bg-green-100 text-green-700"
                   : "bg-gray-200 text-gray-700"
               }`}
             >
-              {j.status || "open"}
+              {j.status
+                ? j.status.charAt(0).toUpperCase() + j.status.slice(1)
+                : "Active"}
             </span>
-            {/* Future: Edit/Delete buttons go here */}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 mt-2">
+            <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm font-medium text-gray-700 transition">
+              <Eye size={16} /> View
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm font-medium text-gray-700 transition">
+              <Pencil size={16} /> Edit
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm font-medium text-gray-700 transition">
+              <Trash2 size={16} /> Delete
+            </button>
           </div>
         </div>
       ))}
@@ -98,21 +97,12 @@ export default function JobList({ token }) {
   );
 }
 
-/** Format salaryMax with a peso sign.
- * Accepts:
- *  - "₱50000" (kept as is)
- *  - "50000"  (converted to ₱50,000)
- *  - 50000    (converted to ₱50,000)
- */
+/** Format salaryMax with a peso sign. */
 function formatSalaryMax(value) {
   if (value == null || value === "") return "Salary not specified";
-
-  // Already a peso string
   if (typeof value === "string" && value.trim().startsWith("₱")) {
     return value.trim();
   }
-
-  // Numeric (or numeric string) -> format with peso
   const n = Number(
     typeof value === "string" ? value.replace(/[^\d.]/g, "") : value
   );
@@ -120,15 +110,13 @@ function formatSalaryMax(value) {
   return `₱${n.toLocaleString("en-PH")}`;
 }
 
-function formatDate(iso) {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return iso;
-  }
+/** Format posted date as “2 days ago” */
+function formatDaysAgo(dateString) {
+  if (!dateString) return "recently";
+  const posted = new Date(dateString);
+  const now = new Date();
+  const diffDays = Math.floor((now - posted) / (1000 * 60 * 60 * 24));
+  if (diffDays <= 0) return "today";
+  if (diffDays === 1) return "1 day ago";
+  return `${diffDays} days ago`;
 }

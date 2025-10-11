@@ -5,7 +5,6 @@ import {
   Building2,
   Mail,
   Lock,
-  University,
   BookOpen,
   ChevronDown,
   Check,
@@ -19,8 +18,9 @@ export default function Signup() {
   const [tab, setTab] = useState("student");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
+  const [agreed, setAgreed] = useState(false); // ✅ added for terms checkbox
 
-  // Student state (removed school and major)
+  // Student state
   const [student, setStudent] = useState({
     firstName: "",
     lastName: "",
@@ -60,8 +60,9 @@ export default function Signup() {
     setMsg(null);
 
     try {
-      setLoading(true);
+      if (!agreed) throw new Error("You must agree to our Terms and Privacy Policy"); // ✅ validation
 
+      setLoading(true);
       let body;
       let emailToUse;
 
@@ -100,7 +101,9 @@ export default function Signup() {
           if (!String(company[k] || "").trim()) throw new Error(`${k} is required`);
         });
         requireIf(company.companyRole === "Others", finalRole, "Custom role");
-        requireIf(company.industry === "Others", finalIndustry, "Custom industry");
+        if (company.companyRole === "Owner") {
+          requireIf(company.industry === "Others", finalIndustry, "Custom industry");
+        }
 
         body = {
           role: "company",
@@ -110,7 +113,7 @@ export default function Signup() {
           firstName: company.firstName,
           lastName: company.lastName,
           companyRole: finalRole,
-          industry: finalIndustry,
+          ...(company.companyRole === "Owner" && { industry: finalIndustry }),
         };
         emailToUse = company.email;
       }
@@ -163,7 +166,7 @@ export default function Signup() {
             onClick={() => setTab("company")}
             type="button"
           >
-            <Building2 className="w-4 h-4" /> Employer
+            <Building2 className="w-4 h-4" /> Company
           </button>
         </div>
 
@@ -206,7 +209,6 @@ export default function Signup() {
                 onChange={(v) => setStudent((s) => ({ ...s, course: v }))}
               />
 
-              {/* 👁️ Password fields with toggle */}
               <PasswordInput
                 label="Password"
                 value={student.password}
@@ -223,6 +225,27 @@ export default function Signup() {
                 show={showConfirm}
                 setShow={setShowConfirm}
               />
+
+              {/* ✅ Terms Checkbox */}
+              <div className="flex items-start gap-2 text-sm mt-3">
+                <input
+                  type="checkbox"
+                  checked={agreed}
+                  onChange={(e) => setAgreed(e.target.checked)}
+                  className="mt-1 accent-[#F37526]"
+                />
+                <p className="text-gray-700">
+                  By signing up you agree to our{" "}
+                  <a href="/terms" className="text-blue-700 hover:underline">
+                    Terms of Service
+                  </a>{" "}
+                  and{" "}
+                  <a href="/privacy" className="text-blue-700 hover:underline">
+                    Privacy Policy
+                  </a>
+                  .
+                </p>
+              </div>
             </>
           ) : (
             <>
@@ -277,32 +300,38 @@ export default function Signup() {
                 onChange={(v) => setCompany((s) => ({ ...s, email: v }))}
               />
 
-              <PrettySelect
-                label="Industry"
-                value={company.industry}
-                onChange={(v) => setCompany((s) => ({ ...s, industry: v }))}
-                options={[
-                  "Technology",
-                  "Finance",
-                  "Healthcare",
-                  "Education",
-                  "Retail",
-                  "Others",
-                ]}
-              />
-              {company.industry === "Others" && (
-                <Input
-                  label="Custom Industry"
-                  icon={<Building2 />}
-                  placeholder="Enter your industry"
-                  value={company.industryOther}
-                  onChange={(v) =>
-                    setCompany((s) => ({ ...s, industryOther: v }))
-                  }
-                />
+              {/* ✅ Only show industry when role = Owner */}
+              {company.companyRole === "Owner" && (
+                <>
+                  <PrettySelect
+                    label="Industry"
+                    value={company.industry}
+                    onChange={(v) =>
+                      setCompany((s) => ({ ...s, industry: v }))
+                    }
+                    options={[
+                      "Technology",
+                      "Finance",
+                      "Healthcare",
+                      "Education",
+                      "Retail",
+                      "Others",
+                    ]}
+                  />
+                  {company.industry === "Others" && (
+                    <Input
+                      label="Custom Industry"
+                      icon={<Building2 />}
+                      placeholder="Enter your industry"
+                      value={company.industryOther}
+                      onChange={(v) =>
+                        setCompany((s) => ({ ...s, industryOther: v }))
+                      }
+                    />
+                  )}
+                </>
               )}
 
-              {/* 👁️ Company password fields with toggle */}
               <PasswordInput
                 label="Password"
                 value={company.password}
@@ -319,6 +348,27 @@ export default function Signup() {
                 show={showCompanyConfirm}
                 setShow={setShowCompanyConfirm}
               />
+
+              {/* ✅ Terms Checkbox for company */}
+              <div className="flex items-start gap-2 text-sm mt-3">
+                <input
+                  type="checkbox"
+                  checked={agreed}
+                  onChange={(e) => setAgreed(e.target.checked)}
+                  className="mt-1 accent-[#F37526]"
+                />
+                <p className="text-gray-700">
+                  By signing up you agree to our{" "}
+                  <a href="/terms" className="text-blue-700 hover:underline">
+                    Terms of Service
+                  </a>{" "}
+                  and{" "}
+                  <a href="/privacy" className="text-blue-700 hover:underline">
+                    Privacy Policy
+                  </a>
+                  .
+                </p>
+              </div>
             </>
           )}
 
@@ -368,7 +418,6 @@ function Input({ label, icon, placeholder, type = "text", value, onChange }) {
   );
 }
 
-/* Reusable password input with toggle visibility */
 function PasswordInput({ label, value, onChange, show, setShow }) {
   return (
     <div className="relative">
@@ -398,7 +447,6 @@ function PasswordInput({ label, value, onChange, show, setShow }) {
   );
 }
 
-/** Custom select with ONLY a right chevron */
 function PrettySelect({ label, value, onChange, options }) {
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(() =>
