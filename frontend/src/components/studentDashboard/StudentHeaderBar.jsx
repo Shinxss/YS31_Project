@@ -14,11 +14,12 @@ function getInitials(name) {
 export default function StudentHeaderBar({
   student = { firstName: "", lastName: "", course: "", profilePicture: "" }, // ✅ added profilePicture
   onToggleSidebar,
+  title = "Dashboard", // ✅ NEW: dynamic title with default
 }) {
   const fullName = `${student.firstName || ""} ${student.lastName || ""}`.trim();
 
   return (
-    <header className="h-16 bg-[#173B8A] text-white flex items-center justify-between px-4 md:px-6">
+    <header className="h-16 bg-[#173B8A] text-white flex items-center justify-between px-4 md:px-6 ml-1">
       <div className="flex items-center gap-3">
         <button
           onClick={onToggleSidebar}
@@ -29,7 +30,8 @@ export default function StudentHeaderBar({
         >
           <PanelLeft className="w-4 h-4" />
         </button>
-        <div className="text-xl font-bold leading-none">Dashboard</div>
+        {/* ⬇️ was hardcoded 'Dashboard'; now uses prop */}
+        <div className="text-xl font-bold leading-none">{title}</div>
       </div>
 
       <div className="flex items-center gap-6">

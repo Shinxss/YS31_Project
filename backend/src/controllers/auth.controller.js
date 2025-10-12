@@ -49,7 +49,11 @@ export const sendSignupOtp = async (req, res) => {
       reqd(firstName, "firstName");
       reqd(lastName, "lastName");
       reqd(companyRole, "companyRole");
-      reqd(industry, "industry");
+
+      // ✅ Only require industry if companyRole === "Owner"
+      if (companyRole === "Owner") {
+        reqd(industry, "industry");
+      }
 
       // Owner must have unique companyName; non-owners must join existing
       const existingCompanyDoc = await CompanyEmployees.findOne({ companyName })
@@ -66,13 +70,14 @@ export const sendSignupOtp = async (req, res) => {
         }
       }
 
+      // ✅ Only attach industry if Owner
       payload = {
         ...payload,
         companyName,
         firstName,
         lastName,
         companyRole,
-        industry,
+        ...(companyRole === "Owner" && { industry }),
       };
     }
 

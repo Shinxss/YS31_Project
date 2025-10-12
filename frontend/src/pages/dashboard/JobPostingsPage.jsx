@@ -16,7 +16,7 @@ export default function JobPostingsPage({ token }) {
 
           <button
             onClick={() => navigate("/dashboard/post-job")}
-            className="flex items-center gap-2 px-5 py-2 rounded-lg bg-[#1A2B6D] text-white font-semibold shadow-md hover:bg-[#24389D] transition"
+            className="flex items-center gap-2 px-5 py-2 rounded-lg bg-[#F37526] text-white font-semibold shadow-md hover:bg-[#24389D] transition"
           >
             <Plus size={18} /> Post New Job
           </button>

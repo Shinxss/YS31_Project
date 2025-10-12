@@ -24,10 +24,8 @@ CompanyEmployeesSchema.index(
   { unique: true, collation: { locale: "en", strength: 2 } }
 );
 
-// ADD >>> convenience helper for case-insensitive lookups
 CompanyEmployeesSchema.statics.findByNameCi = function (companyName) {
   return this.findOne({ companyName }, null, { collation: { locale: "en", strength: 2 } });
 };
-// ADD <<<
 
-export default mongoose.model("CompanyEmployees", CompanyEmployeesSchema);
+export default mongoose.model("company_employees", CompanyEmployeesSchema, );

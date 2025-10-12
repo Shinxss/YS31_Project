@@ -5,11 +5,14 @@ import { getStudentProfile } from "@/services/api";
 import { toast } from "react-toastify";
 import BrowseJobs from "@/pages/studentDashboard/BrowseJobs";
 import StudentProfile from "@/pages/studentDashboard/ProfilePage";
+import { useNavigate } from "react-router-dom"; 
+
 
 export default function StudentDashboard() {
   const [collapsed, setCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [student, setStudent] = useState(null);
+  const navigate = useNavigate(); // ✅ ADDED
 
   const handleLogout = () => {
     localStorage.removeItem("ic_token");
@@ -32,6 +35,15 @@ export default function StudentDashboard() {
     fetchProfile();
   }, []);
 
+  // ✅ ADDED: Centralize sidebar clicks so we can navigate to settings
+  const handleNav = (label) => {
+    if (label === "Settings") {
+      navigate("/student/settings"); // route to the dedicated settings page
+      return;
+    }
+    setActiveTab(label); // keep existing in-page tabs
+  };
+
   return (
     <div className="flex h-screen bg-[#ECF3FC] overflow-hidden">
       {/* Sidebar stays fixed height */}
@@ -39,7 +51,7 @@ export default function StudentDashboard() {
         collapsed={collapsed}
         active={activeTab}
         onLogout={handleLogout}
-        onNav={setActiveTab}
+        onNav={handleNav} // ✅ CHANGED: use handler so we can navigate for Settings
       />
 
       {/* Main Section (Header + Scrollable Content) */}
@@ -56,6 +68,7 @@ export default function StudentDashboard() {
               }
             }
             onToggleSidebar={() => setCollapsed(!collapsed)}
+            title={activeTab} // ✅ ADDED: dynamic header title
           />
         </div>
 

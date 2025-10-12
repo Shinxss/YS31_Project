@@ -1,9 +1,13 @@
+// frontend/src/pages/Login.jsx
 import React, { useEffect, useState } from "react";
-import { User, Building2, Mail, Lock, Eye, EyeOff } from "lucide-react"; // 👁️ added Eye icons
+import { User, Building2, Mail, Lock, Eye, EyeOff } from "lucide-react"; // 👁️ Eye icons
 import { useNavigate } from "react-router-dom";
 import { auth } from "../utils/auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+
+/* ✅ simple email validator */
+const isValidEmail = (val = "") => /^\s*[^@\s]+@[^@\s]+\.[^@\s]+\s*$/.test(val);
 
 export default function Login() {
   const [tab, setTab] = useState("student"); // 'student' | 'company'
@@ -11,7 +15,9 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false); // 👁️ password visibility state
+  const [showPassword, setShowPassword] = useState(false); // 👁️ password visibility
+  const [errors, setErrors] = useState({ email: "", password: "" }); // ✅ field-level errors
+
   const navigate = useNavigate();
 
   // If already logged in, bounce to the proper dashboard
@@ -23,23 +29,49 @@ export default function Login() {
     }
   }, [navigate]);
 
+  function validate() {
+    const next = { email: "", password: "" };
+    const trimmed = String(email).trim();
+
+    if (!trimmed) next.email = "Email is required";
+    else if (!isValidEmail(trimmed)) next.email = "Enter a valid email address";
+
+    if (!password) next.password = "Password is required";
+
+    setErrors(next);
+    return !next.email && !next.password;
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setMsg(null);
+
+    // ✅ client-side check; stop early if invalid
+    if (!validate()) return;
 
     try {
       setLoading(true);
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, role: tab }),
+        body: JSON.stringify({ email: String(email).trim(), password, role: tab }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        if (res.status === 401) throw new Error("Invalid email or password");
-        if (res.status === 403) throw new Error("Invalid role selected");
+        if (res.status === 401) {
+          // ⛔ highlight both fields
+          setErrors({
+            email: "Invalid email or password",
+            password: "Invalid email or password",
+          });
+          throw new Error("Invalid email or password");
+        }
+        if (res.status === 403) {
+          setErrors((prev) => ({ ...prev, email: "Wrong role selected for this account" }));
+          throw new Error("Invalid role selected");
+        }
         throw new Error(data?.message || "Login failed");
       }
 
@@ -72,7 +104,10 @@ export default function Login() {
                 ? "bg-indigo-50 border-indigo-200 text-indigo-700"
                 : "bg-gray-100 border-gray-200 text-gray-700"
             }`}
-            onClick={() => setTab("student")}
+            onClick={() => {
+              setTab("student");
+              setMsg(null);
+            }}
             type="button"
           >
             <User className="w-4 h-4" /> Student
@@ -83,7 +118,10 @@ export default function Login() {
                 ? "bg-indigo-50 border-indigo-200 text-indigo-700"
                 : "bg-gray-100 border-gray-200 text-gray-700"
             }`}
-            onClick={() => setTab("company")}
+            onClick={() => {
+              setTab("company");
+              setMsg(null);
+            }}
             type="button"
           >
             <Building2 className="w-4 h-4" /> Employer
@@ -96,36 +134,32 @@ export default function Login() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <Input
             icon={<Mail />}
             placeholder="Enter your email"
             type="email"
             value={email}
-            onChange={setEmail}
+            onChange={(v) => {
+              setEmail(v);
+              if (errors.email) setErrors((e) => ({ ...e, email: "" }));
+            }}
+            error={errors.email} // ✅ inline error state
+            label="Email"
           />
 
-          {/* 👁️ Password field with show/hide toggle */}
-          <div className="relative">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-              <Lock />
-            </div>
-            <input
-              className="w-full border rounded-md pl-10 pr-10 py-2 outline-none focus:ring-2 focus:ring-blue-200"
-              placeholder="Enter your password"
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </div>
+          {/* 👁️ Password with show/hide + red state */}
+          <PasswordField
+            value={password}
+            onChange={(v) => {
+              setPassword(v);
+              if (errors.password) setErrors((e) => ({ ...e, password: "" }));
+            }}
+            show={showPassword}
+            setShow={setShowPassword}
+            error={errors.password}
+            label="Password"
+          />
 
           <button
             disabled={loading}
@@ -144,29 +178,94 @@ export default function Login() {
               Sign up
             </a>
           </p>
-          <p className="text-xs text-gray-500 text-center">
-            By signing in, you agree to our{" "}
-            <a className="underline">Terms of Service</a> and{" "}
-            <a className="underline">Privacy Policy</a>
-          </p>
         </form>
       </div>
     </div>
   );
 }
 
-function Input({ icon, placeholder, type = "text", value, onChange }) {
+function Input({ icon, placeholder, type = "text", value, onChange, error, label }) {
+  const base =
+    "w-full border rounded-md pl-10 pr-3 py-2 outline-none focus:ring-2";
+  const ring = error ? "focus:ring-red-200" : "focus:ring-blue-200";
+  const border = error ? "border-red-500" : "border-gray-300";
+  const text = error ? "text-red-900 placeholder-red-300" : "";
   return (
     <div className="relative">
-      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">{icon}</div>
+      {label && (
+        <div className="mb-1 font-semibold text-gray-900 text-[0.95rem]">{label}</div>
+      )}
+      <div
+        className={`absolute left-3 top-[2.85rem] -translate-y-1/2 ${
+          error ? "text-red-500" : "text-gray-400"
+        }`}
+      >
+        {icon}
+      </div>
       <input
-        className="w-full border rounded-md pl-10 pr-3 py-2 outline-none focus:ring-2 focus:ring-blue-200"
+        className={`${base} ${ring} ${border} ${text}`}
         placeholder={placeholder}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         autoComplete={type === "password" ? "current-password" : "email"}
+        aria-invalid={!!error}
+        aria-describedby={error ? `${label?.toLowerCase()}-error` : undefined}
       />
+      {error && (
+        <p id={`${label?.toLowerCase()}-error`} className="text-xs text-red-600 mt-1">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function PasswordField({ value, onChange, show, setShow, error, label = "Password" }) {
+  const base =
+    "w-full border rounded-md pl-10 pr-10 py-2 outline-none focus:ring-2";
+  const ring = error ? "focus:ring-red-200" : "focus:ring-blue-200";
+  const border = error ? "border-red-500" : "border-gray-300";
+  const text = error ? "text-red-900 placeholder-red-300" : "";
+  return (
+    <div className="relative">
+      {label && (
+        <div className="mb-1 font-semibold text-gray-900 text-[0.95rem]">
+          {label}
+        </div>
+      )}
+      <div
+        className={`absolute left-3 top-[2.85rem] -translate-y-1/2 ${
+          error ? "text-red-500" : "text-gray-400"
+        }`}
+      >
+        <Lock />
+      </div>
+      <input
+        className={`${base} ${ring} ${border} ${text}`}
+        placeholder="Enter your password"
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        autoComplete="current-password"
+        aria-invalid={!!error}
+        aria-describedby={error ? "password-error" : undefined}
+      />
+      <button
+        type="button"
+        onClick={() => setShow(!show)}
+        className={`absolute right-3 top-[3rem] -translate-y-1/2 ${
+          error ? "text-red-500" : "text-gray-500 hover:text-gray-700"
+        }`}
+        aria-label={show ? "Hide password" : "Show password"}
+      >
+        {show ? <EyeOff size={18} /> : <Eye size={18} />}
+      </button>
+      {error && (
+        <p id="password-error" className="text-xs text-red-600 mt-1">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
