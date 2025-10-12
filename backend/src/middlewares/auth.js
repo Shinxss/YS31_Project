@@ -1,7 +1,6 @@
 import jwt from "jsonwebtoken";
 
 export default function auth(req, res, next) {
- 
   const hdr = req.headers.authorization || "";
   const fromHeader = hdr.toLowerCase().startsWith("bearer ")
     ? hdr.slice(7).trim()
@@ -20,7 +19,6 @@ export default function auth(req, res, next) {
       return res.status(401).json({ message: "Invalid token payload" });
     }
 
-
     req.user = {
       id: userId,
       role: decoded.role,
@@ -37,6 +35,9 @@ export default function auth(req, res, next) {
   }
 }
 
+// ✅ ADD: named alias so `import { protect } ...` works with your routes
+export const protect = auth;
+
 export function requireRole(role) {
   return function (req, res, next) {
     if (!req.user?.role) {
@@ -48,3 +49,14 @@ export function requireRole(role) {
     next();
   };
 }
+
+// ✅ ADD: flexible multi-role authorizer (optional helper)
+export const authorize = (...allowedRoles) => (req, res, next) => {
+  if (!req.user?.role) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  if (!allowedRoles.includes(req.user.role)) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+  next();
+};

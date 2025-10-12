@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import ProfileAddModal from "@/components/studentDashboard/ProfileAddModal";
-import { Briefcase, GraduationCap, Award, Pencil, Trash2 } from "lucide-react";
+import { Briefcase, GraduationCap, Award, Pencil, Trash2, PlusCircle } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
@@ -40,21 +40,22 @@ export default function ProfilePage() {
         const data = await res.json();
         if (res.ok && data.student) {
           const s = data.student;
-          setProfile({
-            ...profile,
+          setProfile((prev) => ({
+            ...prev,
             ...s,
             skills: s.skills?.join(", ") || "",
             experience: s.experience || [],
             education: s.education || [],
             certification: s.certification || [],
-          });
+          }));
         }
       } catch (err) {
         console.error("Failed to fetch student profile:", err);
       }
     };
+
     fetchProfile();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleChange = (e) =>
     setProfile({ ...profile, [e.target.name]: e.target.value });
@@ -364,8 +365,9 @@ export default function ProfilePage() {
                   setShowModal(true);
                   setEditData(null);
                 }}
-                className="bg-blue-600 text-white px-3 py-1 rounded text-sm"
+                className="bg-blue-600 text-white px-3 py-1 rounded text-sm flex items-center gap-2"
               >
+                <PlusCircle className="w-4 h-4" />
                 Add {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
               </button>
             </div>

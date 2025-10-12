@@ -41,7 +41,6 @@ function App() {
         <Route path="/internships" element={<Internships />} />
         <Route path="/companies" element={<Companies />} />
         <Route path="/about" element={<About />} />
-
        
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />

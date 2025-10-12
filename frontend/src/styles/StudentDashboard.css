@@ -1,0 +1,25 @@
+.react-calendar {
+  border: none;
+  width: 100%;
+  background-color: white;
+  border-radius: 8px;
+  font-family: "Inter", sans-serif;
+}
+
+.react-calendar__tile {
+  padding: 10px 6px;
+  text-align: center;
+  border-radius: 8px;
+}
+
+.react-calendar__tile--active {
+  background-color: #173b8a !important;
+  color: white !important;
+}
+
+/* Highlight days with events */
+.highlight-date {
+  background: #f37526 !important;
+  color: white !important;
+  border-radius: 50%;
+}

@@ -1,4 +1,3 @@
-// src/components/studentDashboard/StudentSidebar.jsx
 import React from "react";
 import {
   Home,
@@ -7,7 +6,6 @@ import {
   User,
   Settings as SettingsIcon,
   LogOut,
-  // settings icons
   Lock,
   Shield,
   ArrowLeft,
@@ -47,11 +45,6 @@ function NavItem({ icon, label, active, collapsed, onClick, to }) {
   );
 }
 
-/**
- * StudentSidebar
- * - Default mode: shows student dashboard nav (uses onNav to keep your current in-page tabs)
- * - Settings mode: auto when path is /student/settings/* (routes to nested settings tabs)
- */
 export default function StudentSidebar({
   collapsed,
   active = "Dashboard",
@@ -128,14 +121,16 @@ export default function StudentSidebar({
           )}
 
           <nav className="px-2 flex flex-col gap-1">
+            {/* Profile (main nav) → show inside dashboard (no route) */}
             <NavItem
               icon={<User className="w-4 h-4" />}
               label="Profile"
               active={active === "Profile"}
               collapsed={collapsed}
               onClick={() => onNav?.("Profile")}
+              /* no `to` here on purpose */
             />
-            {/* Route to StudentSettings */}
+            {/* Route to StudentSettings root */}
             <NavItem
               icon={<SettingsIcon className="w-4 h-4" />}
               label="Settings"
@@ -149,7 +144,7 @@ export default function StudentSidebar({
       {/* ───────── Settings Nav (auto on /student/settings/*) ───────── */}
       {isSettings && (
         <>
-          {/* Header pill (like your design) */}
+          {/* Header pill */}
           <div className="px-2 pt-3">
             <button
               type="button"
@@ -187,6 +182,7 @@ export default function StudentSidebar({
               collapsed={collapsed}
               to={`${settingsTo}/password`}
             />
+            {/* Profile details (settings) */}
             <NavItem
               icon={<User className="w-4 h-4" />}
               label="Profile details"

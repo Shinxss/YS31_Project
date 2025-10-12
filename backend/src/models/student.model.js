@@ -1,4 +1,3 @@
-// backend/models/student.model.js
 import mongoose from "mongoose";
 
 const studentSchema = new mongoose.Schema(
@@ -64,8 +63,25 @@ const studentSchema = new mongoose.Schema(
       },
     ],
   },
-  { timestamps: true, collection: "student_users" }
+  { timestamps: true, collection: "student_users" } // ✅ Ensures this model maps to student_users
 );
+
+// Reminders / Schedule section
+studentSchema.add({
+  reminders: [
+    {
+      title: { type: String, required: true },
+      description: { type: String, default: "" },
+      date: { type: String, required: true },
+      time: { type: String, required: true },
+      type: {
+        type: String,
+        enum: ["Work", "Interview", "Meeting", "Birthday", "Task", "Other"],
+        default: "Other",
+      },
+    },
+  ],
+});
 
 // Existing user reference
 studentSchema.add({
