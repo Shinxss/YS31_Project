@@ -3,7 +3,7 @@ import React, { useMemo, useState } from "react";
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 const PESO = "₱";
 
-/** Static list for now. Later: fetch from /api/departments (MVC). */
+/** Department options (frontend). Includes "Other". */
 const DEPARTMENTS = [
   "Engineering",
   "IT",
@@ -12,24 +12,29 @@ const DEPARTMENTS = [
   "HR",
   "Finance",
   "Operations",
+  "Other",
 ];
 
+const EDUCATION_LEVELS = ["High School", "College", "Graduate"];
+
 const EMPTY_FORM = {
-  // Step 1
+ 
   title: "",
-  department: "",
+  department: "",        
+  otherDepartment: "",    
   workType: "On-site",
   location: "",
-  jobType: "", // Full-time | Part-time | Contract | Internship
+  jobType: "Full-time",
   salaryMax: "",
-  // Step 2
   description: "",
   responsibilities: [],
   offers: [],
-  // Step 3
-  skills: "", // comma-separated
-  experienceLevel: "", // Entry | Mid | Senior
-  requirements: [], // other requirements (list)
+  skills: "",
+  requirements: [], 
+  educationLevel: [],     
+  languages: "",            
+  experienceLevel: "",      
+  screeningQuestions: [],    
 };
 
 function shallowEqualForm(a, b) {
@@ -55,6 +60,7 @@ export default function PostJobPage({ token, onCreated }) {
   const [reqDraft, setReqDraft] = useState("");
   const [respDraft, setRespDraft] = useState("");
   const [offerDraft, setOfferDraft] = useState("");
+  const [screenDraft, setScreenDraft] = useState("");
   const [currentStep, setCurrentStep] = useState(1); // 1..4
 
   const set = (k, v) => {
@@ -75,12 +81,25 @@ export default function PostJobPage({ token, onCreated }) {
     }));
   };
 
+  const toggleInArray = (key, value) => {
+    setForm((s) => {
+      const exists = s[key].includes(value);
+      return {
+        ...s,
+        [key]: exists ? s[key].filter((x) => x !== value) : [...s[key], value],
+      };
+    });
+  };
+
   /* ── Per-step validation for Next/Back control ───────────────────────── */
   const validateStep = (step) => {
     const e = {};
     if (step === 1) {
       if (!form.title.trim()) e.title = "Job title is required.";
       if (!form.department.trim()) e.department = "Department is required.";
+      if (form.department === "Other" && !form.otherDepartment.trim()) {
+        e.otherDepartment = "Please specify the department.";
+      }
       if (!form.location.trim()) e.location = "Location is required.";
       if (!form.jobType.trim()) e.jobType = "Job type is required.";
       if (!form.workType.trim()) e.workType = "Work type is required.";
@@ -99,10 +118,9 @@ export default function PostJobPage({ token, onCreated }) {
     if (step === 3) {
       if (!form.skills.trim())
         e.skills = "Add required skills (comma separated).";
-      if (!form.experienceLevel.trim())
-        e.experienceLevel = "Select an experience level.";
       if (!form.requirements.length)
         e.requirements = "Add at least one other requirement.";
+      // experienceLevel is optional for now (until backend supports)
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -113,6 +131,9 @@ export default function PostJobPage({ token, onCreated }) {
     const e = {};
     if (!form.title.trim()) e.title = "Job title is required.";
     if (!form.department.trim()) e.department = "Department is required.";
+    if (form.department === "Other" && !form.otherDepartment.trim()) {
+      e.otherDepartment = "Please specify the department.";
+    }
     if (!form.workType.trim()) e.workType = "Work type is required.";
     if (!form.location.trim()) e.location = "Location is required.";
     if (!form.jobType.trim()) e.jobType = "Job type is required.";
@@ -124,15 +145,13 @@ export default function PostJobPage({ token, onCreated }) {
       e.responsibilities = "Add at least one responsibility.";
     if (!form.offers.length) e.offers = "Add at least one offer.";
     if (!form.skills.trim()) e.skills = "Skills are required.";
-    if (!form.experienceLevel.trim())
-      e.experienceLevel = "Experience level is required.";
     if (!form.requirements.length)
       e.requirements = "Add at least one other requirement.";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
 
-  /* ── Submit to MVC backend (/api/jobs -> JobsController.create) ──────── */
+  /* ── Submit to MVC backend (/api/jobs) ───────────────────────────────── */
   async function submit(e) {
     e.preventDefault();
 
@@ -151,9 +170,14 @@ export default function PostJobPage({ token, onCreated }) {
     try {
       setSaving(true);
 
+      const departmentValue =
+        form.department === "Other"
+          ? form.otherDepartment.trim()
+          : form.department.trim();
+
       const payload = {
         title: form.title.trim(),
-        department: form.department.trim(),
+        department: departmentValue,                       // send the real value
         workType: form.workType,
         location: form.location.trim(),
         jobType: form.jobType,
@@ -165,8 +189,14 @@ export default function PostJobPage({ token, onCreated }) {
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean),
-        experienceLevel: form.experienceLevel,
         requirements: form.requirements,
+        educationLevel: form.educationLevel,
+        languages: form.languages
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+        experienceLevel: form.experienceLevel || undefined, // NEW (optional)
+        screeningQuestions: form.screeningQuestions,
       };
 
       const res = await fetch(`${API_BASE}/api/jobs`, {
@@ -185,6 +215,7 @@ export default function PostJobPage({ token, onCreated }) {
       setReqDraft("");
       setRespDraft("");
       setOfferDraft("");
+      setScreenDraft("");
       setErrors({});
       setMsg("✅ Job posted successfully");
       setCurrentStep(1);
@@ -208,6 +239,15 @@ export default function PostJobPage({ token, onCreated }) {
         .map((s) => s.trim())
         .filter(Boolean),
     [form.skills]
+  );
+
+  const languagesPreview = useMemo(
+    () =>
+      form.languages
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    [form.languages]
   );
 
   /* ───────────────────────── UI (InternConnect theme) ─────────────────── */
@@ -271,6 +311,7 @@ export default function PostJobPage({ token, onCreated }) {
                   />
                 </Field>
 
+                {/* Department select + 'Other' input */}
                 <Field label="Department" error={errors.department} required>
                   <select
                     className={inputCls(!!errors.department)}
@@ -284,6 +325,22 @@ export default function PostJobPage({ token, onCreated }) {
                       </option>
                     ))}
                   </select>
+                  {form.department === "Other" && (
+                    <div className="mt-2">
+                      <input
+                        className={inputCls(!!errors.otherDepartment)}
+                        placeholder="Type your department"
+                        value={form.otherDepartment}
+                        onChange={(e) => set("otherDepartment", e.target.value)}
+                        autoFocus
+                      />
+                      {errors.otherDepartment && (
+                        <div className="mt-1 text-xs text-red-600">
+                          {errors.otherDepartment}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </Field>
 
                 <Field label="Location" error={errors.location} required>
@@ -327,7 +384,7 @@ export default function PostJobPage({ token, onCreated }) {
                       min="0"
                       value={form.salaryMax}
                       onChange={(e) => set("salaryMax", e.target.value)}
-                      placeholder="e.g., 120000"
+                      placeholder="e.g., 12000"
                     />
                   </div>
                 </Field>
@@ -438,30 +495,89 @@ export default function PostJobPage({ token, onCreated }) {
                 </Field>
 
                 <Field
-                  label="Experience Level"
-                  error={errors.experienceLevel}
-                  required
+                  label="Education Level (select all that apply)"
+                  error={errors.educationLevel}
                 >
                   <div className="flex flex-wrap gap-4">
+                    {EDUCATION_LEVELS.map((lvl) => (
+                      <label
+                        key={lvl}
+                        className="inline-flex items-center gap-2 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={form.educationLevel.includes(lvl)}
+                          onChange={() => toggleInArray("educationLevel", lvl)}
+                          className="h-4 w-4 text-[#173B8A] focus:ring-[#173B8A]"
+                        />
+                        <span className="text-sm text-gray-700">{lvl}</span>
+                      </label>
+                    ))}
+                  </div>
+                </Field>
+
+                <Field label="Languages (comma separated)">
+                  <div className="space-y-2">
+                    <input
+                      className={inputCls(false)}
+                      placeholder="e.g., English, Filipino"
+                      value={form.languages}
+                      onChange={(e) => set("languages", e.target.value)}
+                    />
+                    {!!languagesPreview.length && (
+                      <div className="flex flex-wrap gap-2">
+                        {languagesPreview.map((s, i) => (
+                          <span
+                            key={`lang-${i}`}
+                            className="text-xs px-2 py-1 rounded-full bg-gray-50 text-gray-700 border border-gray-200"
+                          >
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Field>
+
+                <Field label="Experience Level">
+                  <div className="flex flex-wrap gap-4">
                     <Radio
-                      name="exp"
+                      name="expLvl"
                       label="Entry-level (0–2 yrs)"
                       checked={form.experienceLevel === "Entry"}
                       onChange={() => set("experienceLevel", "Entry")}
                     />
                     <Radio
-                      name="exp"
+                      name="expLvl"
                       label="Mid-level (3–5 yrs)"
                       checked={form.experienceLevel === "Mid"}
                       onChange={() => set("experienceLevel", "Mid")}
                     />
                     <Radio
-                      name="exp"
+                      name="expLvl"
                       label="Senior-level (6+ yrs)"
                       checked={form.experienceLevel === "Senior"}
                       onChange={() => set("experienceLevel", "Senior")}
                     />
                   </div>
+                  {/* Optional: hint */}
+                  <p className="text-xs text-gray-500 mt-1">
+                    You can leave this empty if not required.
+                  </p>
+                </Field>
+
+                <Field label="Screening Questions">
+                  <ListEditor
+                    draft={screenDraft}
+                    setDraft={setScreenDraft}
+                    onAdd={() => {
+                      pushIfNotEmpty("screeningQuestions", screenDraft);
+                      setScreenDraft("");
+                    }}
+                    items={form.screeningQuestions}
+                    onRemove={(idx) => removeAt("screeningQuestions", idx)}
+                    placeholder="e.g., Why this role? Paste your portfolio link."
+                  />
                 </Field>
 
                 <Field
@@ -494,17 +610,15 @@ export default function PostJobPage({ token, onCreated }) {
           onSubmit={submit}
           className="bg-white p-6 rounded-xl shadow border border-gray-200"
         >
-          {/* TITLE-LIKE SECTION HEADERS (like your screenshot) */}
+          {/* TITLE-LIKE SECTION HEADERS */}
           <h3 className="text-xl font-semibold text-gray-900 mb-4">
             Job Description
           </h3>
 
-          {/* description paragraph */}
           <p className="text-sm leading-6 text-gray-800 mb-6 whitespace-pre-line">
             {form.description || "—"}
           </p>
 
-          {/* key responsibilities */}
           <h4 className="text-base font-semibold text-gray-900 mb-2">
             Key Responsibilities
           </h4>
@@ -518,14 +632,12 @@ export default function PostJobPage({ token, onCreated }) {
             <p className="text-sm text-gray-500 mb-8">—</p>
           )}
 
-          {/* divider */}
           <hr className="my-6 border-gray-200" />
 
           <h3 className="text-xl font-semibold text-gray-900 mb-4">
             Qualifications & Requirements
           </h3>
 
-          {/* Required Skills as pills */}
           <h5 className="text-sm font-semibold text-gray-900 mb-2">
             Required Skills:
           </h5>
@@ -544,22 +656,37 @@ export default function PostJobPage({ token, onCreated }) {
             <p className="text-sm text-gray-500 mb-4">—</p>
           )}
 
-          {/* Experience level */}
-          <h5 className="text-sm font-semibold text-gray-900 mb-2">
-            Experience Level:
-          </h5>
-          <p className="text-sm text-gray-800 mb-4">
-            {form.experienceLevel === "Entry"
-              ? "0–2 years (Entry-level)"
-              : form.experienceLevel === "Mid"
-              ? "3–5 years (Mid-level)"
-              : form.experienceLevel === "Senior"
-              ? "6+ years (Senior-level)"
-              : "—"}
-          </p>
+          {/* Education & Languages & Experience Level */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Meta
+              label="Education Level"
+              value={
+                form.educationLevel.length
+                  ? form.educationLevel.join(", ")
+                  : "—"
+              }
+            />
+            <Meta
+              label="Languages"
+              value={
+                languagesPreview.length ? languagesPreview.join(", ") : "—"
+              }
+            />
+            <Meta
+              label="Experience Level"
+              value={
+                form.experienceLevel === "Entry"
+                  ? "Entry-level (0–2 yrs)"
+                  : form.experienceLevel === "Mid"
+                  ? "Mid-level (3–5 yrs)"
+                  : form.experienceLevel === "Senior"
+                  ? "Senior-level (6+ yrs)"
+                  : "—"
+              }
+            />
+          </div>
 
-          {/* Other requirements */}
-          <h5 className="text-sm font-semibold text-gray-900 mb-2">
+          <h5 className="text-sm font-semibold text-gray-900 mt-4 mb-2">
             Other Requirements:
           </h5>
           {form.requirements.length ? (
@@ -572,13 +699,33 @@ export default function PostJobPage({ token, onCreated }) {
             <p className="text-sm text-gray-500 mb-6">—</p>
           )}
 
-          {/* divider */}
+          {/* Screening Questions */}
+          <h5 className="text-sm font-semibold text-gray-900 mb-2">
+            Screening Questions:
+          </h5>
+          {form.screeningQuestions.length ? (
+            <ul className="list-disc pl-6 space-y-1 mb-6 text-sm text-gray-800">
+              {form.screeningQuestions.map((x, i) => (
+                <li key={`sq-r-${i}`}>{x}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-gray-500 mb-6">—</p>
+          )}
+
           <hr className="my-6 border-gray-200" />
 
-          {/* Basic info summary line (company-style meta) */}
+          {/* Basic info summary line (meta) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-800">
             <Meta label="Job Title" value={form.title} />
-            <Meta label="Department" value={form.department || "—"} />
+            <Meta
+              label="Department"
+              value={
+                form.department === "Other"
+                  ? form.otherDepartment || "—"
+                  : form.department || "—"
+              }
+            />
             <Meta label="Location" value={form.location} />
             <Meta label="Employment Type" value={form.jobType} />
             <Meta
@@ -587,20 +734,6 @@ export default function PostJobPage({ token, onCreated }) {
             />
             <Meta label="Work Type" value={form.workType} />
           </div>
-
-          {/* Optional: what we offer */}
-          {form.offers.length > 0 && (
-            <>
-              <h4 className="text-base font-semibold text-gray-900 mt-8 mb-2">
-                What We Offer
-              </h4>
-              <ul className="list-disc pl-6 space-y-1 text-sm text-gray-800">
-                {form.offers.map((x, i) => (
-                  <li key={`offer-r-${i}`}>{x}</li>
-                ))}
-              </ul>
-            </>
-          )}
 
           {/* Submit only — navigation outside below */}
           <div className="mt-8 flex justify-end">

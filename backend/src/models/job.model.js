@@ -2,23 +2,40 @@
 import mongoose from "mongoose";
 
 const pesoify = (v) => {
-  // Accept numbers or strings; always store as "₱<number>"
   if (v === null || v === undefined || v === "") return v;
-  const n = Number(
-    typeof v === "string" ? v.replace(/[^\d.]/g, "") : v
-  );
+  const n = Number(typeof v === "string" ? v.replace(/[^\d.]/g, "") : v);
   if (!Number.isFinite(n) || n < 0) return "₱0";
   return `₱${n}`;
 };
 
+/** Embedded snapshot of the company at the time of posting (no populate needed) */
+const CompanySnapshotSchema = new mongoose.Schema(
+  {
+    companyId: { type: mongoose.Schema.Types.ObjectId, ref: "CompanyEmployees" },
+    companyName: String,
+    profileImage: String,     // e.g. "1760450331933.jpeg" or full URL
+    coverPhoto: String,
+    address: String,
+    city: String,
+    province: String,
+    industry: String,
+    website: String,
+    companySize: String,
+    email: String,
+  },
+  { _id: false }
+);
+
 const JobSchema = new mongoose.Schema(
   {
+    /** Main pointer to company_employees / CompanyEmployees model */
     companyId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Company",
+      ref: "CompanyEmployees",
       required: true,
       index: true,
     },
+
     companyName: { type: String, required: true },
 
     title: { type: String, required: true, trim: true },
@@ -37,6 +54,9 @@ const JobSchema = new mongoose.Schema(
       enum: ["Full-time", "Intern", "Part-time", "Contract"],
       required: true,
     },
+
+    // Department saved from UI (Engineering, IT, Operations, etc.)
+    department: { type: String, required: true, trim: true },
 
     location: { type: String, required: true, trim: true },
 
@@ -79,7 +99,25 @@ const JobSchema = new mongoose.Schema(
       },
     },
 
-    status: { type: String, enum: ["open", "closed"], default: "open", index: true },
+    // Optional arrays/fields from UI
+    educationLevel: [{ type: String, trim: true }],
+    languages: [{ type: String, trim: true }],
+    experienceLevel: {
+      type: String,
+      enum: ["Entry", "Mid", "Senior"],
+      default: undefined,
+    },
+    screeningQuestions: [{ type: String, trim: true }],
+
+    /** ✅ Embedded company snapshot (so FE can show logo without populate) */
+    companySnapshot: { type: CompanySnapshotSchema, default: undefined },
+
+    status: {
+      type: String,
+      enum: ["open", "closed"],
+      default: "open",
+      index: true,
+    },
   },
   { timestamps: true }
 );
