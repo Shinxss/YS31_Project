@@ -41,8 +41,8 @@ export const createJob = async (req, res) => {
       title,
       workType,
       location,
-      jobType,           // NEW
-      salaryMax,        // number or string
+      jobType,         
+      salaryMax,        
       skills,
       description,
       requirements,

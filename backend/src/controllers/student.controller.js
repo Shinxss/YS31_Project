@@ -1,6 +1,6 @@
 import Student from "../models/student.model.js";
 
-// 🧍‍♂️ Get Current Student Profile
+// Get Current Student Profile
 export const getStudentProfile = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -15,7 +15,7 @@ export const getStudentProfile = async (req, res) => {
   }
 };
 
-// ✏️ Update Student Profile
+// Update Student Profile
 export const updateStudentProfile = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -49,12 +49,12 @@ export const updateStudentProfile = async (req, res) => {
   }
 };
 
-// 🗓️ Add Reminder (accepts flat or nested payloads)
+// Add Reminder (accepts flat or nested payloads)
 export const addReminder = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // ✅ Accept both shapes:
+    // Accept both shapes:
     //    - flat: { title, description, date, time, type, datetime }
     //    - nested: { reminder: { ...same fields... } }
     const src = req.body?.reminder ? req.body.reminder : req.body;
@@ -84,7 +84,7 @@ export const addReminder = async (req, res) => {
       date,
       time,
       type,
-      // ✅ these two are additive — your schema is flexible and will store them
+      // these two are additive — your schema is flexible and will store them
       datetime: datetime || null,
       status: "pending",
       createdAt: new Date(),
@@ -104,7 +104,7 @@ export const addReminder = async (req, res) => {
   }
 };
 
-// 📅 Fetch Reminders (sorted soonest first for Upcoming Events)
+//Fetch Reminders (sorted soonest first for Upcoming Events)
 export const getReminders = async (req, res) => {
   try {
     const userId = req.user.id;

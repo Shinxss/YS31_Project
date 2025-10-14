@@ -36,7 +36,7 @@ export const sendSignupOtp = async (req, res) => {
     let payload = { role, email, hashedPassword };
 
     if (role === "student") {
-      // ✅ Removed school and major (only keep required fields)
+      // Removed school and major (only keep required fields)
       const { firstName, lastName, course } = req.body;
       reqd(firstName, "firstName");
       reqd(lastName, "lastName");
@@ -50,7 +50,7 @@ export const sendSignupOtp = async (req, res) => {
       reqd(lastName, "lastName");
       reqd(companyRole, "companyRole");
 
-      // ✅ Only require industry if companyRole === "Owner"
+      // Only require industry if companyRole === "Owner"
       if (companyRole === "Owner") {
         reqd(industry, "industry");
       }
@@ -70,7 +70,7 @@ export const sendSignupOtp = async (req, res) => {
         }
       }
 
-      // ✅ Only attach industry if Owner
+      // Only attach industry if Owner
       payload = {
         ...payload,
         companyName,
@@ -166,7 +166,7 @@ export const verifySignupOtp = async (req, res) => {
 
     // 2) Role-specific document (no password duplication)
     if (payload.role === "student") {
-      // ✅ Cleaned: no school or major
+      // Cleaned: no school or major
       await Student.create({
         firstName: payload.firstName,
         lastName: payload.lastName,
@@ -218,7 +218,7 @@ export const verifySignupOtp = async (req, res) => {
       }
     }
 
-    // 3) Cleanup OTP
+    // Cleanup OTP
     await OtpToken.deleteOne({ _id: record._id });
 
     // 4) Issue JWT

@@ -114,7 +114,8 @@ export default function StudentSettings() {
   })();
 
   return (
-    <div className="min-h-screen bg-[#ECF3FC] flex">
+    // 🆕 Make the page itself fixed-height & prevent window scroll
+    <div className="h-screen bg-[#ECF3FC] flex overflow-hidden">
       <StudentSidebar
         collapsed={collapsed}
         onLogout={() => doLogout(navigate)}
@@ -127,7 +128,8 @@ export default function StudentSettings() {
         }}
       />
 
-      <div className="flex-1 flex flex-col">
+      {/* 🆕 Right column becomes a flex column with min-h-0 so inner scroll works */}
+      <div className="flex-1 min-h-0 flex flex-col">
         <StudentHeaderBar
           student={student}
           onToggleSidebar={() => {
@@ -138,19 +140,22 @@ export default function StudentSettings() {
           title={headerTitle}
         />
 
-        <main className="p-6">
-          {loading ? (
-            <div className="text-gray-600">Loading...</div>
-          ) : (
-            <Routes>
-              <Route path="/" element={<StudentPasswordAndSecurity />} />
-              <Route path="password" element={<StudentPasswordAndSecurity />} />
-              <Route path="profile" element={<StudentProfileDetails />} />
-              <Route path="terms" element={<StudentTermsOfService />} />
-              <Route path="privacy" element={<StudentPrivacyPolicy />} />
-            </Routes>
-          )}
-        </main>
+        {/* 🆕 Only this wrapper scrolls */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <main className="p-6">
+            {loading ? (
+              <div className="text-gray-600">Loading...</div>
+            ) : (
+              <Routes>
+                <Route path="/" element={<StudentPasswordAndSecurity />} />
+                <Route path="password" element={<StudentPasswordAndSecurity />} />
+                <Route path="profile" element={<StudentProfileDetails />} />
+                <Route path="terms" element={<StudentTermsOfService />} />
+                <Route path="privacy" element={<StudentPrivacyPolicy />} />
+              </Routes>
+            )}
+          </main>
+        </div>
       </div>
     </div>
   );
