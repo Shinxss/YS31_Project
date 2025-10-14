@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import CompanyEmployees from "./companyEmployees.model.js";
 
 const companySchema = new mongoose.Schema(
   {
@@ -7,9 +8,9 @@ const companySchema = new mongoose.Schema(
     lastName: { type: String, required: true },
     role: { type: String, required: true }, // Owner/Recruiter/etc
     email: { type: String, required: true, unique: true, index: true },
-    password: { type: String, required: false }, // stored in User; keep optional for back-compat
+    password: { type: String, required: false }, // stored in User; keep optional
 
-    // ✅ industry only required if role === 'Owner'
+    // ✅ required if Owner
     industry: {
       type: String,
       required: function () {
@@ -26,7 +27,7 @@ const companySchema = new mongoose.Schema(
   { timestamps: true, collection: "company_users" }
 );
 
-// normalize & cleanup
+// ✅ Normalize data
 companySchema.pre("save", function (next) {
   if (this.isModified("email") && typeof this.email === "string") {
     this.email = this.email.toLowerCase().trim();
@@ -35,6 +36,33 @@ companySchema.pre("save", function (next) {
     this.companyName = this.companyName.trim();
   }
   next();
+});
+
+// ✅ Optional: Sync industry and company details to company_employees
+companySchema.post("save", async function (doc) {
+  try {
+    const existing = await CompanyEmployees.findByNameCi(doc.companyName);
+
+    if (!existing) {
+      await CompanyEmployees.create({
+        companyName: doc.companyName,
+        owner: {
+          email: doc.email,
+          firstName: doc.firstName,
+          lastName: doc.lastName,
+          role: doc.role,
+        },
+        industry: doc.industry || "",
+        email: doc.email,
+        userId: doc.user,
+      });
+    } else if (doc.industry && existing.industry !== doc.industry) {
+      existing.industry = doc.industry;
+      await existing.save();
+    }
+  } catch (err) {
+    console.error("Failed to sync company to company_employees:", err);
+  }
 });
 
 companySchema.set("toJSON", {

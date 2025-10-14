@@ -6,7 +6,8 @@ export default function auth(req, res, next) {
     ? hdr.slice(7).trim()
     : null;
   const fromCookie = req.cookies?.token || null;
-  const token = fromHeader || fromCookie;
+  const fromQuery = req.query?.token || null; // ✅ optional
+  const token = fromHeader || fromCookie || fromQuery;
 
   if (!token) {
     return res.status(401).json({ message: "No token provided" });
@@ -28,6 +29,7 @@ export default function auth(req, res, next) {
 
     return next();
   } catch (err) {
+    console.error("JWT verification failed:", err.message);
     if (err?.name === "TokenExpiredError") {
       return res.status(401).json({ message: "Token expired" });
     }
@@ -35,28 +37,21 @@ export default function auth(req, res, next) {
   }
 }
 
-// ✅ ADD: named alias so `import { protect } ...` works with your routes
+// Named aliases for flexibility
 export const protect = auth;
 
 export function requireRole(role) {
   return function (req, res, next) {
-    if (!req.user?.role) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-    if (req.user.role !== role) {
+    if (!req.user?.role) return res.status(401).json({ message: "Unauthorized" });
+    if (req.user.role !== role)
       return res.status(403).json({ message: "Forbidden" });
-    }
     next();
   };
 }
 
-// ✅ ADD: flexible multi-role authorizer (optional helper)
 export const authorize = (...allowedRoles) => (req, res, next) => {
-  if (!req.user?.role) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-  if (!allowedRoles.includes(req.user.role)) {
+  if (!req.user?.role) return res.status(401).json({ message: "Unauthorized" });
+  if (!allowedRoles.includes(req.user.role))
     return res.status(403).json({ message: "Forbidden" });
-  }
   next();
 };

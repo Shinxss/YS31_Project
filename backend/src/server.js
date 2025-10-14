@@ -3,13 +3,15 @@ import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import { connectDB } from "./config/db.js";
+import path from "path";
+import { fileURLToPath } from "url";
 
 // routes
 import authRoutes from "./routes/auth.routes.js";
 import companyRoutes from "./routes/company.routes.js";
 import jobRoutes from "./routes/job.routes.js";
 import statsRoutes from "./routes/stats.routes.js";
-import studentRoutes from "./routes/studentRoutes.js"
+import studentRoutes from "./routes/studentRoutes.js";
 
 const app = express();
 
@@ -22,13 +24,20 @@ app.use(
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
 
+// ✅ serve uploaded images BEFORE routes
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+
 app.use("/api/auth", authRoutes);
 app.use("/api/company", companyRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/student", studentRoutes);
 
-app.get("/api/health", (_req, res) => res.json({ ok: true, app: process.env.APP_NAME || "App" }));
+app.get("/api/health", (_req, res) =>
+  res.json({ ok: true, app: process.env.APP_NAME || "App" })
+);
 
 app.use((req, res) => res.status(404).json({ message: "Not found" }));
 
