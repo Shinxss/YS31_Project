@@ -52,4 +52,5 @@ CompanyEmployeesSchema.statics.findByNameCi = function (companyName) {
   });
 };
 
-export default mongoose.model("company_employees", CompanyEmployeesSchema);
+export default mongoose.model("CompanyEmployees", CompanyEmployeesSchema);
+

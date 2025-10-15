@@ -1,4 +1,3 @@
-// backend/src/models/job.model.js
 import mongoose from "mongoose";
 
 const pesoify = (v) => {

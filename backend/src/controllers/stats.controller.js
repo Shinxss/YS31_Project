@@ -1,7 +1,7 @@
-import Student from "../models/student.model.js";
-import Company from "../models/company.model.js";
-import CompanyEmployees from "../models/companyEmployees.model.js";
-import Job from "../models/job.model.js";
+import Student from "../models/students/student.model.js";
+import Company from "../models/company/company.model.js";
+import CompanyEmployees from "../models/company/companyEmployees.model.js";
+import Job from "../models/company/job.model.js";
 
 export const publicStats = async (_req, res) => {
   try {

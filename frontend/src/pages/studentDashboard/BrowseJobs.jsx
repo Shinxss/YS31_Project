@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { MapPin, Clock, Briefcase, Search, Star, Building2 } from "lucide-react";
 import { getAllJobs } from "@/services/api";
 import { toast } from "react-toastify";
+import { useNavigate, useLocation } from "react-router-dom"; // ✅ added
 
 /* ✅ toggle true to show company logos */
 const SHOW_COMPANY_LOGOS = true;
@@ -16,6 +17,9 @@ export default function BrowseJobs() {
   const [type, setType] = useState("All Types");
   const [location, setLocation] = useState("All Locations");
   const [badLogos, setBadLogos] = useState({});
+
+  const navigate = useNavigate(); // ✅ added
+  const loc = useLocation(); // ✅ added
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -113,7 +117,7 @@ export default function BrowseJobs() {
 
   const staticFields = ["Technology", "Design", "Business", "Education"];
   const staticTypes = ["Full-time", "Part-time", "Remote"];
-  const staticLocations = ["Dagupan City", "Manila", "San Fabian", "Pangasinan"];
+  const staticLocations = [];
 
   const fieldsForSelect = useMemo(
     () => [
@@ -354,9 +358,15 @@ export default function BrowseJobs() {
                     <p className="text-blue-900 font-semibold text-lg">
                       {job.salaryMax || "₱4000"}/month
                     </p>
-                    <button className="bg-[#F37526] hover:bg-[#e36210] text-white text-sm px-4 py-1.5 rounded-md font-medium">
+
+                    {/* ✅ navigate to job details */}
+                    <button
+                      onClick={() => navigate(`/student/jobs/${job._id}`, { state: { from: loc.pathname } })}
+                      className="bg-[#F37526] hover:bg-[#e36210] text-white text-sm px-4 py-1.5 rounded-md font-medium"
+                    >
                       View Details
                     </button>
+                    {/* ✅ end added */}
                   </div>
                 </div>
               </div>

@@ -1,11 +1,17 @@
 import express from "express";
 import auth from "../middlewares/auth.js";
-import { createJob, myJobs } from "../controllers/job.controller.js";
+import {
+  createJob,
+  myJobs,
+  getAllJobs,
+  getJobById,
+  getScreeningQuestions, 
+} from "../controllers/students/job.controller.js"; 
+
 const router = express.Router();
-
-import { getAllJobs } from "../controllers/job.controller.js";
-
 router.get("/", getAllJobs);
+router.get("/:jobId", getJobById);
+router.get("/:jobId/screening", getScreeningQuestions);
 
 router.post("/", auth, createJob);
 router.get("/mine", auth, myJobs);

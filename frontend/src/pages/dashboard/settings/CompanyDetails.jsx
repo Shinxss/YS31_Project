@@ -105,7 +105,7 @@ export default function CompanyDetails() {
     }
   };
 
-  // ✅ Unified input style (darkened borders)
+  // ✅ Unified input style
   const inputStyle = (extra = "") =>
     `w-full rounded-md px-3 py-2 bg-gray-50 text-gray-800 transition-all duration-200 ${
       isEditing
@@ -169,7 +169,7 @@ export default function CompanyDetails() {
                 type="text"
                 name="companyName"
                 value={formData.companyName}
-                disabled={!isEditing}
+                disabled={true} // 🔒 permanently disabled
                 onChange={handleChange}
                 className={inputStyle()}
               />
@@ -183,7 +183,7 @@ export default function CompanyDetails() {
                 type="text"
                 name="industry"
                 value={formData.industry}
-                disabled={!isEditing}
+                disabled={true} // 🔒 permanently disabled
                 onChange={handleChange}
                 className={inputStyle()}
               />
@@ -247,7 +247,7 @@ export default function CompanyDetails() {
             <input
               name="email"
               value={formData.email}
-              disabled={!isEditing}
+              disabled={true} // 🔒 permanently disabled
               onChange={handleChange}
               className={inputStyle()}
             />

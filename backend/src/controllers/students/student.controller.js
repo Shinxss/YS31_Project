@@ -1,4 +1,4 @@
-import Student from "../models/student.model.js";
+import Student from "../../models/students/student.model.js";
 
 // Get Current Student Profile
 export const getStudentProfile = async (req, res) => {

@@ -1,7 +1,7 @@
-import User from "../models/user.model.js";
-import Company from "../models/company.model.js";
-import Job from "../models/job.model.js";
-import CompanyEmployees from "../models/companyEmployees.model.js"; // ✅ registered model
+import User from "../../models/user.model.js";
+import Company from "../../models/company/company.model.js";
+import Job from "../../models/company/job.model.js";
+import CompanyEmployees from "../../models/company/companyEmployees.model.js";
 
 const reqd = (v, name) => {
   if (v === undefined || v === null || (typeof v === "string" && !v.trim()))
@@ -95,7 +95,9 @@ export const createJob = async (req, res) => {
     let expValue = undefined;
     if (typeof experienceLevel === "string" && experienceLevel.trim()) {
       if (!expAllowed.includes(experienceLevel))
-        throw new Error(`experienceLevel must be one of: ${expAllowed.join(", ")}`);
+        throw new Error(
+          `experienceLevel must be one of: ${expAllowed.join(", ")}`
+        );
       expValue = experienceLevel;
     }
 
@@ -137,7 +139,9 @@ export const createJob = async (req, res) => {
     res.status(201).json({ message: "Job created successfully", job });
   } catch (err) {
     console.error("createJob error:", err);
-    res.status(400).json({ message: err.message || "Failed to create job" });
+    res
+      .status(400)
+      .json({ message: err.message || "Failed to create job" });
   }
 };
 
@@ -180,3 +184,45 @@ export const getAllJobs = async (req, res) => {
   }
 };
 
+/* ============================================================
+   GET /api/jobs/:jobId — Get Job by ID
+   ============================================================ */
+export const getJobById = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+
+    if (!jobId.match(/^[0-9a-fA-F]{24}$/))
+      return res.status(400).json({ message: "Invalid Job ID format" });
+
+    const job = await Job.findById(jobId)
+      .populate({
+        path: "companyId",
+        select:
+          "companyName profileImage coverPhoto city province rating industry",
+        model: "CompanyEmployees",
+      })
+      .lean();
+
+    if (!job) return res.status(404).json({ message: "Job not found" });
+
+    res.status(200).json({ job });
+  } catch (error) {
+    console.error("❌ getJobById error:", error);
+    res
+      .status(500)
+      .json({
+        message: error.message || "Server error while fetching job details",
+      });
+  }
+};
+
+export const getScreeningQuestions = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.jobId);
+    if (!job) return res.status(404).json({ message: "Job not found" });
+    res.json({ questions: job.screeningQuestions || [] });
+  } catch (err) {
+    console.error("getScreeningQuestions error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
