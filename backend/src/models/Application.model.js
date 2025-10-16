@@ -22,8 +22,8 @@ const applicationSchema = new mongoose.Schema(
       enum: ["Applied", "Accepted", "Rejected"],
       default: "Applied",
     },
-    resume: String, // ✅ store uploaded filename or path
-    message: String, // ✅ student’s short message
+    resume: String, 
+    message: String,
     answers: [
       {
         question: String,

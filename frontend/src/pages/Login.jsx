@@ -1,6 +1,6 @@
 // frontend/src/pages/Login.jsx
 import React, { useEffect, useState } from "react";
-import { User, Building2, Mail, Lock, Eye, EyeOff } from "lucide-react"; // 👁️ Eye icons
+import { User, Building2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../utils/auth";
 
@@ -10,13 +10,13 @@ const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 const isValidEmail = (val = "") => /^\s*[^@\s]+@[^@\s]+\.[^@\s]+\s*$/.test(val);
 
 export default function Login() {
-  const [tab, setTab] = useState("student"); 
+  const [tab, setTab] = useState("student"); // 'student' | 'company'
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false); 
-  const [errors, setErrors] = useState({ email: "", password: "" }); 
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState({ email: "", password: "" });
 
   const navigate = useNavigate();
 
@@ -46,7 +46,6 @@ export default function Login() {
     e.preventDefault();
     setMsg(null);
 
-    // ✅ client-side check; stop early if invalid
     if (!validate()) return;
 
     try {
@@ -54,14 +53,17 @@ export default function Login() {
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: String(email).trim(), password, role: tab }),
+        body: JSON.stringify({
+          email: String(email).trim(),
+          password,
+          role: tab,
+        }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
         if (res.status === 401) {
-          // ⛔ highlight both fields
           setErrors({
             email: "Invalid email or password",
             password: "Invalid email or password",
@@ -69,14 +71,19 @@ export default function Login() {
           throw new Error("Invalid email or password");
         }
         if (res.status === 403) {
-          setErrors((prev) => ({ ...prev, email: "Wrong role selected for this account" }));
+          setErrors((prev) => ({
+            ...prev,
+            email: "Wrong role selected for this account",
+          }));
           throw new Error("Invalid role selected");
         }
         throw new Error(data?.message || "Login failed");
       }
 
       auth.save({ token: data.token, role: data.role, profile: data.profile });
-      navigate(data.role === "company" ? "/company" : "/student", { replace: true });
+      navigate(data.role === "company" ? "/company" : "/student", {
+        replace: true,
+      });
     } catch (err) {
       setMsg(`❌ ${err.message}`);
     } finally {
@@ -124,7 +131,7 @@ export default function Login() {
             }}
             type="button"
           >
-            <Building2 className="w-4 h-4" /> Company
+            <Building2 className="w-4 h-4" /> Employer
           </button>
         </div>
 
@@ -144,11 +151,10 @@ export default function Login() {
               setEmail(v);
               if (errors.email) setErrors((e) => ({ ...e, email: "" }));
             }}
-            error={errors.email} // ✅ inline error state
+            error={errors.email}
             label="Email"
           />
 
-          {/* 👁️ Password with show/hide + red state */}
           <PasswordField
             value={password}
             onChange={(v) => {
@@ -168,8 +174,8 @@ export default function Login() {
             {loading
               ? "Signing in..."
               : tab === "student"
-              ? "Sign in"
-              : "Sign in"}
+              ? "Sign in as Student"
+              : "Sign in as Employer"}
           </button>
 
           <p className="text-center text-sm text-gray-600">
@@ -184,16 +190,29 @@ export default function Login() {
   );
 }
 
-function Input({ icon, placeholder, type = "text", value, onChange, error, label }) {
+function Input({
+  icon,
+  placeholder,
+  type = "text",
+  value,
+  onChange,
+  error,
+  label,
+}) {
   const base =
     "w-full border rounded-md pl-10 pr-3 py-2 outline-none focus:ring-2";
   const ring = error ? "focus:ring-red-200" : "focus:ring-blue-200";
   const border = error ? "border-red-500" : "border-gray-300";
   const text = error ? "text-red-900 placeholder-red-300" : "";
+  const describedBy =
+    error && label ? `${label.toLowerCase().replace(/\s+/g, "-")}-error` : undefined;
+
   return (
     <div className="relative">
       {label && (
-        <div className="mb-1 font-semibold text-gray-900 text-[0.95rem]">{label}</div>
+        <div className="mb-1 font-semibold text-gray-900 text-[0.95rem]">
+          {label}
+        </div>
       )}
       <div
         className={`absolute left-3 top-[2.85rem] -translate-y-1/2 ${
@@ -210,10 +229,10 @@ function Input({ icon, placeholder, type = "text", value, onChange, error, label
         onChange={(e) => onChange(e.target.value)}
         autoComplete={type === "password" ? "current-password" : "email"}
         aria-invalid={!!error}
-        aria-describedby={error ? `${label?.toLowerCase()}-error` : undefined}
+        aria-describedby={describedBy}
       />
-      {error && (
-        <p id={`${label?.toLowerCase()}-error`} className="text-xs text-red-600 mt-1">
+      {error && describedBy && (
+        <p id={describedBy} className="text-xs text-red-600 mt-1">
           {error}
         </p>
       )}
@@ -221,12 +240,20 @@ function Input({ icon, placeholder, type = "text", value, onChange, error, label
   );
 }
 
-function PasswordField({ value, onChange, show, setShow, error, label = "Password" }) {
+function PasswordField({
+  value,
+  onChange,
+  show,
+  setShow,
+  error,
+  label = "Password",
+}) {
   const base =
     "w-full border rounded-md pl-10 pr-10 py-2 outline-none focus:ring-2";
   const ring = error ? "focus:ring-red-200" : "focus:ring-blue-200";
   const border = error ? "border-red-500" : "border-gray-300";
   const text = error ? "text-red-900 placeholder-red-300" : "";
+
   return (
     <div className="relative">
       {label && (

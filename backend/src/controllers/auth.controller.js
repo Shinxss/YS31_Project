@@ -2,9 +2,9 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 import User from "../models/user.model.js";
-import Student from "../models/students/student.model.js";
-import Company from "../models/company/company.model.js";
-import CompanyEmployees from "../models/company/companyEmployees.model.js";
+import Student from "../models/student.model.js";
+import Company from "../models/company.model.js";
+import CompanyEmployees from "../models/companyEmployees.model.js";
 import OtpToken from "../models/otpToken.model.js";
 import { sendMail } from "../utils/mailer.js";
 

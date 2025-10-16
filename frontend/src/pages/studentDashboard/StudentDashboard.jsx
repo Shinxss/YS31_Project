@@ -5,7 +5,7 @@ import { getStudentProfile } from "@/services/api";
 import { toast } from "react-toastify";
 import BrowseJobs from "@/pages/studentDashboard/BrowseJobs";
 import StudentProfile from "@/pages/studentDashboard/ProfilePage";
-
+import MyApplications from "@/pages/studentDashboard/MyApplications"; // ✅ NEW: component file for applications
 
 import { useNavigate } from "react-router-dom";
 import {
@@ -489,18 +489,9 @@ export default function StudentDashboard() {
             </div>
           )}
 
+          {/* ✅ Replaced the old inline placeholder with the new component */}
           {activeTab === "My Applications" && (
-            <div className="space-y-6">
-              {/* TODO: render your Applications component here */}
-              <div className="bg-white rounded-lg shadow p-5">
-                <h3 className="text-lg font-semibold text-gray-800">
-                  My Applications
-                </h3>
-                <p className="text-sm text-gray-600">
-                  Coming soon: list and manage your applications here.
-                </p>
-              </div>
-            </div>
+            <MyApplications />
           )}
         </main>
       </div>

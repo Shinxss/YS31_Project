@@ -1,5 +1,5 @@
-import Application from "../../models/Application.model.js";
-import Job from "../../models/company/job.model.js";
+import Application from "../models/Application.model.js";
+import Job from "../models/job.model.js";
 import multer from "multer";
 import path from "path";
 

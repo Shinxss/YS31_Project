@@ -1,6 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MapPin, Clock, Briefcase, ArrowLeft, Building2 } from "lucide-react";
+import {
+  MapPin,
+  Briefcase,
+  ArrowLeft,
+  Building2,
+  Star,
+  CalendarDays,
+  CircleDollarSign,
+  Tag,
+  Globe,
+  Mail,
+  Users,
+} from "lucide-react";
 import { toast } from "react-toastify";
 import ApplyModal from "@/components/studentDashboard/ApplyModal.jsx";
 
@@ -20,7 +32,7 @@ export default function JobDetails() {
         const res = await fetch(`${API_BASE}/api/jobs/${jobId}`);
         const data = await res.json();
         setJob(data.job || data);
-      } catch (err) {
+      } catch {
         toast.error("Failed to load job details");
       } finally {
         setLoading(false);
@@ -39,8 +51,7 @@ export default function JobDetails() {
     setShowApplyModal(true);
   };
 
-  if (loading)
-    return <div className="p-6 text-gray-600">Loading job details...</div>;
+  if (loading) return <div className="p-6 text-gray-600">Loading job details...</div>;
 
   if (!job)
     return (
@@ -55,18 +66,92 @@ export default function JobDetails() {
       </div>
     );
 
-  // ✅ Helper: Convert field to array safely
+  // ---------------- helpers ----------------
   const toArray = (field) => {
     if (!field) return [];
     if (Array.isArray(field)) return field;
-    if (typeof field === "string") return field.split("\n");
+    if (typeof field === "string") return field.split("\n").filter(Boolean);
     return [];
   };
 
+  const getInitials = (str) => {
+    const s = (str || "").trim();
+    if (!s) return "T";
+    const parts = s.split(/\s+/).slice(0, 2);
+    return parts.map((p) => p[0]?.toUpperCase()).join("");
+  };
+
+  const formatMoney = (v) => {
+    if (v == null || v === "") return null;
+    if (typeof v === "string" && /[^0-9.,]/.test(v)) return v; // already formatted like "₱100000"
+    const num = Number(String(v).replace(/[,]/g, ""));
+    if (Number.isNaN(num)) return String(v);
+    return num.toLocaleString(undefined, {
+      style: "currency",
+      currency: "PHP",
+      maximumFractionDigits: 0,
+    });
+  };
+
+  const salaryDisplay = () => {
+    const min = formatMoney(job.salaryMin);
+    const max = formatMoney(job.salaryMax);
+    if (min && max) return `${min} - ${max} / month`;
+    if (max) return `${max} / month`;
+    if (min) return `${min} / month`;
+    if (job.salary) return job.salary; // raw fallback
+    return "Salary not specified";
+  };
+
+  const fmtDate = (d) => {
+    if (!d) return "—";
+    const dt = new Date(d);
+    if (isNaN(dt)) return "—";
+    return dt.toLocaleString(undefined, {
+      month: "short", // Oct
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const timeAgo = (dateLike) => {
+    const d = dateLike ? new Date(dateLike) : null;
+    if (!d || isNaN(d)) return "—";
+    const diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60) return "just now";
+    const mins = Math.floor(diff / 60);
+    if (mins < 60) return `${mins} min${mins > 1 ? "s" : ""} ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days} day${days > 1 ? "s" : ""} ago`;
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months} month${months > 1 ? "s" : ""} ago`;
+    const years = Math.floor(months / 12);
+    return `${years} year${years > 1 ? "s" : ""} ago`;
+  };
+
+  // ---------------- derived ----------------
   const requirements = toArray(job.requirements);
   const responsibilities = toArray(job.responsibilities);
   const offers = toArray(job.offers);
 
+  const companyName = job.companyName || job.company?.name || "Company";
+  const companyLogo =
+    job.companyLogoUrl || job.companyLogo || job.company?.logoUrl || null;
+
+  const locationText =
+    job.location || job.city || job.companyLocation || "Location";
+  const jobType = job.jobType || "Full-time";
+  const category = job.category || "Technology";
+  const postedWhen = timeAgo(job.postedAt || job.createdAt) || "—";
+
+  const workType = job.workType || job.workArrangement || "On-site";
+  const startFrom = job.startDateRange?.from;
+  const startTo = job.startDateRange?.to;
+  const applicationDeadline = job.applicationDeadline;
+
+  // ---------------- UI ----------------
   return (
     <div className="min-h-screen bg-[#F4F7FB] py-8 px-4">
       <div className="max-w-6xl mx-auto">
@@ -77,56 +162,83 @@ export default function JobDetails() {
           <ArrowLeft size={16} /> Back to Jobs
         </button>
 
-        {/* Main Container */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* LEFT SIDE */}
-          <div className="md:col-span-2">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                <h1 className="text-2xl font-semibold text-blue-900">
-                  {job.title}
-                </h1>
-                <span className="text-[#F37526] font-semibold text-lg">
-                  {job.salaryMax
-                    ? `${job.salaryMax}/month`
-                    : job.salary || "Salary not specified"}
-                </span>
-              </div>
+        {/* ===== TITLE CARD (no duration) ===== */}
+        <div className="mt-4 bg-white rounded-xl shadow-sm border border-blue-200 p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              {companyLogo ? (
+                <img
+                  src={companyLogo}
+                  alt={`${companyName} logo`}
+                  className="h-9 w-9 rounded-md object-cover border border-gray-200"
+                />
+              ) : (
+                <div className="h-9 w-9 rounded-md bg-blue-100 text-blue-700 grid place-items-center font-semibold border border-blue-200">
+                  {getInitials(companyName).slice(0, 2)}
+                </div>
+              )}
 
-              <div className="mt-2 flex flex-wrap gap-4 text-gray-600 text-sm">
-                <span className="flex items-center gap-1">
-                  <Building2 size={16} /> {job.companyName || "Company"}
-                </span>
-                <span className="flex items-center gap-1">
-                  <MapPin size={16} /> {job.location || "Location not specified"}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock size={16} /> {job.workType || "On-site"}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Briefcase size={16} /> {job.jobType || "Full-time"}
-                </span>
+              <div>
+                <div className="text-[15px] sm:text-base font-semibold text-blue-900">
+                  {job.title || "Job Title"}
+                </div>
+
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-gray-700">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Building2 size={14} />
+                    {companyName}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Star size={14} className="text-amber-500" /> 4.8
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <MapPin size={14} />
+                    {locationText}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Tag size={14} />
+                    {category}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Briefcase size={14} />
+                    {jobType}
+                  </span>
+                </div>
               </div>
             </div>
 
+            <div className="text-right shrink-0">
+              <div className="inline-block text-[11px] px-2 py-1 rounded-full bg-blue-100 text-blue-800 mb-2">
+                {postedWhen}
+              </div>
+              <div className="text-[#F37526] font-semibold text-base sm:text-lg">
+                {salaryDisplay()}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ===== GRID ===== */}
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* LEFT SIDE */}
+          <div className="md:col-span-2">
             {/* About This Role */}
-            <div className="mt-4 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-blue-900 mb-2">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+              <h2 className="text-sm font-semibold text-blue-900 mb-2">
                 About This Role
               </h2>
-              <p className="text-gray-700 leading-relaxed">
-                {job.description ||
-                  "No description available for this role at the moment."}
+              <p className="text-[13px] text-gray-700 leading-relaxed">
+                {job.description || "No description provided."}
               </p>
             </div>
 
             {/* Requirements */}
             {requirements.length > 0 && (
-              <div className="mt-4 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-blue-900 mb-2">
+              <div className="mt-4 bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <h3 className="text-sm font-semibold text-blue-900 mb-3">
                   Requirements
-                </h2>
-                <ul className="list-disc pl-6 text-gray-700 space-y-1">
+                </h3>
+                <ul className="list-disc pl-6 text-[13px] text-gray-700 space-y-1.5">
                   {requirements.map((req, i) => (
                     <li key={i}>{req}</li>
                   ))}
@@ -136,11 +248,11 @@ export default function JobDetails() {
 
             {/* Responsibilities */}
             {responsibilities.length > 0 && (
-              <div className="mt-4 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-blue-900 mb-2">
+              <div className="mt-4 bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <h3 className="text-sm font-semibold text-blue-900 mb-3">
                   Responsibilities
-                </h2>
-                <ul className="list-disc pl-6 text-gray-700 space-y-1">
+                </h3>
+                <ul className="list-disc pl-6 text-[13px] text-gray-700 space-y-1.5">
                   {responsibilities.map((res, i) => (
                     <li key={i}>{res}</li>
                   ))}
@@ -150,11 +262,11 @@ export default function JobDetails() {
 
             {/* What We Offer */}
             {offers.length > 0 && (
-              <div className="mt-4 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-blue-900 mb-2">
+              <div className="mt-4 bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <h3 className="text-sm font-semibold text-blue-900 mb-3">
                   What We Offer
-                </h2>
-                <ul className="list-disc pl-6 text-gray-700 space-y-1">
+                </h3>
+                <ul className="list-disc pl-6 text-[13px] text-gray-700 space-y-1.5">
                   {offers.map((offer, i) => (
                     <li key={i}>{offer}</li>
                   ))}
@@ -165,49 +277,84 @@ export default function JobDetails() {
 
           {/* RIGHT SIDE */}
           <div className="space-y-4">
+            {/* Apply */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sticky top-6">
               <button
                 onClick={handleApply}
                 disabled={isApplying}
                 className={`w-full py-2 font-medium rounded-md ${
                   isApplying
-                    ? "bg-gray-400"
+                    ? "bg-gray-400 text-white"
                     : "bg-[#F37526] hover:bg-[#e36210] text-white"
                 }`}
               >
                 {isApplying ? "Applying..." : "Apply Now"}
               </button>
-              <p className="text-xs text-gray-500 text-center mt-2">
+              <p className="text-[11px] text-gray-500 text-center mt-2">
                 Join thousands of successful applicants
               </p>
             </div>
 
-            {/* Key Details */}
+            {/* ===== KEY DETAILS — EXACTLY THE 4 FIELDS ===== */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-              <h3 className="text-sm font-semibold text-blue-900 mb-3">
-                Key Details
-              </h3>
-              <div className="space-y-2 text-gray-700 text-sm">
-                <p><strong>Duration:</strong> {job.duration || "3 months"}</p>
-                <p><strong>Job Type:</strong> {job.jobType || "Full-time"}</p>
-                <p><strong>Category:</strong> {job.category || "Technology"}</p>
-                <p><strong>Posted:</strong> {job.postedDate || "2 days ago"}</p>
+              <h3 className="text-sm font-semibold text-blue-900 mb-3">Key Details</h3>
+
+              <div className="divide-y divide-gray-200">
+                {/* Salary (min/max fallback to salary) */}
+                <div className="py-3 flex items-start gap-3">
+                  <CircleDollarSign size={16} className="text-gray-500 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="text-[12px] text-gray-500">Salary</div>
+                    <div className="text-[13px] text-gray-800 font-medium">
+                      {salaryDisplay()}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Application Deadline */}
+                <div className="py-3 flex items-start gap-3">
+                  <CalendarDays size={16} className="text-gray-500 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="text-[12px] text-gray-500">Application Deadline</div>
+                    <div className="text-[13px] text-gray-800 font-medium">
+                      {fmtDate(applicationDeadline)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Start Date (from – to) */}
+                <div className="py-3 flex items-start gap-3">
+                  <CalendarDays size={16} className="text-gray-500 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="text-[12px] text-gray-500">Start Date</div>
+                    <div className="text-[13px] text-gray-800 font-medium">
+                      {`${fmtDate(startFrom)} – ${fmtDate(startTo)}`}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Work Type */}
+                <div className="py-3 flex items-start gap-3">
+                  <Briefcase size={16} className="text-gray-500 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="text-[12px] text-gray-500">Work Type</div>
+                    <div className="text-[13px] text-gray-800 font-medium">{job.workType || "—"}</div>
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Skills Required */}
             {job.skills?.length > 0 && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                <h3 className="text-sm font-semibold text-blue-900 mb-3">
-                  Skills Required
-                </h3>
+                <h3 className="text-sm font-semibold text-blue-900 mb-3">Skills Required</h3>
                 <div className="flex flex-wrap gap-2">
-                  {job.skills.map((skill, i) => (
+                  {job.skills.map((s, i) => (
                     <span
                       key={i}
-                      className="px-3 py-1 text-xs bg-[#FFF3E9] text-[#F37526] rounded-full border border-[#F37526]/20"
+                      className="px-2.5 py-1 text-[11px] bg-[#FFF3E9] text-[#F37526] rounded-full border border-[#F37526]/30"
                     >
-                      {skill}
+                      {s}
                     </span>
                   ))}
                 </div>
@@ -217,33 +364,42 @@ export default function JobDetails() {
             {/* About Company */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
               <h3 className="text-sm font-semibold text-blue-900 mb-3">
-                About {job.companyName || "the Company"}
+                About {companyName}
               </h3>
-              <p className="text-sm text-gray-700">
-                {job.companyDescription ||
-                  "Information about the company will appear here."}
-              </p>
-              <div className="mt-3 text-sm text-gray-600">
-                <p>
-                  <strong>Company Size:</strong>{" "}
-                  {job.companySize || "Not specified"}
-                </p>
+
+              <div className="divide-y divide-gray-200 text-[13px] text-gray-800">
+                <div className="py-3 flex items-start gap-3">
+                  <Users size={16} className="text-gray-500 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="text-[12px] text-gray-500">Company Size</div>
+                    <div>{job.companySize || "Not specified"}</div>
+                  </div>
+                </div>
+
                 {job.contactEmail && (
-                  <p>
-                    <strong>Contact:</strong> {job.contactEmail}
-                  </p>
+                  <div className="py-3 flex items-start gap-3">
+                    <Mail size={16} className="text-gray-500 mt-0.5" />
+                    <div className="flex-1">
+                      <div className="text-[12px] text-gray-500">Contact</div>
+                      <div>{job.contactEmail}</div>
+                    </div>
+                  </div>
                 )}
+
                 {job.website && (
-                  <p>
-                    <strong>Website:</strong>{" "}
-                    <a
-                      href={job.website}
-                      target="_blank"
-                      className="text-[#F37526] hover:underline"
-                    >
-                      {job.website}
-                    </a>
-                  </p>
+                  <div className="py-3 flex items-start gap-3">
+                    <Globe size={16} className="text-gray-500 mt-0.5" />
+                    <div className="flex-1">
+                      <div className="text-[12px] text-gray-500">Website</div>
+                      <a
+                        href={job.website}
+                        target="_blank"
+                        className="text-[#F37526] hover:underline"
+                      >
+                        {job.website}
+                      </a>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
