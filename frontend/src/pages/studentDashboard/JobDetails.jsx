@@ -88,7 +88,7 @@ export default function JobDetails() {
                 </h1>
                 <span className="text-[#F37526] font-semibold text-lg">
                   {job.salaryMax
-                    ? `₱${job.salaryMax}/month`
+                    ? `${job.salaryMax}/month`
                     : job.salary || "Salary not specified"}
                 </span>
               </div>

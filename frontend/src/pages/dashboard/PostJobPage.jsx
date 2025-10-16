@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { toast } from "react-toastify";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 const PESO = "₱";
@@ -16,6 +17,14 @@ const DEPARTMENTS = [
 ];
 
 const EDUCATION_LEVELS = ["High School", "College", "Graduate"];
+
+// ✅ ADDED: simple date formatter for Review step
+const fmtDate = (v) => {
+  if (!v) return "";
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+};
 
 const EMPTY_FORM = {
  
@@ -35,6 +44,11 @@ const EMPTY_FORM = {
   languages: "",            
   experienceLevel: "",      
   screeningQuestions: [],    
+
+  // ✅ ADDED: timeline fields
+  startDateFrom: "",          // "YYYY-MM-DD"
+  startDateTo: "",            // "YYYY-MM-DD"
+  applicationDeadline: "",    // "YYYY-MM-DD"
 };
 
 function shallowEqualForm(a, b) {
@@ -62,6 +76,7 @@ export default function PostJobPage({ token, onCreated }) {
   const [offerDraft, setOfferDraft] = useState("");
   const [screenDraft, setScreenDraft] = useState("");
   const [currentStep, setCurrentStep] = useState(1); // 1..4
+  const [submitToastId, setSubmitToastId] = useState(null); // ✅ ADDED: track loading toast
 
   const set = (k, v) => {
     setForm((s) => ({ ...s, [k]: v }));
@@ -107,6 +122,28 @@ export default function PostJobPage({ token, onCreated }) {
         e.salaryMax = "Salary max is required.";
       const max = Number(form.salaryMax);
       if (isNaN(max) || max < 0) e.salaryMax = "Must be a number ≥ 0.";
+
+      // ✅ ADDED: timeline required + logical checks
+      if (!String(form.startDateFrom).trim()) e.startDateFrom = "Start date (from) is required.";
+      if (!String(form.startDateTo).trim()) e.startDateTo = "Start date (to) is required.";
+      if (!String(form.applicationDeadline).trim())
+        e.applicationDeadline = "Application deadline is required.";
+      // only check order if all present
+      if (!e.startDateFrom && !e.startDateTo) {
+        const from = new Date(form.startDateFrom);
+        const to = new Date(form.startDateTo);
+        if (!Number.isNaN(from.getTime()) && !Number.isNaN(to.getTime())) {
+          if (from > to) e.startDateTo = "End of start range must be on/after the start.";
+        }
+      }
+      if (!e.applicationDeadline && !e.startDateTo) {
+        const dl = new Date(form.applicationDeadline);
+        const to = new Date(form.startDateTo);
+        if (!Number.isNaN(dl.getTime()) && !Number.isNaN(to.getTime())) {
+          // soft guard; comment if not desired
+          // if (dl > to) e.applicationDeadline = "Deadline should be on/before the last possible start date.";
+        }
+      }
     }
     if (step === 2) {
       if (!form.description.trim())
@@ -130,9 +167,9 @@ export default function PostJobPage({ token, onCreated }) {
   function validateAll() {
     const e = {};
     if (!form.title.trim()) e.title = "Job title is required.";
-    if (!form.department.trim()) e.department = "Department is required.";
+    if (!form.department.trim()) e.department = "Job Category is required.";
     if (form.department === "Other" && !form.otherDepartment.trim()) {
-      e.otherDepartment = "Please specify the department.";
+      e.otherDepartment = "Please specify the Job Category.";
     }
     if (!form.workType.trim()) e.workType = "Work type is required.";
     if (!form.location.trim()) e.location = "Location is required.";
@@ -147,6 +184,27 @@ export default function PostJobPage({ token, onCreated }) {
     if (!form.skills.trim()) e.skills = "Skills are required.";
     if (!form.requirements.length)
       e.requirements = "Add at least one other requirement.";
+
+    // ✅ ADDED: final checks for dates
+    if (!String(form.startDateFrom).trim()) e.startDateFrom = "Start date (from) is required.";
+    if (!String(form.startDateTo).trim()) e.startDateTo = "Start date (to) is required.";
+    if (!String(form.applicationDeadline).trim())
+      e.applicationDeadline = "Application deadline is required.";
+    if (!e.startDateFrom && !e.startDateTo) {
+      const from = new Date(form.startDateFrom);
+      const to = new Date(form.startDateTo);
+      if (!Number.isNaN(from.getTime()) && !Number.isNaN(to.getTime())) {
+        if (from > to) e.startDateTo = "End of start range must be on/after the start.";
+      } else {
+        if (Number.isNaN(from.getTime())) e.startDateFrom = "Invalid date.";
+        if (Number.isNaN(to.getTime())) e.startDateTo = "Invalid date.";
+      }
+    }
+    if (!e.applicationDeadline) {
+      const dl = new Date(form.applicationDeadline);
+      if (Number.isNaN(dl.getTime())) e.applicationDeadline = "Invalid date.";
+    }
+
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -164,11 +222,17 @@ export default function PostJobPage({ token, onCreated }) {
           break;
         }
       }
+      // ✅ ADDED: toast on validation fail
+      toast.error("Please complete the required fields before submitting.", { autoClose: 2500 });
       return;
     }
 
     try {
       setSaving(true);
+
+      // ✅ ADDED: show loading toast while submitting
+      const tid = toast.loading("Submitting job…");
+      setSubmitToastId(tid);
 
       const departmentValue =
         form.department === "Other"
@@ -197,6 +261,11 @@ export default function PostJobPage({ token, onCreated }) {
           .filter(Boolean),
         experienceLevel: form.experienceLevel || undefined, // NEW (optional)
         screeningQuestions: form.screeningQuestions,
+
+        // ✅ ADDED: send to backend exactly as controller expects
+        startDateFrom: form.startDateFrom,               // "YYYY-MM-DD"
+        startDateTo: form.startDateTo,                   // "YYYY-MM-DD"
+        applicationDeadline: form.applicationDeadline,   // "YYYY-MM-DD"
       };
 
       const res = await fetch(`${API_BASE}/api/jobs`, {
@@ -220,8 +289,30 @@ export default function PostJobPage({ token, onCreated }) {
       setMsg("✅ Job posted successfully");
       setCurrentStep(1);
       onCreated?.(data.job);
+
+      // ✅ ADDED: success toast update
+      toast.update(tid, {
+        render: "Job posted successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 2200,
+        closeOnClick: true,
+      });
     } catch (err) {
       setMsg(`❌ ${err.message}`);
+
+      // ✅ ADDED: error toast update
+      if (submitToastId) {
+        toast.update(submitToastId, {
+          render: err.message || "Failed to post job",
+          type: "error",
+          isLoading: false,
+          autoClose: 3500,
+          closeOnClick: true,
+        });
+      } else {
+        toast.error(err.message || "Failed to post job");
+      }
     } finally {
       setSaving(false);
     }
@@ -312,13 +403,13 @@ export default function PostJobPage({ token, onCreated }) {
                 </Field>
 
                 {/* Department select + 'Other' input */}
-                <Field label="Department" error={errors.department} required>
+                <Field label="Job Category" error={errors.department} required>
                   <select
                     className={inputCls(!!errors.department)}
                     value={form.department}
                     onChange={(e) => set("department", e.target.value)}
                   >
-                    <option value="">Select Department</option>
+                    <option value="">Select Job Category</option>
                     {DEPARTMENTS.map((d) => (
                       <option key={d} value={d}>
                         {d}
@@ -401,6 +492,37 @@ export default function PostJobPage({ token, onCreated }) {
                       />
                     ))}
                   </div>
+                </Field>
+
+                {/* ✅ ADDED: Start date range */}
+                <Field label="Start Date (From)" error={errors.startDateFrom} required>
+                  <input
+                    type="date"
+                    className={inputCls(!!errors.startDateFrom)}
+                    value={form.startDateFrom}
+                    onChange={(e) => set("startDateFrom", e.target.value)}
+                  />
+                </Field>
+
+                <Field label="Start Date (To)" error={errors.startDateTo} required>
+                  <input
+                    type="date"
+                    className={inputCls(!!errors.startDateTo)}
+                    value={form.startDateTo}
+                    onChange={(e) => set("startDateTo", e.target.value)}
+                    min={form.startDateFrom || undefined}
+                  />
+                </Field>
+
+                {/* ✅ ADDED: Application deadline */}
+                <Field label="Application Deadline" error={errors.applicationDeadline} required>
+                  <input
+                    type="date"
+                    className={inputCls(!!errors.applicationDeadline)}
+                    value={form.applicationDeadline}
+                    onChange={(e) => set("applicationDeadline", e.target.value)}
+                    // max={form.startDateTo || undefined} // optional soft limit
+                  />
                 </Field>
               </div>
             </>
@@ -735,6 +857,13 @@ export default function PostJobPage({ token, onCreated }) {
             <Meta label="Work Type" value={form.workType} />
           </div>
 
+          {/* ✅ ADDED: Timeline summary */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-800 mt-4">
+            <Meta label="Start Date (From)" value={fmtDate(form.startDateFrom) || "—"} />
+            <Meta label="Start Date (To)" value={fmtDate(form.startDateTo) || "—"} />
+            <Meta label="Application Deadline" value={fmtDate(form.applicationDeadline) || "—"} />
+          </div>
+
           {/* Submit only — navigation outside below */}
           <div className="mt-8 flex justify-end">
             <button
@@ -767,6 +896,9 @@ export default function PostJobPage({ token, onCreated }) {
             onClick={() => {
               if (validateStep(currentStep)) {
                 setCurrentStep((s) => Math.min(4, s + 1));
+              } else {
+                // ✅ ADDED: gentle toast when trying to go next with invalid fields
+                toast.warn("Please finish the required fields in this step.", { autoClose: 2000 });
               }
             }}
             className="px-4 py-2 rounded-md bg-[#173B8A] text-white hover:opacity-95 disabled:opacity-60"

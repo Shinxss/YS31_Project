@@ -1,5 +1,6 @@
 import express from "express";
 import auth from "../../middlewares/auth.js";
+import { getCompanyInfo } from "../../controllers/company/companyProfile.controller.js";
 
 // ✅ Old controller: signup-related logic
 import { validateCompanyName } from "../../controllers/company/company.controller.js";
@@ -19,6 +20,7 @@ const router = express.Router();
 router.get("/me", auth, getCompanyProfile);
 router.post("/details/save", auth, updateCompanyProfile);
 router.get("/details/:userId", auth, getCompanyProfileById);
+router.get("/me", auth, getCompanyInfo);
 
 // =======================================================
 // 🧩 Company Registration / Validation

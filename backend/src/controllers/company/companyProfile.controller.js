@@ -27,9 +27,6 @@ async function saveImage(base64String, folder = "uploads/company") {
   }
 }
 
-// =======================================================
-// 🧩 GET /api/company/me — For dashboard + settings
-// =======================================================
 export const getCompanyProfile = async (req, res) => {
   try {
     const userEmail = req.user?.email;
@@ -144,5 +141,31 @@ export const getCompanyProfileById = async (req, res) => {
   } catch (err) {
     console.error("getCompanyProfileById error:", err);
     res.status(500).json({ message: "Failed to fetch company details" });
+  }
+};
+export const getCompanyInfo = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    // ✅ Find employee record with company and user link
+    const employee = await CompanyEmployees.findOne({ userId })
+      .populate("userId", "firstName lastName role") // gets user info
+      .lean();
+
+    if (!employee)
+      return res.status(404).json({ message: "Company employee not found" });
+
+    res.json({
+      companyName: employee.companyName,
+      user: {
+        firstName: employee.userId.firstName,
+        lastName: employee.userId.lastName,
+        role: employee.userId.role || employee.role,
+      },
+    });
+  } catch (err) {
+    console.error("getCompanyInfo error:", err);
+    res.status(500).json({ message: "Failed to fetch company info" });
   }
 };

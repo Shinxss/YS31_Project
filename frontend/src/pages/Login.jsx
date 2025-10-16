@@ -10,13 +10,13 @@ const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 const isValidEmail = (val = "") => /^\s*[^@\s]+@[^@\s]+\.[^@\s]+\s*$/.test(val);
 
 export default function Login() {
-  const [tab, setTab] = useState("student"); // 'student' | 'company'
+  const [tab, setTab] = useState("student"); 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false); // 👁️ password visibility
-  const [errors, setErrors] = useState({ email: "", password: "" }); // ✅ field-level errors
+  const [showPassword, setShowPassword] = useState(false); 
+  const [errors, setErrors] = useState({ email: "", password: "" }); 
 
   const navigate = useNavigate();
 
@@ -124,7 +124,7 @@ export default function Login() {
             }}
             type="button"
           >
-            <Building2 className="w-4 h-4" /> Employer
+            <Building2 className="w-4 h-4" /> Company
           </button>
         </div>
 
@@ -168,8 +168,8 @@ export default function Login() {
             {loading
               ? "Signing in..."
               : tab === "student"
-              ? "Sign in as Student"
-              : "Sign in as Employer"}
+              ? "Sign in"
+              : "Sign in"}
           </button>
 
           <p className="text-center text-sm text-gray-600">

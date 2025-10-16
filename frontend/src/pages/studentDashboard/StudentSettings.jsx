@@ -1,8 +1,8 @@
 // src/pages/studentDashboard/StudentSettings.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
-import StudentHeaderBar from "../../components/studentDashboard/StudentHeaderBar.jsx";
-import StudentSidebar from "../../components/studentDashboard/StudentSidebar.jsx";
+import StudentHeaderBar from "@/components/studentDashboard/StudentHeaderBar.jsx";
+import StudentSidebar from "@/components/studentDashboard/StudentSidebar.jsx";
 
 // ⚠️ Robust imports that work with either default or named exports
 import * as PwdMod from "./settings/PasswordAndSecurity.jsx";

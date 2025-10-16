@@ -12,7 +12,7 @@ const CompanySnapshotSchema = new mongoose.Schema(
   {
     companyId: { type: mongoose.Schema.Types.ObjectId, ref: "CompanyEmployees" },
     companyName: String,
-    profileImage: String,     // e.g. "1760450331933.jpeg" or full URL
+    profileImage: String, // e.g. "1760450331933.jpeg" or full URL
     coverPhoto: String,
     address: String,
     city: String,
@@ -21,6 +21,15 @@ const CompanySnapshotSchema = new mongoose.Schema(
     website: String,
     companySize: String,
     email: String,
+  },
+  { _id: false }
+);
+
+/** ✅ Subschema for start date window (range) */
+const StartDateRangeSchema = new mongoose.Schema(
+  {
+    from: { type: Date, required: true },
+    to: { type: Date, required: true },
   },
   { _id: false }
 );
@@ -117,11 +126,40 @@ const JobSchema = new mongoose.Schema(
       default: "open",
       index: true,
     },
+
+    // ✅ Start date window (range) as a subschema
+    startDateRange: {
+      type: StartDateRangeSchema,
+      required: true,
+    },
+
+    // ✅ Application deadline
+    applicationDeadline: { type: Date, required: true, index: true },
   },
   { timestamps: true }
 );
 
 // Helpful for company listings
 JobSchema.index({ companyId: 1, createdAt: -1 });
+
+// ✅ Helpful for filtering and sorting by timeline on the student side
+JobSchema.index({ status: 1, applicationDeadline: 1 });
+JobSchema.index({ "startDateRange.from": 1, "startDateRange.to": 1 });
+
+/** ✅ Enforce from ≤ to via schema hook (avoids invalid inline path validators) */
+JobSchema.pre("validate", function (next) {
+  const v = this.startDateRange;
+  if (!v || !v.from || !v.to) {
+    this.invalidate("startDateRange", "startDateRange.from and .to are required");
+    return next();
+  }
+  if (v.from.getTime() > v.to.getTime()) {
+    this.invalidate(
+      "startDateRange",
+      "startDateRange.from must be earlier than or equal to startDateRange.to"
+    );
+  }
+  next();
+});
 
 export default mongoose.model("Job", JobSchema);

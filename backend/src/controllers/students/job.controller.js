@@ -18,6 +18,13 @@ const toList = (v) => {
   return [];
 };
 
+// ✅ Helper: parse and validate date-like input
+const asDate = (v, name) => {
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) throw new Error(`${name} must be a valid date`);
+  return d;
+};
+
 // ✅ Helper: find the company profile for the logged-in user
 async function getCompanyForUser(userId) {
   const user = await User.findById(userId).lean();
@@ -59,6 +66,11 @@ export const createJob = async (req, res) => {
       languages,
       experienceLevel,
       screeningQuestions,
+
+      // ✅ NEW: dates
+      startDateFrom,          // e.g. "2025-11-01"
+      startDateTo,            // e.g. "2026-01-31"
+      applicationDeadline,    // e.g. "2025-10-31"
     } = req.body;
 
     // Required validations
@@ -69,6 +81,24 @@ export const createJob = async (req, res) => {
     reqd(salaryMax, "salaryMax");
     reqd(description, "description");
     reqd(department, "department");
+
+    // ✅ NEW: date validations (start range + application deadline)
+    reqd(startDateFrom, "startDateFrom");
+    reqd(startDateTo, "startDateTo");
+    reqd(applicationDeadline, "applicationDeadline");
+
+    const startFromDate = asDate(startDateFrom, "startDateFrom");
+    const startToDate = asDate(startDateTo, "startDateTo");
+    const deadlineDate = asDate(applicationDeadline, "applicationDeadline");
+
+    if (startFromDate > startToDate) {
+      throw new Error("startDateFrom must be earlier than or equal to startDateTo");
+    }
+    // Optional sanity check: deadline should not be after the start window ends
+    // (comment this out if you don't want the constraint)
+    // if (deadlineDate > startToDate) {
+    //   throw new Error("applicationDeadline must be on or before the last possible start date");
+    // }
 
     // Arrays
     const skillsArr = toList(skills);
@@ -101,7 +131,7 @@ export const createJob = async (req, res) => {
       expValue = experienceLevel;
     }
 
-    // ✅ Embed company snapshot (no populate needed later)
+  
     const companySnapshot = {
       companyId: companyProfile._id,
       companyName: companyProfile.companyName,
@@ -134,6 +164,13 @@ export const createJob = async (req, res) => {
       screeningQuestions: screenArr,
       status: "open",
       companySnapshot, // ✅ embedded snapshot here
+
+      // ✅ NEW: persist dates
+      startDateRange: {
+        from: startFromDate,
+        to: startToDate,
+      },
+      applicationDeadline: deadlineDate,
     });
 
     res.status(201).json({ message: "Job created successfully", job });
@@ -145,9 +182,6 @@ export const createJob = async (req, res) => {
   }
 };
 
-/* ============================================================
-   GET /api/jobs/mine — Get Jobs by Company
-   ============================================================ */
 export const myJobs = async (req, res) => {
   try {
     const companyProfile = await getCompanyForUser(req.user.id);
@@ -165,15 +199,12 @@ export const myJobs = async (req, res) => {
   }
 };
 
-/* ============================================================
-   GET /api/jobs — Public list (students)
-   ============================================================ */
 export const getAllJobs = async (req, res) => {
   try {
     const jobs = await Job.find({ status: "open" })
       .sort({ createdAt: -1 })
       .select(
-        "title companyName department location salaryMax workType jobType description skills educationLevel languages experienceLevel screeningQuestions createdAt companySnapshot"
+        "title companyName department location salaryMax workType jobType description skills educationLevel languages experienceLevel screeningQuestions createdAt companySnapshot startDateRange applicationDeadline" // ✅ added
       )
       .lean();
 
