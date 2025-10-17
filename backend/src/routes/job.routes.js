@@ -1,12 +1,18 @@
 import express from "express";
 import auth from "../middlewares/auth.js";
-import { createJob, myJobs } from "../controllers/job.controller.js";
+import {
+  createJob,
+  myJobs,
+  getAllJobs,
+  getJobById,
+  getScreeningQuestions,
+  getRandomJob, // ✅ added
+} from "../controllers/job.controller.js";
 
 const router = express.Router();
 
-import { getAllJobs } from "../controllers/job.controller.js";
-import { getJobById } from "../controllers/job.controller.js";
-import { getScreeningQuestions } from "../controllers/job.controller.js";
+// ✅ NEW: Random job route (public)
+router.get("/random", getRandomJob);
 
 router.get("/", getAllJobs);
 router.post("/", auth, createJob);

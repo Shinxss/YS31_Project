@@ -1,3 +1,4 @@
+// src/components/studentDashboard/StudentSidebar.jsx
 import React from "react";
 import {
   Home,
@@ -12,29 +13,25 @@ import {
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
-function NavItem({ icon, label, active, collapsed, onClick, to }) {
+function NavItem({ icon, label, to, collapsed }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const isActive =
-    typeof to === "string"
-      ? location.pathname === to || location.pathname.startsWith(`${to}/`)
-      : !!active;
-
-  const handleClick = () => {
-    if (to) navigate(to);
-    else if (onClick) onClick();
-  };
+  // ✅ Improved active logic
+  const isDashboard = to === "/student";
+  const isActive = isDashboard
+    ? location.pathname === "/student" // exact match only
+    : location.pathname === to || location.pathname.startsWith(`${to}/`);
 
   return (
     <button
-      onClick={handleClick}
-      className={`flex items-center ${
+      onClick={() => navigate(to)}
+      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
         collapsed ? "justify-center" : "justify-start"
-      } gap-3 px-3 py-2 rounded-md text-sm transition ${
+      } ${
         isActive
-          ? "bg-white text-[#173B8A] font-semibold shadow-sm"
-          : "hover:bg-white/10 text-white"
+          ? "bg-white text-[#173B8A] shadow-sm"
+          : "text-white/90 hover:bg-white/10 hover:text-white"
       }`}
       title={label}
       type="button"
@@ -47,27 +44,22 @@ function NavItem({ icon, label, active, collapsed, onClick, to }) {
 
 export default function StudentSidebar({
   collapsed,
-  active = "Dashboard",
   onLogout,
-  onNav,
-  // base paths (customizable if you ever change routes)
-  settingsTo = "/student/settings",
-  backTo = "/student",
 }) {
   const asideWidth = collapsed ? "w-16" : "w-64";
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Auto enter settings menu when under /student/settings/*
+  // ✅ Detect when user is in /student/settings/*
   const isSettings =
-    location.pathname === settingsTo ||
-    location.pathname.startsWith(`${settingsTo}/`);
+    location.pathname === "/student/settings" ||
+    location.pathname.startsWith("/student/settings/");
 
   return (
     <aside
       className={`${asideWidth} bg-[#173B8A] text-white hidden md:flex flex-col transition-[width] duration-200`}
     >
-      {/* Brand */}
+      {/* ─────── Brand Logo ─────── */}
       <div
         className={`h-16 border-b border-white/10 ${
           collapsed ? "grid place-items-center px-0" : "flex items-end px-6"
@@ -81,7 +73,7 @@ export default function StudentSidebar({
         </div>
       </div>
 
-      {/* ───────── Default Student Nav ───────── */}
+      {/* ───────── Default Nav (Main Pages) ───────── */}
       {!isSettings && (
         <>
           {!collapsed && (
@@ -94,23 +86,20 @@ export default function StudentSidebar({
             <NavItem
               icon={<Home className="w-4 h-4" />}
               label="Dashboard"
-              active={active === "Dashboard"}
+              to="/student"
               collapsed={collapsed}
-              onClick={() => onNav?.("Dashboard")}
             />
             <NavItem
               icon={<Briefcase className="w-4 h-4" />}
               label="Browse Jobs"
-              active={active === "Browse Jobs"}
+              to="/student/browse-jobs"
               collapsed={collapsed}
-              onClick={() => onNav?.("Browse Jobs")}
             />
             <NavItem
               icon={<FileText className="w-4 h-4" />}
               label="My Applications"
-              active={active === "My Applications"}
+              to="/student/my-applications"
               collapsed={collapsed}
-              onClick={() => onNav?.("My Applications")}
             />
           </nav>
 
@@ -121,34 +110,29 @@ export default function StudentSidebar({
           )}
 
           <nav className="px-2 flex flex-col gap-1">
-            {/* Profile (main nav) → show inside dashboard (no route) */}
             <NavItem
               icon={<User className="w-4 h-4" />}
               label="Profile"
-              active={active === "Profile"}
+              to="/student/profile"
               collapsed={collapsed}
-              onClick={() => onNav?.("Profile")}
-              /* no `to` here on purpose */
             />
-            {/* Route to StudentSettings root */}
             <NavItem
               icon={<SettingsIcon className="w-4 h-4" />}
               label="Settings"
+              to="/student/settings"
               collapsed={collapsed}
-              to={settingsTo}
             />
           </nav>
         </>
       )}
 
-      {/* ───────── Settings Nav (auto on /student/settings/*) ───────── */}
+      {/* ───────── Settings Menu ───────── */}
       {isSettings && (
         <>
-          {/* Header pill */}
           <div className="px-2 pt-3">
             <button
               type="button"
-              onClick={() => navigate(backTo)}
+              onClick={() => navigate("/student")}
               className={`w-full ${
                 collapsed ? "h-10" : "h-12"
               } rounded-xl bg-white/10 hover:bg-white/15 transition flex items-center ${
@@ -160,15 +144,16 @@ export default function StudentSidebar({
                 <ArrowLeft className="w-4 h-4" />
               </span>
               {!collapsed && (
-                <span className="text-sm font-semibold">Settings</span>
+                <span className="text-sm font-semibold">Back to Dashboard</span>
               )}
             </button>
           </div>
 
-          {/* Account Center */}
           {!collapsed && (
             <div className="px-4 mt-4">
-              <div className="text-[13px] font-semibold">Account Center</div>
+              <div className="text-[15px] uppercase font-semibold">
+                Account Center
+              </div>
               <div className="text-[11px] text-white/70 mt-1">
                 Manage your Account settings
               </div>
@@ -179,23 +164,21 @@ export default function StudentSidebar({
             <NavItem
               icon={<Lock className="w-4 h-4" />}
               label="Password and Security"
+              to="/student/settings/password"
               collapsed={collapsed}
-              to={`${settingsTo}/password`}
             />
-            {/* Profile details (settings) */}
             <NavItem
               icon={<User className="w-4 h-4" />}
               label="Profile details"
+              to="/student/settings/profile"
               collapsed={collapsed}
-              to={`${settingsTo}/profile`}
             />
           </nav>
 
-          {/* Legal */}
           {!collapsed && (
             <div className="px-4 mt-5">
-              <div className="text-[13px] font-semibold">
-                Community Standards and legal policies
+              <div className="text-[15px] uppercase font-semibold">
+                Community Standards and Legal Policies
               </div>
             </div>
           )}
@@ -204,20 +187,20 @@ export default function StudentSidebar({
             <NavItem
               icon={<FileText className="w-4 h-4" />}
               label="Terms of Service"
+              to="/student/settings/terms"
               collapsed={collapsed}
-              to={`${settingsTo}/terms`}
             />
             <NavItem
               icon={<Shield className="w-4 h-4" />}
               label="Privacy policy"
+              to="/student/settings/privacy"
               collapsed={collapsed}
-              to={`${settingsTo}/privacy`}
             />
           </nav>
         </>
       )}
 
-      {/* Logout */}
+      {/* ───────── Logout Button ───────── */}
       <div className="mt-auto p-2">
         <button
           onClick={onLogout}

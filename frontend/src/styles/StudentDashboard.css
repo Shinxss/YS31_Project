@@ -1,7 +1,8 @@
 .react-calendar {
   border: none;
   width: 100%;
-  background-color: white;
+  padding: 15px;
+  background-color: rgb(250, 250, 250);
   border-radius: 8px;
   font-family: "Inter", sans-serif;
 }
@@ -12,14 +13,20 @@
   border-radius: 8px;
 }
 
-.react-calendar__tile--active {
-  background-color: #173b8a !important;
+.react-calendar__tile--now {
+  background: #173b8a !important;
   color: white !important;
+  border-radius: 6px !important;
 }
 
-/* Highlight days with events */
 .highlight-date {
   background: #f37526 !important;
   color: white !important;
-  border-radius: 50%;
+  border-radius: 50%zz;
+}
+
+.react-calendar__tile--active {
+  background: #173b8a !important;
+  color: white !important;
+  border-radius: 6px !important;
 }

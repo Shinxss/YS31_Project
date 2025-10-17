@@ -12,6 +12,7 @@ import companyRoutes from "./routes/company.routes.js";
 import jobRoutes from "./routes/job.routes.js";
 import statsRoutes from "./routes/stats.routes.js";
 import studentRoutes from "./routes/studentRoutes.js";
+import studentApplicationsRoutes from "./routes/studentApplications.routes.js";
 
 const app = express();
 
@@ -19,31 +20,39 @@ app.use(
   cors({
     origin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
     credentials: true,
-    // ✅ ADDED: allow Authorization header for your /api/jobs/:jobId/screening (when protected) and uploads
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     exposedHeaders: ["Content-Type"],
   })
 );
 
-// ✅ ADDED: also parse urlencoded (for robustness with some form posts)
 app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ extended: true, limit: "1mb" })); // ADDED
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 app.use(morgan("dev"));
 
-// ✅ serve uploaded images BEFORE routes
+// static
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+app.use(
+  "/uploads/resumes",
+  express.static(path.join(__dirname, "../uploads/resumes"))
+);
 
-// ✅ OPTIONAL: serve resumes folder, if you store files like /uploads/resumes (safe, additive)
-app.use("/uploads/resumes", express.static(path.join(__dirname, "../uploads/resumes"))); // ADDED (safe)
-
-// Routes
+// ---------------------------
+// Routes (order matters!)
+// ---------------------------
 app.use("/api/auth", authRoutes);
 app.use("/api/company", companyRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/stats", statsRoutes);
+
+// ✅ Mount the more specific router FIRST so it isn't swallowed by /api/student
+app.use("/api/student/applications", studentApplicationsRoutes);
+// 👉 debug log so you can verify it's mounted in the console
+console.log("➡️  Mounted router: /api/student/applications");
+
+// Then mount the general student router
 app.use("/api/student", studentRoutes);
 
 // Health
@@ -51,8 +60,8 @@ app.get("/api/health", (_req, res) =>
   res.json({ ok: true, app: process.env.APP_NAME || "App" })
 );
 
-// ✅ ADDED: quick root check to confirm server is running
-app.get("/", (_req, res) => res.send("InternConnect API is running.")); // ADDED
+// Root
+app.get("/", (_req, res) => res.send("InternConnect API is running."));
 
 // 404
 app.use((req, res) => res.status(404).json({ message: "Not found" }));
