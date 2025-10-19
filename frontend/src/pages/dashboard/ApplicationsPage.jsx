@@ -164,7 +164,8 @@ export default function ApplicationsPage() {
         ? data.applications
         : data?.items || [];
 
-      setApps(items.map((a) => ({ ...a, status: a.status || "Application Sent" })));
+      // Company side: default to "New" if missing
+      setApps(items.map((a) => ({ ...a, status: a.status || "New" })));
     } catch (e) {
       setError(e.message || "Something went wrong.");
     } finally {
@@ -176,16 +177,20 @@ export default function ApplicationsPage() {
     fetchApplications();
   }, []);
 
+  // Company-visible status labels + colors
   const statusLabel = (status) => {
-    const s = String(status || "").toLowerCase();
+    const s = String(status || "").trim().toLowerCase();
     if (s === "accepted") return ["Accepted", "bg-green-100 text-green-700"];
     if (s === "rejected") return ["Rejected", "bg-red-100 text-red-700"];
-    if (s === "new") return ["Under Review", "bg-yellow-100 text-yellow-800"];
-    return ["Application Sent", "bg-gray-100 text-gray-700"];
+    if (s === "new") return ["New", "bg-indigo-100 text-indigo-700"];
+    if (s === "under review" || s === "under_review")
+      return ["Under Review", "bg-yellow-100 text-yellow-800"];
+    return ["New", "bg-indigo-100 text-indigo-700"];
   };
 
+  // When recruiter clicks "Review Application", set status → "Under Review"
   const handleReview = async (app) => {
-    if (!app?._id) return;
+    if (!app?._id) return; // must be application _id
     setRowBusy(app._id);
     setError(null);
     try {
@@ -193,11 +198,16 @@ export default function ApplicationsPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json", ...authHeader() },
         credentials: "include",
-        body: JSON.stringify({ status: "New" }),
+        body: JSON.stringify({ status: "Under Review" }),
       });
       if (!res.ok) throw new Error("Failed to update status");
-      setApps((prev) => prev.map((x) => (x._id === app._id ? { ...x, status: "New" } : x)));
 
+      // Optimistic update
+      setApps((prev) =>
+        prev.map((x) => (x._id === app._id ? { ...x, status: "Under Review" } : x))
+      );
+
+      // Optionally fetch extra details for drawer
       const [profileRes, answersRes, msgRes] = await Promise.all([
         fetch(API.studentProfile(app.student?._id), { credentials: "include", headers: { ...authHeader() } }),
         fetch(API.screeningAnswers(app._id), { credentials: "include", headers: { ...authHeader() } }),
@@ -241,9 +251,7 @@ export default function ApplicationsPage() {
   const rows = useMemo(() => apps, [apps]);
 
   return (
-    // page wrapper – transparent (no card background)
     <section className="max-w-6xl mx-auto px-4 sm:px-6 bg-transparent">
-      {/* Title exactly like screenshot */}
       <h1 className="text-4xl font-bold text-[#0B2E82] mb-6">Applications</h1>
 
       {error && (
@@ -269,55 +277,50 @@ export default function ApplicationsPage() {
 
             return (
               <li
-                  key={app._id}
-                  className="relative rounded-xl bg-white p-5 shadow-lg hover:shadow-xl transition-shadow flex items-start gap-4 min-h-[140px]"
+                key={app._id}
+                className="relative rounded-xl bg-white p-5 shadow-lg hover:shadow-xl transition-shadow flex items-start gap-4 min-h-[140px]"
+              >
+                {/* Top-right status pill */}
+                <span
+                  className={`absolute top-4 right-4 inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${pillClass}`}
+                  title={`Status: ${app.status || "New"}`}
                 >
-                  {/* Top-right status pill */}
-                  <span
-                    className={`absolute top-4 right-4 inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${pillClass}`}
-                    title={`Status: ${app.status || "Application Sent"}`}
+                  {label}
+                </span>
+
+                {/* Bottom-right buttons */}
+                <div className="absolute bottom-4 right-4 flex gap-2">
+                  <Link
+                    to={`/students/${app.student?._id || ""}`}
+                    className="px-3 py-2 rounded-lg border text-gray-700 hover:bg-gray-50"
                   >
-                    {label}
-                  </span>
+                    View Profile
+                  </Link>
+                  <button
+                    disabled={isBusy}
+                    onClick={() => handleReview(app)}
+                    className="px-4 py-2 rounded-lg bg-[#1337B6] text-white hover:bg-[#0F2FA0] disabled:opacity-60"
+                  >
+                    {isBusy ? "Updating…" : "Review Application"}
+                  </button>
+                </div>
 
-                  {/* Bottom-right buttons */}
-                  <div className="absolute bottom-4 right-4 flex gap-2">
-                    <Link
-                      to={`/students/${app.student?._id || ""}`}
-                      className="px-3 py-2 rounded-lg border text-gray-700 hover:bg-gray-50"
-                    >
-                      View Profile
-                    </Link>
-                    <button
-                      disabled={isBusy}
-                      onClick={() => handleReview(app)}
-                      className="px-4 py-2 rounded-lg bg-[#1337B6] text-white hover:bg-[#0F2FA0] disabled:opacity-60"
-                    >
-                      {isBusy ? "Updating…" : "Review Application"}
-                    </button>
-                  </div>
+                {/* Avatar */}
+                <Initials name={fullName} />
 
-                  {/* Avatar */}
-                  <Initials name={fullName} />
-
-                  {/* Content column (top-left name/title, bottom-left time) */}
-                  <div className="flex-1 min-w-0 pr-56"> {/* pr-56 keeps clear of right-side buttons/pill */}
-                    <div className="flex flex-col h-full">
-                      {/* Top-left: name + job title */}
-                      <div>
-                        <p className="text-lg font-semibold text-gray-900 truncate">{fullName}</p>
-                        <p className="text-gray-600 text-sm">{jobTitle}</p>
-                      </div>
-
-                      {/* Bottom-left: time ago */}
-                      <p className="mt-8 text-gray-500 text-xs">
-                        Applied {timeAgo(app.appliedAt || app.createdAt)}
-                      </p>
+                {/* Content column */}
+                <div className="flex-1 min-w-0 pr-56">
+                  <div className="flex flex-col h-full">
+                    <div>
+                      <p className="text-lg font-semibold text-gray-900 truncate">{fullName}</p>
+                      <p className="text-gray-600 text-sm">{jobTitle}</p>
                     </div>
+                    <p className="mt-8 text-gray-500 text-xs">
+                      Applied {timeAgo(app.appliedAt || app.createdAt)}
+                    </p>
                   </div>
-                </li>
-
-
+                </div>
+              </li>
             );
           })}
         </ul>
@@ -331,4 +334,3 @@ export default function ApplicationsPage() {
     </section>
   );
 }
-

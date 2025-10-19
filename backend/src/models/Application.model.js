@@ -21,8 +21,8 @@ const applicationSchema = new Schema(
     companyName: String,
     status: {
       type: String,
-      enum: ["Application Sent", "New", "Under Review", "Accepted", "Rejected", "Withdrawn"],
-      default: "Application Sent",
+      enum: ["New", "Under Review", "Accepted", "Rejected", "Withdrawn"],
+      default: "New",
     },
     resume: String,
     message: String,

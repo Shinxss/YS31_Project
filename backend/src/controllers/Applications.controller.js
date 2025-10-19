@@ -147,7 +147,7 @@ export const applyToJob = async (req, res) => {
       resume: req.file ? req.file.filename : null,
       message: message || "",
       answers: parsedAnswers,
-      status: "Application Sent",
+      status: "New",
     });
 
     return res.status(201).json({
@@ -188,10 +188,8 @@ export const getStudentApplicationStats = async (req, res) => {
 };
 
 const STATUS_MAP = new Map([
-  ["application sent", "Application Sent"],
   ["new", "New"],
   ["under review", "Under Review"],
-  ["under_review", "Under Review"],
   ["accepted", "Accepted"],
   ["rejected", "Rejected"],
   ["withdrawn", "Withdrawn"],
@@ -215,7 +213,6 @@ export async function updateApplicationStatus(req, res) {
       return res.status(400).json({ message: "Invalid status value" });
     }
 
-    // find company for the logged-in user (id first, fallback by email if you use that)
     const company = await Company
       .findOne({ user: req.user.id })
       .select("_id companyName");
@@ -223,13 +220,11 @@ export async function updateApplicationStatus(req, res) {
       return res.status(403).json({ message: "No company profile for this user" });
     }
 
-    // authorize + update in one go
     const app = await Application.findOneAndUpdate(
       {
         _id: id,
         $or: [
           { company: company._id },
-          // supports old docs that only stored companyName
           ...(company.companyName ? [{ companyName: company.companyName }] : []),
         ],
       },
@@ -238,7 +233,6 @@ export async function updateApplicationStatus(req, res) {
     );
 
     if (!app) {
-      // either not found, or not owned by this company
       return res.status(404).json({ message: "Application not found" });
     }
 

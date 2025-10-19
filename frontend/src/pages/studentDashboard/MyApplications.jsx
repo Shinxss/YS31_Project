@@ -12,9 +12,9 @@ export default function MyApplications() {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ----------------------
-  // ✅ API base resolver (same pattern used elsewhere)
-  // ----------------------
+  /* ----------------------------
+   * API base resolver (Vite/dev)
+   * ---------------------------- */
   const RAW_BASE =
     (typeof window !== "undefined" && import.meta?.env?.VITE_API_BASE) || "";
   const IS_VITE =
@@ -48,6 +48,7 @@ export default function MyApplications() {
             ...getAuthHeaders(),
           },
         });
+
         if (res.status === 401) {
           toast.error("Session expired. Please log in again.");
           setApps([]);
@@ -61,17 +62,16 @@ export default function MyApplications() {
           } catch {}
           throw new Error(msg);
         }
-        const data = await res.json();
-        setApps(Array.isArray(data) ? data : []); // (kept)
 
-        // 🔶 ADDED: tolerate `{ applications: [...] }` or other common shapes
+        const data = await res.json();
+        // Tolerate several shapes: array, {applications:[]}, {items:[]}, {data:[]}
         const parsed =
           (Array.isArray(data?.applications) && data.applications) ||
           (Array.isArray(data?.items) && data.items) ||
           (Array.isArray(data?.data) && data.data) ||
           (Array.isArray(data) && data) ||
           [];
-        setApps(parsed); // ADDED
+        setApps(parsed);
       } catch (err) {
         console.error("Load applications error:", err);
         toast.error(err.message || "Failed to load applications");
@@ -95,21 +95,41 @@ export default function MyApplications() {
     });
   };
 
-  const StatusPill = ({ status = "Applied" }) => {
-    const s = String(status).toLowerCase();
-    const map = {
-      applied: "bg-blue-100 text-blue-700",
-      pending: "bg-yellow-100 text-yellow-700",
-      "in review": "bg-yellow-100 text-yellow-700",
-      accepted: "bg-green-100 text-green-700",
-      shortlisted: "bg-emerald-100 text-emerald-700",
-      rejected: "bg-red-100 text-red-600",
-      withdrawn: "bg-gray-200 text-gray-700",
-    };
-    const cls = map[s] || "bg-blue-100 text-blue-700";
+  /* ----------------------------
+   * Student-facing Status Pill
+   * ---------------------------- */
+  const normalize = (v = "") =>
+    String(v).trim().toLowerCase().replace(/\s+/g, " ");
+
+  const PALETTE = {
+    blue: "bg-blue-100 text-blue-700",
+    yellow: "bg-yellow-100 text-yellow-800",
+    green: "bg-green-100 text-green-700",
+    red: "bg-red-100 text-red-700",
+    gray: "bg-gray-200 text-gray-700",
+  };
+
+  // Shows “Application Sent” when backend is "New", “Under Review” when reviewed, etc.
+  const StatusPill = ({ status = "Application Sent" }) => {
+    const s = normalize(status);
+
+    // Student-facing label rules
+    // - backend/company "New" => show "Application Sent"
+    let label =
+      s === "new" ? "Application Sent" :
+      status;
+
+    const cls =
+      normalize(label) === "New" ? PALETTE.blue :
+      s === "under review"                    ? PALETTE.yellow :
+      s === "accepted"                        ? PALETTE.green :
+      s === "rejected"                        ? PALETTE.red :
+      s === "withdrawn"                       ? PALETTE.gray :
+      PALETTE.blue;
+
     return (
       <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${cls}`}>
-        {status}
+        {label}
       </span>
     );
   };
@@ -156,20 +176,16 @@ export default function MyApplications() {
               {apps.map((a) => {
                 const id = a._id || `${a.jobId || a.job?._id || Math.random()}`;
                 const job = a.job || a.posting || a.listing || {};
-                const title =
-                  job.title || a.title || "Untitled Opportunity";
+                const title = job.title || a.title || "Untitled Opportunity";
                 const company =
                   job.companyName ||
                   job.company?.name ||
                   a.companyName ||
                   "Unknown Company";
                 const location =
-                  job.location ||
-                  job.city ||
-                  a.location ||
-                  "—";
+                  job.location || job.city || a.location || "—";
                 const created = a.createdAt || a.appliedAt || a.date || null;
-                const status = a.status || "Applied";
+                const status = a.status || "Application Sent";
 
                 return (
                   <li key={id} className="px-4 py-4 bg-white hover:bg-gray-50 transition">
