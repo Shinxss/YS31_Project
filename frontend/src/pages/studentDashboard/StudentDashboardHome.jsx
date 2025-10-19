@@ -11,7 +11,7 @@ import {
   Plus,
 } from "lucide-react";
 import Calendar from "react-calendar";
-import "react-calendar/dist/Calendar.css";
+import "react-calendar/dist/Calendar.css"; 
 import AddReminderModal from "@/components/studentDashboard/AddReminderModal";
 
 export default function StudentDashboardHome({

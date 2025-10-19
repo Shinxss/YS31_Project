@@ -6,6 +6,7 @@ import multer from "multer";
 import Application from "../models/Application.model.js";
 import Job from "../models/job.model.js";
 import Student from "../models/student.model.js";
+import Company from "../models/company.model.js";
 
 /* ----------------------------- Helpers ----------------------------- */
 
@@ -186,57 +187,60 @@ export const getStudentApplicationStats = async (req, res) => {
   }
 };
 
-const STATUS_MAP = {
-  // UI -> DB
-  new: "New",
-  application_sent: "Application Sent",
-  "application sent": "Application Sent",
-  under_review: "Under Review",        // if you don’t have this in enum, change to "New"
-  accepted: "Accepted",
-  rejected: "Rejected",
-  withdrawn: "Withdrawn",
-};
+const STATUS_MAP = new Map([
+  ["application sent", "Application Sent"],
+  ["new", "New"],
+  ["under review", "Under Review"],
+  ["under_review", "Under Review"],
+  ["accepted", "Accepted"],
+  ["rejected", "Rejected"],
+  ["withdrawn", "Withdrawn"],
+]);
 
-const toCanonicalStatus = (val) => {
-  if (!val) return null;
-  const k = String(val).trim().toLowerCase().replace(/\s+/g, "_");
-  return STATUS_MAP[k] || null;
-};
+function toCanonicalStatus(s) {
+  if (!s) return null;
+  const key = String(s).trim().toLowerCase();
+  return STATUS_MAP.get(key) || null;
+}
 
 export async function updateApplicationStatus(req, res) {
   try {
     const { id } = req.params;
-    const rawStatus = req.body?.status;
+    const canonical = toCanonicalStatus(req.body?.status);
 
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid application id" });
     }
-    const status = toCanonicalStatus(rawStatus);
-    if (!status) {
+    if (!canonical) {
       return res.status(400).json({ message: "Invalid status value" });
     }
 
-    // make sure this is the company's application
-    // find the company doc for the logged-in user
-    const company = await Company.findOne({ user: req.user.id }).select("_id");
+    // find company for the logged-in user (id first, fallback by email if you use that)
+    const company = await Company
+      .findOne({ user: req.user.id })
+      .select("_id companyName");
     if (!company) {
       return res.status(403).json({ message: "No company profile for this user" });
     }
 
-    const app = await Application.findById(id);
-    if (!app) return res.status(404).json({ message: "Application not found" });
+    // authorize + update in one go
+    const app = await Application.findOneAndUpdate(
+      {
+        _id: id,
+        $or: [
+          { company: company._id },
+          // supports old docs that only stored companyName
+          ...(company.companyName ? [{ companyName: company.companyName }] : []),
+        ],
+      },
+      { $set: { status: canonical } },
+      { new: true, runValidators: true }
+    );
 
-    // authorize: application must belong to this company
-    const sameCompany =
-      (app.company && String(app.company) === String(company._id)) ||
-      (app.companyName && app.companyName === company.companyName);
-
-    if (!sameCompany) {
-      return res.status(403).json({ message: "Not allowed to update this application" });
+    if (!app) {
+      // either not found, or not owned by this company
+      return res.status(404).json({ message: "Application not found" });
     }
-
-    app.status = status;
-    await app.save();
 
     return res.json({ message: "Status updated", application: app });
   } catch (err) {
