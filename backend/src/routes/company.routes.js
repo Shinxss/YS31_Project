@@ -1,11 +1,12 @@
 import express from "express";
-import auth from "../middlewares/auth.js";
+import auth, {requireRole} from "../middlewares/auth.js";
 import {
   getMe,
   validateCompanyName,
   saveCompanyDetails,
   getCompanyDetails,
-} from "../controllers/company.controller.js"; // ✅ removed uploadCompanyImages
+} from "../controllers/company.controller.js";
+import { listCompanyApplications } from "../controllers/companyApplications.controller.js"
 
 const router = express.Router();
 
@@ -15,7 +16,8 @@ router.get("/validate-name", validateCompanyName);
 
 // ✅ Simplified: no multer upload needed (uses base64 upload now)
 router.post("/details/save", auth, saveCompanyDetails);
-
 router.get("/details/:userId", auth, getCompanyDetails);
+router.get("/applications", auth, listCompanyApplications);
+
 
 export default router; // ✅ essential export

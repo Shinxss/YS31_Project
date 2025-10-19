@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-// ---------- Public Pages ----------
 import LandingPage from "./pages/LandingPage";
 import UserLogin from "./pages/Login";
 import UserRegis from "./pages/Signup";
@@ -15,16 +14,16 @@ import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import JobDetails from "./pages/studentDashboard/JobDetails.jsx";
 
-// ---------- Student Dashboard ----------
+//------------Student Dashboard Imports------------
 import StudentDash from "./pages/studentDashboard/StudentDashboard.jsx";
 import StudentProfile from "./pages/studentDashboard/ProfilePage.jsx";
 import StudentSettings from "./pages/studentDashboard/StudentSettings.jsx";
 
-// ---------- Company Dashboard ----------
+//------------Company Dashboard Imports------------
 import CompanyDash from "./pages/dashboard/CompanyDashboard.jsx";
 import CompanySettings from "./pages/dashboard/CompanySettings.jsx";
 
-// ---------- Route Guards ----------
+//------------Route Protection Imports------------
 import ProtectedRoute from "./components/ProtectedRoute";
 import GuestRoute from "./components/GuestRoute";
 
@@ -53,39 +52,38 @@ function App() {
             background: "#F37526", // Orange progress bar
           }}
         />
-
         <Routes>
-          {/* ---------- GUEST ROUTES ---------- */}
+          {/* Public/guest routes */}
           <Route element={<GuestRoute />}>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/internships" element={<Internships />} />
             <Route path="/login" element={<UserLogin />} />
             <Route path="/signup" element={<UserRegis />} />
             <Route path="/verify" element={<VerifySignup />} />
           </Route>
 
-          {/* ---------- PUBLIC PAGES ---------- */}
+          {/* Public info pages */}
           <Route path="/internships" element={<Internships />} />
           <Route path="/companies" element={<Companies />} />
           <Route path="/about" element={<About />} />
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
 
-          {/* ---------- STUDENT DASHBOARD (Protected) ---------- */}
+          {/* Student Dashboard (protected) */}
           <Route element={<ProtectedRoute allow={["student"]} />}>
-            <Route path="/student/*" element={<StudentDash />}>
-              <Route path="profile" element={<StudentProfile />} />
-              <Route path="settings/*" element={<StudentSettings />} />
-              <Route path="jobs/:jobId" element={<JobDetails />} />
-            </Route>
+            <Route path="/student/*" element={<StudentDash />} />
+            <Route path="/student/profile" element={<StudentProfile />} />
+            <Route path="/student/settings/*" element={<StudentSettings />} />
+            <Route path="/student/jobs/:jobId" element={<JobDetails />} />
           </Route>
 
-          {/* ---------- COMPANY DASHBOARD (Protected) ---------- */}
+          {/* Company Dashboard (protected) */}
           <Route element={<ProtectedRoute allow={["company"]} />}>
             <Route path="/company/*" element={<CompanyDash />} />
             <Route path="/company/settings/*" element={<CompanySettings />} />
           </Route>
 
-          {/* ---------- FALLBACK ---------- */}
+          {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </>

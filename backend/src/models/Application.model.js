@@ -1,38 +1,39 @@
+// models/Application.model.js
 import mongoose from "mongoose";
+const { Schema } = mongoose;
 
-const applicationSchema = new mongoose.Schema(
+const applicationSchema = new Schema(
   {
     student: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Student_User",
+      type: Schema.Types.ObjectId,
+      ref: "Student",     // ⬅️ was "Student_User"
       required: true,
     },
     job: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Job",
+      type: Schema.Types.ObjectId,
+      ref: "Job",         // keep if your job model is model("Job", ...)
       required: true,
     },
     company: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Company_User",
+      type: Schema.Types.ObjectId,
+      ref: "Company",    
     },
     companyName: String,
     status: {
       type: String,
-      enum: ["Applied", "Accepted", "Rejected"],
-      default: "Applied",
+      enum: ["Application Sent", "New", "Under Review", "Accepted", "Rejected", "Withdrawn"],
+      default: "Application Sent",
     },
-    resume: String, 
+    resume: String,
     message: String,
     answers: [
       {
         question: String,
         answer: String,
       },
-    ], // ✅ screening answers
+    ],
   },
   { timestamps: true }
 );
-
 
 export default mongoose.model("Application", applicationSchema);

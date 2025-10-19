@@ -5,9 +5,11 @@ import {
   addReminder,
   getReminders,
 } from "../controllers/student.controller.js";
-import { protect } from "../middlewares/auth.js";
-import { uploadResume, applyToJob } from "../controllers/apply.controller.js";
-import { listMyApplications } from "../controllers/studentApplications.controller.js";
+import { protect } from "../middlewares/auth.js"; 
+import { 
+  listMyApplications,
+  uploadResume, 
+  applyToJob } from "../controllers/Applications.controller.js";
 
 const router = express.Router();
 

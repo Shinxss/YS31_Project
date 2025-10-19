@@ -1,5 +1,4 @@
-// frontend/src/pages/LandingPage.jsx
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import Header from "../components/Navbar";
 import Footer from "../components/Footer";
 import {
@@ -19,6 +18,7 @@ import {
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+const JOBS_URL = `${API_BASE}/api/jobs`; // from controllers/job.controller.js:getAllJobs
 
 export default function LandingPage() {
   // ---- Stats state (from backend) ----
@@ -207,7 +207,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ===== FEATURED OPPORTUNITIES ===== */}
+      {/* ===== FEATURED OPPORTUNITIES (Dynamic) ===== */}
       <section className="bg-[#ECF3FC] pt-16 pb-20">
         <SectionTitle
           title="Featured"
@@ -216,66 +216,11 @@ export default function LandingPage() {
         />
 
         <div className="max-w-7xl mx-auto px-6">
-          <div className="grid md:grid-cols-3 gap-8">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white border border-gray-200 shadow-lg rounded-2xl p-8 min-h-[520px]">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-blue-900 text-white flex items-center justify-center font-semibold">
-                      T
-                    </div>
-                    <div>
-                      <div className="font-semibold text-lg leading-tight">TechCorp</div>
-                      <div className="flex items-center gap-1 text-sm text-gray-600">
-                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                        <span>4.8</span>
-                      </div>
-                    </div>
-                  </div>
-                  <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-xs font-medium">
-                    2 days ago
-                  </span>
-                </div>
-
-                <h3 className="mt-5 text-2xl font-bold leading-snug">
-                  Software Engineering Intern
-                </h3>
-                <p className="text-gray-600 mt-3">
-                  Join our engineering team to build cutting-edge web applications using React and Node.js.
-                  You'll work on real projects that impact millions of users.
-                </p>
-
-                <div className="mt-5 space-y-2 text-sm text-gray-600">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-gray-500" />
-                    <span>Dagupan City</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock3 className="w-4 h-4 text-gray-500" />
-                    <span>3 months · Full-time</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Tag className="w-4 h-4 text-gray-500" />
-                    <span>Technology</span>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2 mt-4">
-                  <span className="text-xs border border-gray-300 rounded-full px-3 py-1">React</span>
-                  <span className="text-xs border border-gray-300 rounded-full px-3 py-1">JavaScript</span>
-                  <span className="text-xs border border-gray-300 rounded-full px-3 py-1">Node.js</span>
-                </div>
-
-                <button className="mt-6 w-full bg-[#F37526] hover:bg-orange-600 text-white py-3 rounded-md font-medium transition">
-                  Apply Now
-                </button>
-              </div>
-            ))}
-          </div>
+          <FeaturedJobsGrid />
           <div className="mt-10 flex justify-center">
-            <button className="border border-gray-300 hover:border-[#F37526] px-6 py-2 rounded-md">
+            <a className="border border-gray-300 hover:border-[#F37526] px-6 py-2 rounded-md" href="/jobs">
               View All Opportunities
-            </button>
+            </a>
           </div>
         </div>
       </section>
@@ -372,6 +317,148 @@ function FeatureCard({ icon, iconBg, title, text }) {
           <p className="text-gray-600 mt-2">{text}</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Small, dependency-free "time ago" helper */
+function timeAgo(iso) {
+  if (!iso) return "";
+  const diff = Date.now() - new Date(iso).getTime();
+  if (Number.isNaN(diff) || diff < 0) return "";
+  const sec = Math.floor(diff / 1000);
+  const min = Math.floor(sec / 60);
+  const hr = Math.floor(min / 60);
+  const day = Math.floor(hr / 24);
+  if (day > 30) return "1 month ago";
+  if (day >= 7) return `${Math.floor(day / 7)} week${Math.floor(day / 7) > 1 ? "s" : ""} ago`;
+  if (day >= 1) return `${day} day${day > 1 ? "s" : ""} ago`;
+  if (hr >= 1) return `${hr} hour${hr > 1 ? "s" : ""} ago`;
+  if (min >= 1) return `${min} minute${min > 1 ? "s" : ""} ago`;
+  return "just now";
+}
+
+/* ---------- Dynamic Featured Jobs Grid ---------- */
+function FeaturedJobsGrid() {
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancel = false;
+    const ac = new AbortController();
+    (async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const res = await fetch(JOBS_URL, { signal: ac.signal });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.message || "Failed to load jobs");
+        // show the latest 3 open jobs
+        const list = Array.isArray(data.jobs) ? data.jobs.slice(0, 3) : [];
+        if (!cancel) setJobs(list);
+      } catch (e) {
+        if (!cancel && e.name !== "AbortError") setError(e.message || "Failed to load jobs");
+      } finally {
+        if (!cancel) setLoading(false);
+      }
+    })();
+    return () => { cancel = true; ac.abort(); };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="grid md:grid-cols-3 gap-8">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="bg-white border border-gray-200 shadow-lg rounded-2xl p-8 animate-pulse">
+            <div className="h-6 w-40 bg-gray-200 rounded mb-2" />
+            <div className="h-4 w-24 bg-gray-200 rounded mb-6" />
+            <div className="h-6 w-3/4 bg-gray-200 rounded mb-3" />
+            <div className="h-4 w-full bg-gray-200 rounded mb-2" />
+            <div className="h-4 w-5/6 bg-gray-200 rounded mb-6" />
+            <div className="flex gap-2 mt-4">
+              <div className="h-6 w-16 bg-gray-200 rounded-full" />
+              <div className="h-6 w-24 bg-gray-200 rounded-full" />
+              <div className="h-6 w-20 bg-gray-200 rounded-full" />
+            </div>
+            <div className="h-10 w-full bg-gray-200 rounded mt-6" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error) return <div className="text-center text-red-600">{error}</div>;
+  if (!jobs.length) return <div className="text-center text-gray-600">No open jobs yet.</div>;
+
+  return (
+    <div className="grid md:grid-cols-3 gap-8">
+      {jobs.map((job, i) => {
+        const company = job.companyName || "Company";
+        const jobTitle = job.title || "Internship";
+        const description = job.description || "";
+        const location = job.location || "—";
+        const jobType = job.jobType || job.workType || ""; // NO “months” here
+        const category = job.department || "—";
+        const skills = Array.isArray(job.skills) ? job.skills.slice(0, 6) : [];
+        const posted = timeAgo(job.createdAt);
+
+        return (
+          <div key={job._id || i} className="bg-white border border-gray-200 shadow-lg rounded-2xl p-8 min-h-[520px]">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-blue-900 text-white flex items-center justify-center font-semibold">
+                  {company.charAt(0)}
+                </div>
+                <div>
+                  <div className="font-semibold text-lg leading-tight">{company}</div>
+                  {/* No rating in schema; omit Star unless you add one */}
+                </div>
+              </div>
+              {posted && (
+                <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-xs font-medium">
+                  {posted}
+                </span>
+              )}
+            </div>
+
+            <h3 className="mt-5 text-2xl font-bold leading-snug">{jobTitle}</h3>
+            <p className="text-gray-600 mt-3 line-clamp-4">{description}</p>
+
+            <div className="mt-5 space-y-2 text-sm text-gray-600">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-gray-500" />
+                <span>{location}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock3 className="w-4 h-4 text-gray-500" />
+                <span>{jobType || "—"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Tag className="w-4 h-4 text-gray-500" />
+                <span>{category}</span>
+              </div>
+            </div>
+
+            {skills.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-4">
+                {skills.map((s, idx) => (
+                  <span key={idx} className="text-xs border border-gray-300 rounded-full px-3 py-1">
+                    {s}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <a
+              href={`/jobs/${job._id || ""}`}
+              className="mt-6 block w-full text-center bg-[#F37526] hover:bg-orange-600 text-white py-3 rounded-md font-medium transition"
+            >
+              Apply Now
+            </a>
+          </div>
+        );
+      })}
     </div>
   );
 }

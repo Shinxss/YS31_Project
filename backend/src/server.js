@@ -1,77 +1,130 @@
+// src/server.js
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
-import { connectDB } from "./config/db.js";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { connectDB } from "./config/db.js";
 
-// routes
+// ---------- Route modules ----------
 import authRoutes from "./routes/auth.routes.js";
 import companyRoutes from "./routes/company.routes.js";
 import jobRoutes from "./routes/job.routes.js";
 import statsRoutes from "./routes/stats.routes.js";
-import studentRoutes from "./routes/studentRoutes.js";
-import studentApplicationsRoutes from "./routes/studentApplications.routes.js";
+import studentRoutes from "./routes/student.routes.js";
+import applicationsRoutes from "./routes/applications.routes.js";
+import companyApplicationsRoutes from "./routes/company.Applications.routes.js";
 
+
+
+
+// ---------- App ----------
 const app = express();
 
+// ---------- Core config ----------
+const PORT = process.env.PORT || 5000;
+const MONGO_URI =
+  process.env.MONGO_URI || "mongodb://127.0.0.1:27017/internconnect";
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
+
+
+
+
+
+// ---------- Middleware ----------
 app.use(
   cors({
-    origin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
+    origin: CLIENT_ORIGIN,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    exposedHeaders: ["Content-Type"],
   })
 );
-
-app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(morgan("dev"));
 
-// static
+
+
+
+// ---------- Static directories ----------
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
-app.use(
-  "/uploads/resumes",
-  express.static(path.join(__dirname, "../uploads/resumes"))
-);
 
-// ---------------------------
-// Routes (order matters!)
-// ---------------------------
+const UPLOADS_DIR = path.join(__dirname, "../uploads");
+const UPLOADS_COMPANY_DIR = path.join(__dirname, "../uploads/company");
+const PUBLIC_UPLOADS_DIR = path.join(__dirname, "../public/uploads");
+
+function mountStatic(urlPath, dirPath) {
+  const exists = fs.existsSync(dirPath);
+  if (exists) {
+    app.use(urlPath, express.static(dirPath));
+    console.log(`🖼️  Serving ${urlPath} → ${dirPath}`);
+  } else {
+    console.log(`⚠️  Skipping ${urlPath} (missing) → ${dirPath}`);
+  }
+}
+
+mountStatic("/uploads", UPLOADS_DIR);
+mountStatic("/uploads/company", UPLOADS_COMPANY_DIR);
+mountStatic("/uploads/public", PUBLIC_UPLOADS_DIR);
+
+
+
+
+
+// Optional: quick debug route for checking mounts
+app.get("/__debug/paths", (_req, res) => {
+  const ls = (p) => (fs.existsSync(p) ? fs.readdirSync(p) : null);
+  res.json({
+    __dirname,
+    uploads: { path: UPLOADS_DIR, files: ls(UPLOADS_DIR) },
+    uploads_company: { path: UPLOADS_COMPANY_DIR, files: ls(UPLOADS_COMPANY_DIR) },
+    public_uploads: { path: PUBLIC_UPLOADS_DIR, files: ls(PUBLIC_UPLOADS_DIR) },
+  });
+});
+
+
+
+// ---------- Routes ----------
 app.use("/api/auth", authRoutes);
 app.use("/api/company", companyRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/stats", statsRoutes);
-
-// ✅ Mount the more specific router FIRST so it isn't swallowed by /api/student
-app.use("/api/student/applications", studentApplicationsRoutes);
-// 👉 debug log so you can verify it's mounted in the console
-console.log("➡️  Mounted router: /api/student/applications");
-
-// Then mount the general student router
 app.use("/api/student", studentRoutes);
+app.use("/api", applicationsRoutes);
+app.use("/api/applications", applicationsRoutes);
+app.use("/api/company", companyApplicationsRoutes);
 
-// Health
-app.get("/api/health", (_req, res) =>
-  res.json({ ok: true, app: process.env.APP_NAME || "App" })
-);
 
-// Root
-app.get("/", (_req, res) => res.send("InternConnect API is running."));
 
-// 404
-app.use((req, res) => res.status(404).json({ message: "Not found" }));
 
-const PORT = process.env.PORT || 5000;
-const MONGO_URI =
-  process.env.MONGO_URI || "mongodb://127.0.0.1:27017/internconnect";
+// Health check
+app.get("/api/health", (_req, res) => {
+  res.json({ ok: true, app: process.env.APP_NAME || "InternConnect Backend" });
+});
 
+
+
+// ---------- 404 & error handlers ----------
+app.use((req, res) => {
+  res.status(404).json({ message: "Not found" });
+});
+
+
+
+// (Optional centralized error handler, keep last)
+// app.use((err, _req, res, _next) => {
+//   console.error(err);
+//   res.status(err.status || 500).json({ message: err.message || "Server error" });
+// });
+
+// ---------- Start ----------
 connectDB(MONGO_URI).then(() => {
-  app.listen(PORT, () =>
-    console.log(`🚀 Server running on http://localhost:${PORT}`)
-  );
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`🌐 CORS origin: ${CLIENT_ORIGIN}`);
+  });
 });

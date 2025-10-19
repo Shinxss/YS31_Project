@@ -1,7 +1,6 @@
 // src/components/studentDashboard/StudentHeaderBar.jsx
 import React from "react";
 import { Bell, PanelLeft } from "lucide-react";
-import { useLocation } from "react-router-dom";
 
 function getInitials(name) {
   return name
@@ -13,27 +12,14 @@ function getInitials(name) {
 }
 
 export default function StudentHeaderBar({
-  student = { firstName: "", lastName: "", course: "", profilePicture: "" },
+  student = { firstName: "", lastName: "", course: "", profilePicture: "" }, // ✅ added profilePicture
   onToggleSidebar,
+  title = "Dashboard", // ✅ NEW: dynamic title with default
 }) {
-  const location = useLocation();
-
-  // ✅ Dynamically compute title based on path
-  const computeTitle = () => {
-    if (location.pathname === "/student") return "Dashboard";
-    if (location.pathname.startsWith("/student/browse-jobs")) return "Browse Jobs";
-    if (location.pathname.startsWith("/student/my-applications")) return "My Applications";
-    if (location.pathname.startsWith("/student/profile")) return "Profile";
-    if (location.pathname.startsWith("/student/settings")) return "Settings";
-    return "InternConnect";
-  };
-
-  const title = computeTitle();
   const fullName = `${student.firstName || ""} ${student.lastName || ""}`.trim();
 
   return (
-    <header className="h-16 bg-[#173B8A] text-white flex items-center justify-between px-4 md:px-6 ml-1 shadow-sm">
-      {/* Left Section: Sidebar Toggle + Title */}
+    <header className="h-16 bg-[#173B8A] text-white flex items-center justify-between px-4 md:px-6 ml-1">
       <div className="flex items-center gap-3">
         <button
           onClick={onToggleSidebar}
@@ -44,10 +30,10 @@ export default function StudentHeaderBar({
         >
           <PanelLeft className="w-4 h-4" />
         </button>
+        {/* ⬇️ was hardcoded 'Dashboard'; now uses prop */}
         <div className="text-xl font-bold leading-none">{title}</div>
       </div>
 
-      {/* Right Section: Notification + Profile */}
       <div className="flex items-center gap-6">
         <button
           className="relative hover:opacity-90"
@@ -57,8 +43,9 @@ export default function StudentHeaderBar({
           <Bell className="w-5 h-5" />
         </button>
 
-        {/* Avatar + Student Info */}
+        {/* Avatar + name/course */}
         <div className="flex items-center gap-3 min-w-0">
+          {/* ✅ ADDED: Show uploaded profile picture if available */}
           {student?.profilePicture ? (
             <img
               src={student.profilePicture}
@@ -70,8 +57,9 @@ export default function StudentHeaderBar({
               {getInitials(fullName || "User")}
             </div>
           )}
+          {/* ✅ END added */}
 
-          <div className="leading-tight text-left min-w-0 hidden sm:block">
+          <div className="leading-tight text-left min-w-0">
             <div className="font-medium truncate">{fullName || "Student"}</div>
             <div className="text-xs text-white/80 truncate">
               {student.course || "No Course"}

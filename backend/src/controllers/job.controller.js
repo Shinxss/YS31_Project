@@ -246,22 +246,3 @@ export const getScreeningQuestions = async (req, res) => {
       .json({ message: "Failed to load screening questions" });
   }
 };
-export const getRandomJob = async (req, res) => {
-  try {
-    const count = await Job.countDocuments({ status: "open" });
-    if (count === 0) return res.status(404).json({ message: "No open jobs found" });
-
-    const randomIndex = Math.floor(Math.random() * count);
-    const randomJob = await Job.findOne({ status: "open" })
-      .skip(randomIndex)
-      .select(
-        "_id title companyName department location salaryMax workType jobType description skills createdAt"
-      )
-      .lean();
-
-    res.json(randomJob);
-  } catch (err) {
-    console.error("getRandomJob error:", err);
-    res.status(500).json({ message: "Failed to fetch random job" });
-  }
-};

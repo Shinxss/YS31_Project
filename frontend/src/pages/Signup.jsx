@@ -39,7 +39,8 @@ export default function Signup() {
     firstName: "",
     lastName: "",
     email: "",
-    course: "",
+    course: "Information Technology",
+    courseOther: "", // Added custom course field
     password: "",
     confirmPassword: "",
   });
@@ -100,6 +101,8 @@ export default function Signup() {
       errs.email = "Enter a valid email address";
 
     if (!student.course.trim()) errs.course = "Course is required";
+    else if (student.course === "Others" && !student.courseOther.trim())
+      errs.courseOther = "Please specify your course";
 
     if (!student.password) errs.password = "Password is required";
     if (student.password && !isStrongPassword(student.password))
@@ -188,7 +191,7 @@ export default function Signup() {
           password: student.password,
           firstName: student.firstName,
           lastName: student.lastName,
-          course: student.course,
+          course: student.course === "Others" ? student.courseOther : student.course,
         };
         emailToUse = student.email;
       } else {
@@ -344,18 +347,33 @@ export default function Signup() {
                 error={studentErrors.email}
               />
 
-              <Input
+              <PrettySelect
                 label="Course"
-                icon={<BookOpen />}
-                placeholder="Course"
                 value={student.course}
                 onChange={(v) => {
                   setStudent((s) => ({ ...s, course: v }));
                   const err = !v.trim() ? "Course is required" : "";
                   setStudentErrors((e) => ({ ...e, course: err }));
+                  if (v !== "Others") {
+                    setStudent((s) => ({ ...s, courseOther: "" }));
+                  }
                 }}
-                error={studentErrors.course}
+                options={["Information Technology","Engineering", "Computer Science", "Business","Nursing","Marketing","Graphic Design", "Others"]}
               />
+              {student.course === "Others" && (
+                <Input
+                  label="Custom Course"
+                  icon={<BookOpen />}
+                  placeholder="Enter your course"
+                  value={student.courseOther}
+                  onChange={(v) => {
+                    setStudent((s) => ({ ...s, courseOther: v }));
+                    const err = !v.trim() ? "Please specify your course" : "";
+                    setStudentErrors((e) => ({ ...e, courseOther: err }));
+                  }}
+                  error={studentErrors.courseOther}
+                />
+              )}
 
               <PasswordInput
                 label="Password"
