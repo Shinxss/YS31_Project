@@ -147,7 +147,7 @@ export const applyToJob = async (req, res) => {
       resume: req.file ? req.file.filename : null,
       message: message || "",
       answers: parsedAnswers,
-      status: "New",
+      status: "Application Sent",
     });
 
     return res.status(201).json({

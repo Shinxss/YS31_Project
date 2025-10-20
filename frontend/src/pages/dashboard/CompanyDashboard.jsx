@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import HeaderBar from "../../components/dashboard/HeaderBar.jsx";
 import Sidebar from "../../components/dashboard/Sidebar.jsx";
-import { Outlet } from "react-router-dom";
 
 // Pages
 import DashboardHome from "./DashboardHome.jsx";
@@ -91,38 +90,38 @@ export default function CompanyDashboard() {
   }, [token, role, navigate]);
 
   return (
-    <div className="min-h-screen bg-[#ECF3FC] flex">
+    <div className="h-screen bg-[#ECF3FC] flex overflow-hidden">
       <Sidebar
         collapsed={collapsed}
         onLogout={() => doLogout(navigate)}
         onToggleSidebar={toggleCollapsed}
       />
 
-      <div className="flex-1 flex flex-col">
-        <HeaderBar
-          companyName={companyName}
-          person={person}
-          onToggleSidebar={toggleCollapsed}
-        />
+      {/* Right panel: column with non-scrolling header + scrolling content */}
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="shrink-0">
+          <HeaderBar
+            companyName={companyName}
+            person={person}
+            onToggleSidebar={toggleCollapsed}
+          />
+        </div>
 
-        <main className="p-6">
+        {/* Only this main area scrolls */}
+        <main className="flex-1 min-h-0 overflow-y-auto p-6">
           {loading ? (
             <div className="text-gray-600">Loading...</div>
           ) : (
-            <>
-
-              <Routes>
-                {/* All subpages inside dashboard */}
-                <Route path="/" element={<DashboardHome />} />
-                <Route path="postings" element={<JobPostingsPage token={token} />} />
-                <Route path="applications" element={<ApplicationsPage token={token} />} />
-                <Route path="analytics" element={<AnalyticsPage token={token} />} />
-                <Route path="post-job" element={<PostJobPage token={token} />} />
-              </Routes>
-            </>
+            <Routes>
+              {/* All subpages inside dashboard */}
+              <Route path="/" element={<DashboardHome />} />
+              <Route path="postings" element={<JobPostingsPage token={token} />} />
+              <Route path="applications" element={<ApplicationsPage token={token} />} />
+              <Route path="analytics" element={<AnalyticsPage token={token} />} />
+              <Route path="post-job" element={<PostJobPage token={token} />} />
+            </Routes>
           )}
-        </main>                                                     
-
+        </main>
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import React from "react";
+import logoUrl from "@/assets/ic_logo.svg";
 import {
   Home,
   Briefcase,
@@ -73,12 +74,15 @@ export default function StudentSidebar({
           collapsed ? "grid place-items-center px-0" : "flex items-end px-6"
         }`}
       >
-        <div className={`flex items-center gap-3 ${collapsed ? "" : "pb-3"}`}>
-          <div className="w-8 h-8 rounded-md bg-[#F37526]" />
-          {!collapsed && (
-            <div className="font-semibold leading-none">InternConnect</div>
-          )}
-        </div>
+        <div className={`flex items-center gap-3 ${collapsed ? "" : "pb-4"}`}>
+          <img
+            src={logoUrl}
+                  alt="InternConnect logo"
+                    className="w-8 h-8 rounded-md shrink-0"
+                    draggable="false"
+                  />
+                  {!collapsed && <div className="font-bold text-xl leading-none">InternConnect</div>}
+                </div>
       </div>
 
       {/* ───────── Default Student Nav ───────── */}
