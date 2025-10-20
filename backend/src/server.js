@@ -53,13 +53,14 @@ app.use(morgan("dev"));
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Point /uploads to the ROOT uploads folder
 const UPLOADS_DIR = path.join(__dirname, "../uploads");
+// Optional convenience mount that points directly to the company subfolder
 const UPLOADS_COMPANY_DIR = path.join(__dirname, "../uploads/company");
 const PUBLIC_UPLOADS_DIR = path.join(__dirname, "../public/uploads");
 
 function mountStatic(urlPath, dirPath) {
-  const exists = fs.existsSync(dirPath);
-  if (exists) {
+  if (fs.existsSync(dirPath)) {
     app.use(urlPath, express.static(dirPath));
     console.log(`🖼️  Serving ${urlPath} → ${dirPath}`);
   } else {
@@ -67,7 +68,9 @@ function mountStatic(urlPath, dirPath) {
   }
 }
 
+// /uploads -> <project>/uploads
 mountStatic("/uploads", UPLOADS_DIR);
+// /uploads/company -> <project>/uploads/company  (optional, harmless)
 mountStatic("/uploads/company", UPLOADS_COMPANY_DIR);
 mountStatic("/uploads/public", PUBLIC_UPLOADS_DIR);
 
@@ -93,7 +96,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/company", companyRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/stats", statsRoutes);
-app.use("/api/student", studentRoutes);
+app.use(["/api/students", "/api/student"], studentRoutes);
 app.use("/api", applicationsRoutes);
 app.use("/api/applications", applicationsRoutes);
 app.use("/api/company", companyApplicationsRoutes);
@@ -115,11 +118,6 @@ app.use((req, res) => {
 
 
 
-// (Optional centralized error handler, keep last)
-// app.use((err, _req, res, _next) => {
-//   console.error(err);
-//   res.status(err.status || 500).json({ message: err.message || "Server error" });
-// });
 
 // ---------- Start ----------
 connectDB(MONGO_URI).then(() => {

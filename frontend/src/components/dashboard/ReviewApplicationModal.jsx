@@ -59,8 +59,23 @@ export default function ReviewApplicationModal({
     "Unknown Applicant";
 
   const resumeUrl = useMemo(() => {
-    if (application?.resume) return API.resumeFile(application.resume);
-    if (profile?.resumeUrl) return profile.resumeUrl;
+    const r = application?.resume;
+
+    // case 1: DB stored a filename string
+    if (typeof r === "string" && r.trim()) {
+      return API.resumeFile(r.trim());
+    }
+
+    // case 2: something like { url: "https://..." } (or you set it in the page)
+    if (r && typeof r === "object" && typeof r.url === "string" && r.url.trim()) {
+      return r.url.trim();
+    }
+
+    // fallback to profile’s resume url if present
+    if (typeof profile?.resumeUrl === "string" && profile.resumeUrl.trim()) {
+      return profile.resumeUrl.trim();
+    }
+
     return null;
   }, [application?.resume, profile?.resumeUrl]);
 
@@ -88,7 +103,7 @@ export default function ReviewApplicationModal({
           }),
         ]);
 
-        const p = pr.ok ? await pr.json() : null;
+        const pRaw = pr.ok ? await pr.json() : null;
         const a = ar.ok ? await ar.json() : [];
         const m = mr.ok ? await mr.json() : null;
 

@@ -1,6 +1,7 @@
+// src/pages/studentDashboard/StudentDashboard.jsx
 import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 import StudentSidebar from "@/components/studentDashboard/StudentSidebar.jsx";
 import StudentHeaderBar from "@/components/studentDashboard/StudentHeaderBar.jsx";
@@ -25,7 +26,24 @@ const timeAgo = (d) => {
 
 export default function StudentDashboard() {
   const [collapsed, setCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState("Dashboard");
+  const location = useLocation();
+
+  // strictly allow only these labels
+  const VALID_TABS = new Set(["Dashboard", "Browse Jobs", "Profile", "My Applications"]);
+  const getInitialTab = () => {
+    // 1) URL ?tab=...
+    const params = new URLSearchParams(location.search);
+    const fromQuery = params.get("tab");
+    if (fromQuery && VALID_TABS.has(fromQuery)) return fromQuery;
+    // 2) localStorage
+    try {
+      const fromStorage = localStorage.getItem("student_activeTab");
+      if (fromStorage && VALID_TABS.has(fromStorage)) return fromStorage;
+    } catch {}
+    // 3) fallback
+    return "Dashboard";
+  };
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   const [student, setStudent] = useState(null);
 
   // stats (demo)
@@ -59,8 +77,7 @@ export default function StudentDashboard() {
   const RAW_BASE =
     (typeof window !== "undefined" && import.meta?.env?.VITE_API_BASE) || "";
   const IS_VITE =
-    typeof window !== "undefined" &&
-    /:5173|:5174/.test(window.location.origin);
+    typeof window !== "undefined" && /:5173|:5174/.test(window.location.origin);
   const FALLBACK_BASE = IS_VITE
     ? "http://localhost:5000"
     : typeof window !== "undefined"
@@ -75,10 +92,18 @@ export default function StudentDashboard() {
   // auth header
   const getAuthHeaders = () => {
     const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("ic_token")
-        : null;
+      typeof window !== "undefined" ? localStorage.getItem("ic_token") : null;
     return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  // resolve any stored filename or partial path to an absolute URL we can render
+  const buildImageUrl = (raw) => {
+    if (!raw) return "";
+    let v = String(raw).trim();
+    if (/^(https?:\/\/|\/|blob:|data:image)/i.test(v)) return v; // already usable
+    v = v.replace(/^\/+/, "").replace(/^uploads\//i, "");
+    // if you store students under a subfolder, adjust here (e.g., "students/")
+    return `${API_BASE}/uploads/${encodeURIComponent(v)}`;
   };
 
   /* ---------------------- Reminders API ---------------------- */
@@ -210,6 +235,20 @@ export default function StudentDashboard() {
     }
   };
 
+  /* ---------------------- sync URL & storage with activeTab ---------------------- */
+  useEffect(() => {
+    // keep URL and localStorage in sync with activeTab
+    try {
+      localStorage.setItem("student_activeTab", activeTab);
+    } catch {}
+    const params = new URLSearchParams(location.search);
+    if (params.get("tab") !== activeTab) {
+      params.set("tab", activeTab);
+      // replace so we don't spam history while just switching tabs
+      navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+    }
+  }, [activeTab, location.pathname, location.search, navigate]);
+
   /* ---------------------- lifecycle ---------------------- */
   useEffect(() => {
     const fetchProfile = async () => {
@@ -236,6 +275,7 @@ export default function StudentDashboard() {
     });
 
     fetchReminders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* ---------------------- nav & session ---------------------- */
@@ -243,6 +283,7 @@ export default function StudentDashboard() {
     localStorage.removeItem("ic_token");
     localStorage.removeItem("ic_role");
     localStorage.removeItem("ic_profile");
+    localStorage.removeItem("student_activeTab");
     window.location.href = "/";
   };
 
@@ -251,7 +292,7 @@ export default function StudentDashboard() {
       navigate("/student/settings");
       return;
     }
-    setActiveTab(label);
+    if (VALID_TABS.has(label)) setActiveTab(label);
   };
 
   return (
@@ -267,14 +308,13 @@ export default function StudentDashboard() {
       <div className="flex flex-col flex-1 h-screen">
         <div className="flex-shrink-0">
           <StudentHeaderBar
-            student={
-              student || {
-                firstName: "",
-                lastName: "",
-                course: "",
-                profilePicture: "",
-              }
-            }
+            student={{
+              firstName: student?.firstName || "",
+              lastName: student?.lastName || "",
+              course: student?.course || "",
+              // resolved to absolute url if a filename was stored
+              profilePicture: buildImageUrl(student?.profilePicture || ""),
+            }}
             onToggleSidebar={() => setCollapsed(!collapsed)}
             title={activeTab}
           />
@@ -286,12 +326,10 @@ export default function StudentDashboard() {
               /* identity & stats */
               student={student}
               dashboardStats={dashboardStats}
-
               /* recent applications */
               recentApplications={recentApplications}
               recentAppsLoading={recentAppsLoading}
               recentAppsError={recentAppsError}
-
               /* reminders panel control + data */
               events={events}
               showModal={showModal}
@@ -301,15 +339,16 @@ export default function StudentDashboard() {
               quickNote={quickNote}
               setQuickNote={setQuickNote}
               onSaveEvent={handleSaveEvent}
-
-              /* infra for child requests (recommended jobs uses these) */
+              /* infra for child requests */
               API_BASE={API_BASE}
               getAuthHeaders={getAuthHeaders}
             />
           )}
 
-          {activeTab === "Browse Jobs" && <BrowseJobs />}
+          {activeTab === "Browse Jobs" && <BrowseJobs API_BASE={API_BASE} />}
+
           {activeTab === "Profile" && <StudentProfile />}
+
           {activeTab === "My Applications" && <MyApplications />}
         </main>
       </div>

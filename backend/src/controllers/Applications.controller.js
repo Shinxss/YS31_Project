@@ -242,3 +242,33 @@ export async function updateApplicationStatus(req, res) {
     return res.status(500).json({ message: "Failed to update status" });
   }
 }
+
+export async function getScreeningAnswers(req, res) {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid application id" });
+    }
+    const app = await Application.findById(id).select("answers").lean();
+    if (!app) return res.status(404).json({ message: "Application not found" });
+    return res.json(Array.isArray(app.answers) ? app.answers : []);
+  } catch (err) {
+    console.error("getScreeningAnswers error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+}
+
+export async function getApplicantMessage(req, res) {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid application id" });
+    }
+    const app = await Application.findById(id).select("message").lean();
+    if (!app) return res.status(404).json({ message: "Application not found" });
+    return res.json({ text: app.message || "" });
+  } catch (err) {
+    console.error("getApplicantMessage error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+}

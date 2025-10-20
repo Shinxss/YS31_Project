@@ -1,3 +1,4 @@
+// src/pages/company/CompanyDashboard.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import HeaderBar from "../../components/dashboard/HeaderBar.jsx";
@@ -39,11 +40,23 @@ export default function CompanyDashboard() {
   const [companyName, setCompanyName] = useState("Company");
   const [person, setPerson] = useState({ firstName: "", lastName: "", role: "" });
 
+  // NEW: avatar + companyId for HeaderBar
+  const [avatarSrc, setAvatarSrc] = useState("");
+  const [companyId, setCompanyId] = useState("");
+
   useEffect(() => {
     if (!token || role !== "company") {
       navigate("/login", { replace: true });
     }
   }, [token, role, navigate]);
+
+  // Helper to build a full URL from a stored filename
+  const buildAvatarUrl = (raw) => {
+    if (!raw) return "";
+    const v = String(raw).trim();
+    if (/^https?:\/\//i.test(v)) return v; // already full URL
+    return `${API_BASE.replace(/\/+$/, "")}/uploads/company/${encodeURIComponent(v)}`;
+  };
 
   useEffect(() => {
     if (!token || role !== "company") return;
@@ -56,6 +69,7 @@ export default function CompanyDashboard() {
         const res = await fetch(`${API_BASE}/api/company/me`, {
           headers: { Authorization: `Bearer ${token}` },
           signal: ctrl.signal,
+          credentials: "include",
         });
 
         if (res.status === 401 || res.status === 403) {
@@ -67,11 +81,22 @@ export default function CompanyDashboard() {
         if (!res.ok) throw new Error(data?.message || "Failed to load company");
 
         if (!ignore) {
-          setCompanyName(data.companyName || "Company");
+          // Accept either top-level doc or { company: {...}, user: {...} }
+          const doc = data.company ? data.company : data;
+
+          setCompanyName(doc.companyName || "Company");
+          setCompanyId(doc._id || doc.companyId || "");
+
+          // Try common field names from your DB/controller
+          const rawImg =
+            doc.profileImageUrl || doc.profileImage || doc.profilePhoto || "";
+
+          setAvatarSrc(buildAvatarUrl(rawImg));
+
           setPerson({
-            firstName: data.user?.firstName || "",
-            lastName: data.user?.lastName || "",
-            role: data.user?.role || "",
+            firstName: (data.user?.firstName ?? doc.user?.firstName) || "",
+            lastName: (data.user?.lastName ?? doc.user?.lastName) || "",
+            role: (data.user?.role ?? doc.user?.role) || "Owner",
           });
         }
       } catch (e) {
@@ -104,6 +129,11 @@ export default function CompanyDashboard() {
             companyName={companyName}
             person={person}
             onToggleSidebar={toggleCollapsed}
+            // NEW: pass avatar (and fetch helpers if you ever want HeaderBar to fetch)
+            avatarSrc={avatarSrc}
+            companyId={companyId}
+            API_BASE={API_BASE}
+            getAuthHeaders={() => ({ Authorization: `Bearer ${token}` })}
           />
         </div>
 
@@ -113,7 +143,6 @@ export default function CompanyDashboard() {
             <div className="text-gray-600">Loading...</div>
           ) : (
             <Routes>
-              {/* All subpages inside dashboard */}
               <Route path="/" element={<DashboardHome />} />
               <Route path="postings" element={<JobPostingsPage token={token} />} />
               <Route path="applications" element={<ApplicationsPage token={token} />} />

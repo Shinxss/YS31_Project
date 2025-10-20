@@ -246,3 +246,47 @@ export const getScreeningQuestions = async (req, res) => {
       .json({ message: "Failed to load screening questions" });
   }
 };
+
+const PUBLIC_BASE = (process.env.SERVER_PUBLIC_URL || `http://localhost:${process.env.PORT || 5000}`).replace(/\/+$/,"");
+
+const toCompanyImageUrl = (raw) => {
+  if (!raw) return "";
+  const v = String(raw).trim();
+  if (/^https?:\/\//i.test(v)) return v;
+  return `${PUBLIC_BASE}/uploads/company/${encodeURIComponent(v.replace(/^\/+/, ""))}`;
+};
+
+export async function listJobs(req, res) {
+  try {
+    const jobs = await Job.find({})
+      .sort({ createdAt: -1 })
+      .populate({
+        path: "companyId",
+        select: "companyName profileImage city rating", // add any other fields you want
+      })
+      .lean();
+
+    const out = jobs.map(j => {
+      const c = j.companyId || {};
+      const companySnapshot = {
+        _id: c._id,
+        companyName: c.companyName,
+        city: c.city || "",
+        rating: c.rating ?? 4.8,
+        // give the FE a ready-to-use absolute URL
+        profileImageUrl: toCompanyImageUrl(c.profileImage || c.profilePhoto || ""),
+        // keep filename in case you need it
+        profileImage: c.profileImage || "",
+      };
+      return {
+        ...j,
+        companySnapshot,
+      };
+    });
+
+    res.json({ jobs: out });
+  } catch (err) {
+    console.error("listJobs error:", err);
+    res.status(500).json({ message: "Failed to list jobs" });
+  }
+}

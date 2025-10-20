@@ -4,6 +4,7 @@ import { MapPin, Clock, Building2, Eye } from "lucide-react";
 
 /**
  * MyApplications (fixed-height card + scrollable list + A–Z position sort)
+ * - Withdrawn applications are excluded immediately after fetch.
  */
 export default function MyApplications() {
   const [apps, setApps] = useState([]);
@@ -12,8 +13,17 @@ export default function MyApplications() {
   // Filters
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  // NEW: sort order for Position
+  // Sort order for Position
   const [sortOrder, setSortOrder] = useState("default"); // default | title-asc | title-desc
+
+  /* ---------------------------- Helpers ---------------------------- */
+  const normalize = (v = "") => String(v).trim().toLowerCase().replace(/\s+/g, " ");
+  const canonicalStatus = (raw = "") => {
+    const s = normalize(raw);
+    if (s === "new") return "application sent";
+    if (["under review", "accepted", "rejected", "withdrawn"].includes(s)) return s;
+    return "application sent";
+  };
 
   /* ---------------------------- API base resolver ---------------------------- */
   const RAW_BASE =
@@ -67,7 +77,13 @@ export default function MyApplications() {
           (Array.isArray(data?.data) && data.data) ||
           (Array.isArray(data) && data) ||
           [];
-        setApps(parsed);
+
+        // 🔒 Exclude withdrawn before setting state
+        const withoutWithdrawn = parsed.filter(
+          (a) => canonicalStatus(a?.status) !== "withdrawn"
+        );
+
+        setApps(withoutWithdrawn);
       } catch (err) {
         console.error("Load applications error:", err);
         toast.error(err.message || "Failed to load applications");
@@ -85,14 +101,6 @@ export default function MyApplications() {
     const dt = new Date(d);
     if (Number.isNaN(dt.getTime())) return d;
     return dt.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-  };
-
-  const normalize = (v = "") => String(v).trim().toLowerCase().replace(/\s+/g, " ");
-  const canonicalStatus = (raw = "") => {
-    const s = normalize(raw);
-    if (s === "new") return "application sent";
-    if (["under review", "accepted", "rejected", "withdrawn"].includes(s)) return s;
-    return "application sent";
   };
 
   const PALETTE = {
@@ -129,7 +137,7 @@ export default function MyApplications() {
     return <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${cls}`}>{label}</span>;
   };
 
-  // Filter first
+  // Filter first (withdrawn never included in `apps`)
   const filtered = useMemo(() => {
     const q = normalize(query);
     const s = normalize(statusFilter);
@@ -172,10 +180,9 @@ export default function MyApplications() {
     { value: "under review", label: "Under Review" },
     { value: "accepted", label: "Accepted" },
     { value: "rejected", label: "Rejected" },
-    { value: "withdrawn", label: "Withdrawn" },
+    // withdrawn intentionally omitted
   ];
 
-  // NEW: sort options
   const SORT_OPTIONS = [
     { value: "default", label: "Default order" },
     { value: "title-asc", label: "Position A–Z" },
@@ -199,7 +206,7 @@ export default function MyApplications() {
           Track the status of your internship/job applications.
         </p>
 
-        {/* Toolbar: Search + Status + NEW Sort */}
+        {/* Toolbar: Search + Status + Sort */}
         {!loading && apps.length > 0 && (
           <div className="mb-4 grid grid-cols-1 md:grid-cols-12 gap-3 shrink-0">
             {/* Search */}
@@ -242,7 +249,7 @@ export default function MyApplications() {
               </select>
             </div>
 
-            {/* NEW: Sort by Position */}
+            {/* Sort by Position */}
             <div className="md:col-span-3">
               <label className="block text-xs font-medium text-gray-600 mb-1">Sort</label>
               <select
@@ -289,9 +296,9 @@ export default function MyApplications() {
           ) : (
             <div className="rounded-xl border border-gray-100 overflow-hidden h-full flex flex-col">
               {/* Sticky header */}
-              <div className="hidden md:grid grid-cols-12 gap-2 px-4 py-3 bg-gray-50 text-xs font-semibold text-gray-500 sticky top-0 z-10">
-                <div className="col-span-5">Position</div>
-                <div className="col-span-3">Company &amp; Location</div>
+              <div className="hidden md:grid grid-cols-12 gap-15 pl-4 pr-10 py-3 bg-gray-50 text-xs font-semibold text-gray-500 sticky top-0 z-10">
+                <div className="col-span-5">Company &amp; Position</div>
+                <div className="col-span-3">Location</div>
                 <div className="col-span-2">Applied On</div>
                 <div className="col-span-2 text-right">Status</div>
               </div>

@@ -10,13 +10,8 @@ async function getCompanyForUser(req) {
   const uid = req.user?.id;
   const email = (req.user?.email || "").toLowerCase();
   if (!uid && !email) return null;
-
-  // try by user ObjectId first, then by email
-  let company =
-    (uid ? await Company.findOne({ user: uid }) : null) ||
-    (email ? await Company.findOne({ email }) : null);
-
-  return company;
+  return (uid ? await Company.findOne({ user: uid }) : null)
+      || (email ? await Company.findOne({ email }) : null);
 }
 
 export async function listCompanyApplications(req, res) {
@@ -24,13 +19,8 @@ export async function listCompanyApplications(req, res) {
     if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
 
     const company = await getCompanyForUser(req);
+    if (!company?._id) return res.json([]);
 
-    if (!company?._id) {
-      log("No company profile linked to user:", req.user?.id, req.user?.email);
-      return res.json([]); // show “No applications yet” in UI
-    }
-
-    // Some older docs might only have companyName saved
     const orQuery = [{ company: company._id }];
     if (company.companyName) orQuery.push({ companyName: company.companyName });
 
@@ -39,7 +29,8 @@ export async function listCompanyApplications(req, res) {
       .populate({
         path: "student",
         model: "Student",
-        select: "firstName lastName fullName email profilePicture",
+        // ⬅️ include course/school/skills/bio/profilePicture
+        select: "firstName lastName email profilePicture course school skills bio education",
         options: { lean: true },
       })
       .populate({
@@ -52,31 +43,41 @@ export async function listCompanyApplications(req, res) {
 
     log("applications found:", apps.length);
 
-    const items = apps.map((a) => ({
-      _id: a._id,
-      status: a.status || "Application Sent",
-      appliedAt: a.createdAt,
-      createdAt: a.createdAt,
-      resume: a.resume || null,
-      message: a.message || "",
-      student: a.student
-        ? {
-            _id: a.student._id,
-            firstName: a.student.firstName,
-            lastName: a.student.lastName,
-            fullName:
-              a.student.fullName ||
-              [a.student.firstName, a.student.lastName]
-                .filter(Boolean)
-                .join(" "),
-            email: a.student.email,
-            profilePicture: a.student.profilePicture || "",
-          }
-        : null,
-      job: a.job
-        ? { _id: a.job._id, title: a.job.title, department: a.job.department }
-        : null,
-    }));
+    const items = apps.map((a) => {
+      // derive school from education[0] if top-level not present
+      const school =
+        a?.student?.school ||
+        (Array.isArray(a?.student?.education) && a.student.education[0]?.school) ||
+        "";
+
+      return {
+        _id: a._id,
+        status: a.status || "New",
+        appliedAt: a.createdAt,
+        createdAt: a.createdAt,
+        resume: a.resume || null,
+        message: a.message || "",
+        student: a.student
+          ? {
+              _id: a.student._id,
+              firstName: a.student.firstName,
+              lastName: a.student.lastName,
+              fullName:
+                a.student.fullName ||
+                [a.student.firstName, a.student.lastName].filter(Boolean).join(" "),
+              email: a.student.email,
+              profilePicture: a.student.profilePicture || "",
+              course: a.student.course || "",   // ⬅️ new
+              school,                           // ⬅️ new (derived)
+              skills: a.student.skills || [],   // ⬅️ new
+              bio: a.student.bio || "",         // ⬅️ new
+            }
+          : null,
+        job: a.job
+          ? { _id: a.job._id, title: a.job.title, department: a.job.department }
+          : null,
+      };
+    });
 
     return res.json(items);
   } catch (err) {
