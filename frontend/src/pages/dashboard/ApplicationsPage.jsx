@@ -1,8 +1,6 @@
 // src/pages/ApplicationsPage.jsx
 import { useEffect, useMemo, useState } from "react";
-import { 
-  Link,
-  useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import ReviewApplicationModal from "../../components/dashboard/ReviewApplicationModal";
 
 /* -------------------------------------------------------
@@ -28,9 +26,18 @@ const timeAgo = (iso) => {
   return `${d}d ago`;
 };
 
-const Initials = ({ name = "" }) => {
+const Avatar = ({ name = "", src = "" }) => {
   const parts = String(name).trim().split(/\s+/).slice(0, 2);
   const ini = parts.map((p) => p[0]?.toUpperCase() || "").join("");
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name || "avatar"}
+        className="h-10 w-10 rounded-full object-cover border border-gray-200"
+      />
+    );
+  }
   return (
     <div className="h-10 w-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-sm font-semibold text-gray-700">
       {ini || "?"}
@@ -60,7 +67,10 @@ export default function ApplicationsPage({ token: propToken }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("default"); // default | name-asc | name-desc
 
-  // ✅ use the company token on company pages
+  // cache for fetching missing profile pics/course when needed
+  const [studentProfiles, setStudentProfiles] = useState({}); // { [id]: { profilePicture, course } }
+
+  // ✅ company token on company pages
   const token =
     propToken ||
     (typeof window !== "undefined"
@@ -78,6 +88,7 @@ export default function ApplicationsPage({ token: propToken }) {
       setUnderReview: (id) => api(`/api/applications/${id}`), // PATCH
       getApplication: (id) => api(`/api/company/applications/${id}`),
       updateStatus: (id) => api(`/api/applications/${id}`),
+      studentProfile: (id) => api(`/api/students/${id}/profile`),
     }),
     []
   );
@@ -87,7 +98,9 @@ export default function ApplicationsPage({ token: propToken }) {
   const handleViewProfile = (app) => {
     const id = app?.student?._id;
     if (!id) return;
-    navigate(`/company/students/${id}`, { state: { from: "applications", appId: app._id } });
+    navigate(`/company/students/${id}`, {
+      state: { from: "applications", appId: app._id },
+    });
   };
 
   async function persistStatus(appId, nextStatus) {
@@ -100,9 +113,13 @@ export default function ApplicationsPage({ token: propToken }) {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.message || `Failed to set ${nextStatus}`);
     // reflect in list
-    setApps((prev) => prev.map((a) => (a._id === appId ? { ...a, status: nextStatus } : a)));
-    // reflect in currently opened modal (if any)
-    setSelected((prev) => (prev && prev.id === appId ? { ...prev, status: nextStatus } : prev));
+    setApps((prev) =>
+      prev.map((a) => (a._id === appId ? { ...a, status: nextStatus } : a))
+    );
+    // reflect in opened modal (if any)
+    setSelected((prev) =>
+      prev && prev.id === appId ? { ...prev, status: nextStatus } : prev
+    );
   }
 
   const fetchApplications = async () => {
@@ -134,6 +151,53 @@ export default function ApplicationsPage({ token: propToken }) {
     fetchApplications();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Batch fetch missing profile pictures/course for visible students
+  useEffect(() => {
+    const missingIds = Array.from(
+      new Set(
+        apps
+          .map((a) => a.student?._id)
+          .filter(Boolean)
+          .filter(
+            (id) =>
+              !studentProfiles[id] &&
+              !apps.find(
+                (x) => x.student?._id === id && x.student?.profilePicture
+              )
+          )
+      )
+    );
+    if (missingIds.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const results = await Promise.all(
+          missingIds.map((id) =>
+            fetch(API.studentProfile(id), {
+              credentials: "include",
+              headers: { ...authHeader() },
+            })
+              .then((r) => (r.ok ? r.json() : null))
+              .catch(() => null)
+          )
+        );
+        if (cancelled) return;
+        const next = { ...studentProfiles };
+        missingIds.forEach((id, i) => {
+          const p = results[i]?.student ? results[i].student : results[i];
+          if (p) next[id] = { profilePicture: p.profilePicture || "", course: p.course || "" };
+        });
+        setStudentProfiles(next);
+      } catch {}
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apps]);
 
   const statusLabel = (status) => {
     const s = normalize(status);
@@ -183,6 +247,7 @@ export default function ApplicationsPage({ token: propToken }) {
 
       setSelected({
         id: appFull._id,
+        status: appFull.status || app.status || "Under Review",
         student: {
           id: appFull?.student?._id,
           fullName:
@@ -406,16 +471,24 @@ export default function ApplicationsPage({ token: propToken }) {
               <div className="flex-1 overflow-y-auto">
                 <ul className="divide-y divide-gray-100">
                   {filteredAndSorted.map((app) => {
+                    const student = app.student || {};
                     const fullName =
-                      app.student?.fullName ||
-                      [app.student?.firstName, app.student?.lastName]
+                      student.fullName ||
+                      [student.firstName, student.lastName]
                         .filter(Boolean)
                         .join(" ") ||
                       "Unknown Applicant";
-                    const course = app?.student?.course || "—";
+                    const course =
+                      student.course ||
+                      (studentProfiles[student._id]?.course || "—");
                     const jobTitle = app.job?.title || "—";
                     const [label, pillClass] = statusLabel(app.status);
                     const isBusy = rowBusy === app._id;
+
+                    const avatarUrl =
+                      student.profilePicture ||
+                      studentProfiles[student._id]?.profilePicture ||
+                      "";
 
                     return (
                       <li
@@ -426,7 +499,7 @@ export default function ApplicationsPage({ token: propToken }) {
                           {/* Student (avatar + name + COURSE under name) */}
                           <div className="min-w-0">
                             <div className="flex items-start gap-3">
-                              <Initials name={fullName} />
+                              <Avatar name={fullName} src={avatarUrl} />
                               <div className="min-w-0">
                                 <h4 className="text-sm font-semibold text-gray-800 truncate">
                                   {fullName}

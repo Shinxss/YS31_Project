@@ -1,4 +1,4 @@
-// frontend/src/components/dashboard/HeaderBar.jsx
+
 import React, { useEffect, useMemo, useState } from "react";
 import { Bell, PanelLeft } from "lucide-react";
 
@@ -19,11 +19,10 @@ function toImageUrl(raw, API_BASE) {
   if (!raw) return "";
   const v = String(raw).trim();
 
-  // Already a full URL
+
   if (/^https?:\/\//i.test(v)) return v;
 
-  // If your server serves files by filename under /uploads (common MERN pattern)
-  // adjust the path below to match your backend. Try a few likely paths.
+ 
   const base = (API_BASE || "").replace(/\/+$/, "");
   const candidates = [
     `${base}/uploads/company/${encodeURIComponent(v)}`,
@@ -33,33 +32,15 @@ function toImageUrl(raw, API_BASE) {
   return candidates[0]; // prefer the first; you can swap if needed
 }
 
-/**
- * HeaderBar
- *
- * Props:
- * - companyName       : string
- * - person            : { firstName, lastName, role }
- * - onToggleSidebar   : () => void
- * - avatarSrc         : optional direct URL to image (if you already have it)
- * - companyId         : optional; used to fetch when avatarSrc not provided
- * - API_BASE          : optional; e.g., http://localhost:5173 or your server base
- * - getAuthHeaders    : optional; function that returns auth headers (e.g., JWT)
- * - companyProfileUrl : optional; override endpoint used for fetching
- *
- * Expected API response shape (any of these will work):
- * { profileImageUrl: "https://...", ... }
- * { profileImage: "176046471...jpeg", ... }   // filename – we’ll convert to URL
- * { profilePhoto: "176046471...jpeg", ... }
- */
 export default function HeaderBar({
   companyName = "Company",
   person = { firstName: "", lastName: "", role: "" },
   onToggleSidebar,
-  avatarSrc,            // direct URL wins if provided
-  companyId,            // otherwise we’ll try to fetch using this
-  API_BASE,             // base for building URLs and fetch
-  getAuthHeaders,       // optional auth headers provider
-  companyProfileUrl,    // e.g., `${API_BASE}/api/companies/${companyId}`
+  avatarSrc,           
+  companyId,           
+  API_BASE,           
+  getAuthHeaders,       
+  companyProfileUrl,    
 }) {
   const [fetchedAvatar, setFetchedAvatar] = useState("");
   const [loadingAvatar, setLoadingAvatar] = useState(false);
