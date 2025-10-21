@@ -15,7 +15,7 @@ import jobRoutes from "./routes/job.routes.js";
 import statsRoutes from "./routes/stats.routes.js";
 import studentRoutes from "./routes/student.routes.js";
 import applicationsRoutes from "./routes/applications.routes.js";
-import companyApplicationsRoutes from "./routes/company.Applications.routes.js";
+import companyApplicationsRoutes from "./routes/company.applications.routes.js";
 
 
 

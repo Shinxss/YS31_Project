@@ -290,3 +290,22 @@ export async function listJobs(req, res) {
     res.status(500).json({ message: "Failed to list jobs" });
   }
 }
+
+export async function listMyCompanyJobs(req, res) {
+  try {
+    // find the company doc for this logged-in user
+    const company = await Company.findOne({ user: req.user.id }).select("_id");
+    if (!company) return res.status(403).json({ message: "No company profile" });
+
+    // pull all jobs for this company (adjust field name if your schema uses `company` not `companyId`)
+    const jobs = await Job.find({ companyId: company._id })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // return raw jobs; status filtering is done in the UI
+    return res.json(jobs);
+  } catch (err) {
+    console.error("listMyCompanyJobs error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}

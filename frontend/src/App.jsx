@@ -22,6 +22,7 @@ import StudentSettings from "./pages/studentDashboard/StudentSettings.jsx";
 //------------Company Dashboard Imports------------
 import CompanyDash from "./pages/dashboard/CompanyDashboard.jsx";
 import CompanySettings from "./pages/dashboard/CompanySettings.jsx";
+import CompanyStudentProfile from "./pages/dashboard/CompanyStudentProfile.jsx";
 
 //------------Route Protection Imports------------
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -81,6 +82,7 @@ function App() {
           <Route element={<ProtectedRoute allow={["company"]} />}>
             <Route path="/company/*" element={<CompanyDash />} />
             <Route path="/company/settings/*" element={<CompanySettings />} />
+            <Route path="/company/students/:id" element={<CompanyStudentProfile />} />
           </Route>
 
           {/* Fallback */}

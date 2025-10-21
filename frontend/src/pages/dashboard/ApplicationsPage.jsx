@@ -1,6 +1,8 @@
 // src/pages/ApplicationsPage.jsx
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { 
+  Link,
+  useNavigate } from "react-router-dom";
 import ReviewApplicationModal from "../../components/dashboard/ReviewApplicationModal";
 
 /* -------------------------------------------------------
@@ -11,7 +13,6 @@ const RAW_API_BASE =
     (typeof window !== "undefined" && /:5173|:5174/.test(window.location.origin)
       ? "http://localhost:5000"
       : "")).trim();
-
 const api = (p) => (RAW_API_BASE ? `${RAW_API_BASE}${p}` : p);
 
 /* ------------------------------ */
@@ -37,7 +38,13 @@ const Initials = ({ name = "" }) => {
   );
 };
 
-const normalize = (v = "") => String(v).trim().toLowerCase().replace(/\s+/g, " ");
+const normalize = (v = "") =>
+  String(v).trim().toLowerCase().replace(/\s+/g, " ");
+
+const isTerminalStatus = (s = "") => {
+  const v = normalize(s);
+  return v === "accepted" || v === "rejected" || v === "withdrawn";
+};
 
 /* ------------------------------ */
 export default function ApplicationsPage({ token: propToken }) {
@@ -48,17 +55,17 @@ export default function ApplicationsPage({ token: propToken }) {
   const [selected, setSelected] = useState(null);
   const [error, setError] = useState(null);
 
-  // Search / filter / sort (Student name)
+  // Search / filter / sort
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("default"); // default | name-asc | name-desc
 
-  // 🔹 student profile cache: { [studentId]: { course, school, ... } }
-  const [studentProfiles, setStudentProfiles] = useState({});
-
+  // ✅ use the company token on company pages
   const token =
     propToken ||
-    (typeof window !== "undefined" ? localStorage.getItem("ic_token") : null);
+    (typeof window !== "undefined"
+      ? localStorage.getItem("ic_company_token")
+      : null);
 
   const authHeader = () => (token ? { Authorization: `Bearer ${token}` } : {});
 
@@ -68,14 +75,35 @@ export default function ApplicationsPage({ token: propToken }) {
   const API = useMemo(
     () => ({
       listApplications: api("/api/company/applications"),
-      reviewApplication: (id) => api(`/api/applications/${id}`),
-      studentProfile: (studentId) => api(`/api/students/${studentId}/profile`),
-      screeningAnswers: (appId) =>
-        api(`/api/applications/${appId}/screening-answers`),
-      applicantMessage: (appId) => api(`/api/applications/${appId}/message`),
+      setUnderReview: (id) => api(`/api/applications/${id}`), // PATCH
+      getApplication: (id) => api(`/api/company/applications/${id}`),
+      updateStatus: (id) => api(`/api/applications/${id}`),
     }),
     []
   );
+
+  const navigate = useNavigate();
+
+  const handleViewProfile = (app) => {
+    const id = app?.student?._id;
+    if (!id) return;
+    navigate(`/company/students/${id}`, { state: { from: "applications", appId: app._id } });
+  };
+
+  async function persistStatus(appId, nextStatus) {
+    const res = await fetch(API.updateStatus(appId), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...authHeader() },
+      credentials: "include",
+      body: JSON.stringify({ status: nextStatus }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || `Failed to set ${nextStatus}`);
+    // reflect in list
+    setApps((prev) => prev.map((a) => (a._id === appId ? { ...a, status: nextStatus } : a)));
+    // reflect in currently opened modal (if any)
+    setSelected((prev) => (prev && prev.id === appId ? { ...prev, status: nextStatus } : prev));
+  }
 
   const fetchApplications = async () => {
     try {
@@ -94,9 +122,7 @@ export default function ApplicationsPage({ token: propToken }) {
         ? data.applications
         : data?.items || [];
 
-      setApps(
-        items.map((a) => ({ ...a, status: a.status || "New" }))
-      );
+      setApps(items.map((a) => ({ ...a, status: a.status || "New" })));
     } catch (e) {
       setError(e.message || "Something went wrong.");
     } finally {
@@ -108,48 +134,6 @@ export default function ApplicationsPage({ token: propToken }) {
     fetchApplications();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  /* 🔹 Batch-fetch student profiles for displayed applications (to get `course`) */
-  useEffect(() => {
-    const ids = Array.from(
-      new Set(
-        apps
-          .map((a) => a.student?._id)
-          .filter(Boolean)
-          .filter((id) => !studentProfiles[id])
-      )
-    );
-    if (ids.length === 0) return;
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const results = await Promise.all(
-          ids.map((id) =>
-            fetch(API.studentProfile(id), {
-              credentials: "include",
-              headers: { ...authHeader() },
-            })
-              .then((r) => (r.ok ? r.json() : null))
-              .catch(() => null)
-          )
-        );
-        if (cancelled) return;
-        const next = { ...studentProfiles };
-        ids.forEach((id, i) => {
-          if (results[i]) next[id] = results[i];
-        });
-        setStudentProfiles(next);
-      } catch {
-        /* ignore profile fetch errors per-row */
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apps]);
 
   const statusLabel = (status) => {
     const s = normalize(status);
@@ -165,65 +149,54 @@ export default function ApplicationsPage({ token: propToken }) {
     setRowBusy(app._id);
     setError(null);
     try {
-      const res = await fetch(API.reviewApplication(app._id), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", ...authHeader() },
+      // ✅ Only bump to "Under Review" if NOT terminal (accepted/rejected/withdrawn)
+      if (!isTerminalStatus(app.status)) {
+        const resPatch = await fetch(API.setUnderReview(app._id), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", ...authHeader() },
+          credentials: "include",
+          body: JSON.stringify({ status: "Under Review" }),
+        });
+        if (!resPatch.ok) throw new Error("Failed to update status");
+        setApps((prev) =>
+          prev.map((x) =>
+            x._id === app._id ? { ...x, status: "Under Review" } : x
+          )
+        );
+      }
+
+      const appRes = await fetch(API.getApplication(app._id), {
         credentials: "include",
-        body: JSON.stringify({ status: "Under Review" }),
+        headers: { ...authHeader() },
+        cache: "no-store",
       });
-      if (!res.ok) throw new Error("Failed to update status");
-
-      setApps((prev) =>
-        prev.map((x) =>
-          x._id === app._id ? { ...x, status: "Under Review" } : x
-        )
-      );
-
-      const [profileRes, answersRes, msgRes] = await Promise.all([
-        fetch(API.studentProfile(app.student?._id), {
-          credentials: "include",
-          headers: { ...authHeader() },
-        }),
-        fetch(API.screeningAnswers(app._id), {
-          credentials: "include",
-          headers: { ...authHeader() },
-        }),
-        fetch(API.applicantMessage(app._id), {
-          credentials: "include",
-          headers: { ...authHeader() },
-        }),
-      ]);
-
-      const profile = profileRes.ok ? await profileRes.json() : null;
-      const answersRaw = answersRes.ok ? await answersRes.json() : [];
-      const messageRaw = msgRes.ok ? await msgRes.json() : null;
+      const appFull = await appRes.json();
+      if (!appRes.ok)
+        throw new Error(appFull.message || "Failed to load application");
 
       let resume = null;
-      if (app.resume) {
+      if (appFull?.resume) {
         resume = {
-          url: api(`/uploads/resumes/${encodeURIComponent(app.resume)}`),
+          url: api(`/uploads/resumes/${encodeURIComponent(appFull.resume)}`),
         };
-      } else if (profile?.resumeUrl) {
-        resume = { url: profile.resumeUrl };
-      } else if (profile?.resumeText) {
-        resume = { text: profile.resumeText };
       }
 
       setSelected({
-        id: app._id,
+        id: appFull._id,
         student: {
-          id: app.student?._id,
+          id: appFull?.student?._id,
           fullName:
-            app.student?.fullName ||
-            [app.student?.firstName, app.student?.lastName]
+            appFull?.student?.fullName ||
+            [appFull?.student?.firstName, appFull?.student?.lastName]
               .filter(Boolean)
               .join(" "),
+          course: appFull?.student?.course || "—",
+          bio: appFull?.student?.bio || "",
         },
-        job: { id: app.job?._id, title: app.job?.title },
+        job: { id: appFull?.job?._id, title: appFull?.job?.title },
         resume,
-        answers: Array.isArray(answersRaw) ? answersRaw : answersRaw?.items || [],
-        message:
-          typeof messageRaw === "string" ? messageRaw : messageRaw?.text || "",
+        answers: Array.isArray(appFull?.answers) ? appFull.answers : [],
+        message: appFull?.message || "",
       });
       setDrawerOpen(true);
     } catch (e) {
@@ -305,7 +278,7 @@ export default function ApplicationsPage({ token: propToken }) {
   /* ------------------------------ */
   return (
     <section className="bg-white rounded-2xl shadow-sm p-6 h-[600px] md:h-[670px] flex flex-col">
-      <div className=" h-[640px] flex flex-col">
+      <div className="h-[640px] flex flex-col">
         {/* Header row (static) */}
         <div className="flex items-center justify-between mb-2 shrink-0">
           <h1 className="text-lg md:text-xl font-semibold text-gray-800">
@@ -433,17 +406,13 @@ export default function ApplicationsPage({ token: propToken }) {
               <div className="flex-1 overflow-y-auto">
                 <ul className="divide-y divide-gray-100">
                   {filteredAndSorted.map((app) => {
-                    const studentId = app.student?._id;
                     const fullName =
                       app.student?.fullName ||
                       [app.student?.firstName, app.student?.lastName]
                         .filter(Boolean)
                         .join(" ") ||
                       "Unknown Applicant";
-
-                    const course =
-                      (studentId && studentProfiles[studentId]?.course) || "—";
-
+                    const course = app?.student?.course || "—";
                     const jobTitle = app.job?.title || "—";
                     const [label, pillClass] = statusLabel(app.status);
                     const isBusy = rowBusy === app._id;
@@ -462,7 +431,6 @@ export default function ApplicationsPage({ token: propToken }) {
                                 <h4 className="text-sm font-semibold text-gray-800 truncate">
                                   {fullName}
                                 </h4>
-                                {/* 🔹 Course shown here instead of job title */}
                                 <p className="text-xs text-gray-500 truncate">
                                   {course}
                                 </p>
@@ -493,12 +461,13 @@ export default function ApplicationsPage({ token: propToken }) {
 
                           {/* Actions */}
                           <div className="flex justify-end gap-2 whitespace-nowrap">
-                            <Link
-                              to={`/students/${app.student?._id || ""}`}
+                            <button
+                              type="button"
+                              onClick={() => handleViewProfile(app)}
                               className="px-2.5 py-1.5 rounded-lg border text-gray-700 hover:bg-gray-50 text-xs"
                             >
                               View Profile
-                            </Link>
+                            </button>
                             <button
                               disabled={isBusy}
                               onClick={() => handleReview(app)}
@@ -517,15 +486,17 @@ export default function ApplicationsPage({ token: propToken }) {
           )}
         </div>
 
-        {/* Review modal (kept) */}
+        {/* Review modal */}
         <ReviewApplicationModal
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
           application={selected}
-          onStatusChange={(status, id) => {
-            setApps((prev) =>
-              prev.map((a) => (a._id === id ? { ...a, status } : a))
-            );
+          onStatusChange={async (status, id) => {
+            try {
+              await persistStatus(id, status); // <-- writes to DB
+            } catch (e) {
+              setError(e.message || "Failed to update status.");
+            }
           }}
         />
       </div>

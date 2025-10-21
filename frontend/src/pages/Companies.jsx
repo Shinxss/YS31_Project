@@ -156,10 +156,6 @@ export default function Companies() {
                       <button className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-[#2742C9] text-white text-sm font-semibold hover:bg-[#203ab1] transition">
                         View Profile
                       </button>
-                      <button className="inline-flex items-center justify-center px-4 py-2 rounded-md border border-[#D6DDF1] text-[#0F1E54] text-sm font-semibold hover:bg-[#F7F9FE] transition">
-                        <MessageSquare className="w-4 h-4 mr-2" />
-                        Message
-                      </button>
                     </div>
                   </div>
                 </div>

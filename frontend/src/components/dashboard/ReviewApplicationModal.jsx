@@ -1,288 +1,288 @@
-import { useEffect, useMemo, useState } from "react";
+// src/components/dashboard/ReviewApplicationModal.jsx
+import React, { useEffect, useMemo, useState } from "react";
 
-/* Resolve API base exactly like your pages do */
+/* Resolve API base (env first, Vite dev fallback) */
 const RAW_API_BASE =
   (import.meta.env?.VITE_API_BASE ||
-    (typeof window !== "undefined" && /:5173|:5174/.test(window.location.origin)
+    (typeof window !== "undefined" &&
+    /:5173|:5174/.test(window.location.origin)
       ? "http://localhost:5000"
       : "")).trim();
 const api = (p) => (RAW_API_BASE ? `${RAW_API_BASE}${p}` : p);
 
-/* Endpoints */
-const API = {
-  studentProfile: (studentId) => api(`/api/students/${studentId}/profile`),
-  screeningAnswers: (appId) => api(`/api/applications/${appId}/screening-answers`),
-  applicantMessage: (appId) => api(`/api/applications/${appId}/message`),
-  updateStatus: (id) => api(`/api/applications/${id}`),
-  resumeFile: (fname) => api(`/uploads/resumes/${encodeURIComponent(fname)}`),
-};
-
-const Avatar = ({ src, name }) => (
-  <div className="h-12 w-12 rounded-full overflow-hidden bg-gray-100 border">
-    {src ? (
-      <img src={src} alt={name || "avatar"} className="h-full w-full object-cover" />
-    ) : (
-      <div className="h-full w-full flex items-center justify-center text-sm font-semibold text-gray-600">
-        {(name || "?")
-          .split(" ")
-          .slice(0, 2)
-          .map((p) => p[0]?.toUpperCase() || "")
-          .join("") || "?"}
-      </div>
-    )}
-  </div>
-);
+function Initials({ name = "" }) {
+  const n = String(name).trim();
+  const parts = n ? n.split(/\s+/).slice(0, 2) : [];
+  const ini = parts.map((p) => p[0]?.toUpperCase() ?? "").join("");
+  return (
+    <div className="h-12 w-12 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-sm font-semibold text-gray-700">
+      {ini || "?"}
+    </div>
+  );
+}
 
 export default function ReviewApplicationModal({
   open,
   onClose,
-  application, // {_id, student:{_id, fullName, firstName, lastName}, job, resume?}
-  onStatusChange, // optional callback(statusString, applicationId)
+  application,            // optional seed object
+  applicationId,          // optional if `application` has id/_id
+  onStatusChange,         // (status, id) => void
 }) {
-  const [loading, setLoading] = useState(false);
-  const [profile, setProfile] = useState(null);
-  const [answers, setAnswers] = useState([]);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const [app, setApp] = useState(null);
+  const [loading, setLoading] = useState(Boolean(open));
+  const [err, setErr] = useState("");
 
-  const authHeader = () => {
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("ic_token") : null;
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
+  // prefer company token on company pages
+  const token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("ic_company_token") ||
+        localStorage.getItem("ic_token")
+      : null;
 
-  const studentName =
-    application?.student?.fullName ||
-    [application?.student?.firstName, application?.student?.lastName]
-      .filter(Boolean)
-      .join(" ") ||
-    "Unknown Applicant";
+  const authHeader = useMemo(
+    () => (token ? { Authorization: `Bearer ${token}` } : {}),
+    [token]
+  );
 
-  const resumeUrl = useMemo(() => {
-    const r = application?.resume;
+  const id =
+    application?.id ||
+    application?._id ||
+    applicationId;
 
-    // case 1: DB stored a filename string
-    if (typeof r === "string" && r.trim()) {
-      return API.resumeFile(r.trim());
-    }
-
-    // case 2: something like { url: "https://..." } (or you set it in the page)
-    if (r && typeof r === "object" && typeof r.url === "string" && r.url.trim()) {
-      return r.url.trim();
-    }
-
-    // fallback to profile’s resume url if present
-    if (typeof profile?.resumeUrl === "string" && profile.resumeUrl.trim()) {
-      return profile.resumeUrl.trim();
-    }
-
-    return null;
-  }, [application?.resume, profile?.resumeUrl]);
-
+  /* Fetch the full application (student + skills + answers + message).
+     If answers/skills are missing, fetch job screening and/or student profile. */
   useEffect(() => {
-    if (!open || !application?._id || !application?.student?._id) return;
-
     let ignore = false;
-    const load = async () => {
+    async function load() {
+      if (!open || !id) return;
+      setLoading(true);
+      setErr("");
       try {
-        setError("");
-        setLoading(true);
+        // unified payload
+        const res = await fetch(api(`/api/company/applications/${id}`), {
+          headers: { ...authHeader },
+          credentials: "include",
+          cache: "no-store",
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.message || "Failed to load application");
 
-        const [pr, ar, mr] = await Promise.all([
-          fetch(API.studentProfile(application.student._id), {
-            credentials: "include",
-            headers: { ...authHeader() },
-          }),
-          fetch(API.screeningAnswers(application._id), {
-            credentials: "include",
-            headers: { ...authHeader() },
-          }),
-          fetch(API.applicantMessage(application._id), {
-            credentials: "include",
-            headers: { ...authHeader() },
-          }),
-        ]);
+        let next = data;
 
-        const pRaw = pr.ok ? await pr.json() : null;
-        const a = ar.ok ? await ar.json() : [];
-        const m = mr.ok ? await mr.json() : null;
-
-        if (!ignore) {
-          setProfile(p);
-          setAnswers(Array.isArray(a) ? a : a?.items || []);
-          setMessage(typeof m === "string" ? m : m?.text || "");
+        // Fallback: if skills are empty, try student profile
+        if ((!next?.student?.skills || next.student.skills.length === 0) && next?.student?._id) {
+          try {
+            const p = await fetch(api(`/api/students/${next.student._id}/profile`), {
+              headers: { ...authHeader },
+              credentials: "include",
+            });
+            if (p.ok) {
+              const prof = await p.json();
+              next = {
+                ...next,
+                student: {
+                  ...next.student,
+                  skills: Array.isArray(prof?.skills) ? prof.skills : next.student.skills || [],
+                  // if your profile returns `school`, add it too
+                  school: prof?.school || next.student.school || "",
+                },
+              };
+            }
+          } catch {}
         }
+
+        // Fallback: if answers missing, try job screening questions
+        if ((!next?.answers || next.answers.length === 0) && next?.job?._id) {
+          try {
+            const q = await fetch(api(`/api/jobs/${next.job._id}/screening`), {
+              headers: { ...authHeader },
+              credentials: "include",
+            });
+            if (q.ok) {
+              const qs = await q.json();
+              const questions = Array.isArray(qs?.questions) ? qs.questions : [];
+              next = { ...next, answers: questions.map((qq) => ({ question: qq, answer: "" })) };
+            }
+          } catch {}
+        }
+
+        if (!ignore) setApp(next);
       } catch (e) {
-        if (!ignore) setError(e.message || "Failed to load applicant details.");
+        if (!ignore) setErr(e.message || "Failed to load application");
       } finally {
         if (!ignore) setLoading(false);
       }
-    };
-
-    load();
-    return () => {
-      ignore = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, application?._id, application?.student?._id]);
-
-  const patchStatus = async (status) => {
-    if (!application?._id) return;
-    try {
-      setError("");
-      setLoading(true);
-      const res = await fetch(API.updateStatus(application._id), {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json", ...authHeader() },
-        body: JSON.stringify({ status }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j?.message || "Failed to update status");
-      }
-      onStatusChange?.(status, application._id);
-      onClose?.();
-    } catch (e) {
-      setError(e.message || "Failed to update status.");
-    } finally {
-      setLoading(false);
     }
-  };
+    load();
+    return () => { ignore = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, id]);
 
   if (!open) return null;
 
+  // graceful UI with skeletons
+  const student = app?.student || {};
+  const fullName =
+    student.fullName ||
+    [student.firstName, student.lastName].filter(Boolean).join(" ");
+  const courseAndSchool = [student.course, student.school].filter(Boolean).join(", ");
+  const skills = Array.isArray(student.skills) ? student.skills : [];
+  const answers = Array.isArray(app?.answers) ? app.answers : [];
+  const message = app?.message || "";
+
+  const handleAccept = () => {
+    if (app) onStatusChange?.("Accepted", app._id || app.id);
+  };
+  const handleReject = () => {
+    if (app) onStatusChange?.("Rejected", app._id || app.id);
+  };
+
   return (
-    <div className="fixed inset-0 z-50">
-      {/* overlay */}
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-
-      {/* centered card */}
-      <div className="absolute inset-0 flex items-start sm:items-center justify-center p-4 sm:p-6">
-        <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl border">
-          {/* Header */}
-          <div className="px-6 py-4 border-b">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-gray-900">
-                  Review Application: <span className="font-bold">{studentName}</span>
-                </h2>
-                <p className="text-xs text-gray-500">
-                  Details and screening answers for the student’s application.
-                </p>
-              </div>
-
-              {resumeUrl ? (
-                <a
-                  href={resumeUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center px-3 py-1.5 rounded-md border bg-white hover:bg-gray-50 text-sm font-medium"
-                >
-                  View Resume
-                </a>
-              ) : (
-                <span className="text-xs text-gray-400">No resume</span>
-              )}
-            </div>
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40">
+      <div className="bg-white w-full max-w-3xl rounded-xl shadow-xl mt-10 overflow-hidden">
+        {/* Header */}
+        <div className="px-5 py-3 border-b relative">
+          <div className="min-w-0 pr-10">
+            <h3 className="font-semibold text-gray-900 truncate">
+              Review Application: {fullName || "—"}
+            </h3>
+            <p className="text-xs text-gray-500">
+              Details and screening answers for the student’s application.
+            </p>
           </div>
 
-          {/* Body */}
-          <div className="px-6 py-5 space-y-6 max-h-[70vh] overflow-y-auto">
-            {error && (
-              <div className="rounded-md border border-red-200 bg-red-50 text-red-700 text-sm px-3 py-2">
-                {error}
+          {/* X close button */}
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+          >
+            <span className="text-xl leading-none">&times;</span>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4 max-h-[70vh] overflow-y-auto">
+          {err && (
+            <div className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {err}
+            </div>
+          )}
+
+          {/* Top row: avatar + name/subtitle + right-aligned View Resume */}
+          <div className="flex items-center justify-between gap-4">
+            {/* Left: avatar + name + subtitle + skills */}
+            <div className="flex items-start gap-4 min-w-0 flex-1">
+              {student.profilePicture ? (
+                <img
+                  src={student.profilePicture}
+                  alt={fullName}
+                  className="h-12 w-12 rounded-full object-cover border"
+                />
+              ) : (
+                <Initials name={fullName} />
+              )}
+
+              <div className="min-w-0 flex-1">
+                <div className="font-semibold text-gray-900 truncate">
+                  {fullName || "—"}
+                </div>
+                <div className="text-sm text-gray-500 truncate">
+                  {courseAndSchool || "—"}
+                </div>
+
+                {!!skills.length && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {skills.map((s, i) => (
+                      <span
+                        key={`${s}-${i}`}
+                        className="px-2 py-1 text-xs rounded-md bg-gray-100 text-gray-700 border"
+                      >
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
+            </div>
+
+            {/* Right: View Resume (aligned with profile) */}
+            {app?.resume && (
+              <a
+                href={api(`/uploads/resumes/${encodeURIComponent(app.resume)}`)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center px-4 py-2 rounded-md bg-[#1E6FBF] hover:bg-[#175C9E] text-white text-sm font-medium shadow shrink-0"
+              >
+                View Resume
+              </a>
             )}
-
-            {/* Top summary row */}
-            <div className="flex items-start gap-3">
-              <Avatar
-                src={profile?.profilePicture}
-                name={studentName}
-              />
-              <div className="flex-1 min-w-0">
-                <div className="text-[15px] font-semibold text-gray-900">
-                  {studentName}
-                </div>
-                <div className="text-xs text-gray-600">
-                  {profile?.course ? profile.course : "-"}
-                  {profile?.school ? `, ${profile.school}` : ""}
-                </div>
-
-                {/* skills chips */}
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {(profile?.skills || []).slice(0, 10).map((s, i) => (
-                    <span
-                      key={`${s}-${i}`}
-                      className="px-2 py-1 text-[11px] rounded-full border bg-gray-50 text-gray-700"
-                    >
-                      {s}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Bio */}
-            <div>
-              <h4 className="text-sm font-semibold text-gray-900 mb-2">Bio</h4>
-              <p className="text-sm leading-6 text-gray-700 whitespace-pre-wrap">
-                {profile?.bio || "—"}
-              </p>
-            </div>
-
-            {/* Screening Questions */}
-            <div>
-              <h4 className="text-sm font-semibold text-gray-900 mb-2">
-                Screening Questions
-              </h4>
-              {answers?.length ? (
-                <ul className="space-y-3">
-                  {answers.map((a, idx) => (
-                    <li key={idx} className="border rounded-lg p-3">
-                      <p className="text-sm font-medium mb-1">
-                        {a?.question ? a.question : `Question ${idx + 1}`}
-                      </p>
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                        {a?.answer || "—"}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-gray-600">No answers provided.</p>
-              )}
-            </div>
-
-            {/* Applicant message */}
-            <div>
-              <h4 className="text-sm font-semibold text-gray-900 mb-2">
-                Applicant Message
-              </h4>
-              <div className="border rounded-lg p-3 text-sm text-gray-800 whitespace-pre-wrap">
-                {message || "—"}
-              </div>
-            </div>
           </div>
 
-          {/* Footer buttons */}
-          <div className="px-6 py-4 border-t flex items-center justify-end gap-2">
-            <button
-              disabled={loading}
-              onClick={() => patchStatus("Rejected")}
-              className="px-3 py-2 rounded-md border text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-            >
-              Reject
-            </button>
-            <button
-              disabled={loading}
-              onClick={() => patchStatus("Accepted")}
-              className="px-4 py-2 rounded-md bg-[#1337B6] text-white text-sm font-medium hover:bg-[#0F2FA0] disabled:opacity-60"
-            >
-              Accept
-            </button>
+          {/* Bio */}
+          <div className="mt-6">
+            <div className="text-sm font-semibold text-gray-800 mb-1">Bio</div>
+            <p className="text-sm text-gray-800 whitespace-pre-wrap">
+              {student.bio?.trim() || "No bio added yet"}
+            </p>
           </div>
+
+          {/* Screening Questions */}
+          <div className="mt-6">
+            <div className="text-sm font-semibold text-gray-800 mb-2">
+              Screening Questions
+            </div>
+
+            {loading ? (
+              <div className="space-y-3">
+                <div className="h-20 bg-gray-100 rounded-lg animate-pulse" />
+                <div className="h-20 bg-gray-100 rounded-lg animate-pulse" />
+              </div>
+            ) : answers.length ? (
+              <ul className="space-y-3">
+                {answers.map((a, i) => (
+                  <li key={i} className="rounded-lg border bg-white">
+                    <div className="px-3 pt-3 text-sm text-gray-700">
+                      <span className="font-medium">{
+                        a?.question || `Question ${i + 1}`
+                      }</span>
+                    </div>
+                    <div className="px-3 pb-3 mt-1 text-sm text-gray-900">
+                      {a?.answer?.trim() || "—"}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-500">No answers provided.</p>
+            )}
+          </div>
+
+          {/* Applicant Message */}
+          <div className="mt-6">
+            <div className="text-sm font-semibold text-gray-800 mb-1">
+              Applicant Message
+            </div>
+            <div className="text-sm text-gray-900 border rounded-lg p-2 min-h-[44px] bg-white">
+              {message?.trim() || "—"}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-3 border-t flex items-center justify-end gap-2">
+          <button
+            onClick={handleReject}
+            className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-900 text-sm hover:bg-gray-200"
+          >
+            Reject
+          </button>
+          <button
+            onClick={handleAccept}
+            className="px-3 py-1.5 rounded-lg bg-[#1337B6] text-white text-sm hover:bg-[#0F2FA0]"
+          >
+            Accept
+          </button>
         </div>
       </div>
     </div>

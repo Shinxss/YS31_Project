@@ -291,12 +291,23 @@ export default function StudentDashboardHome({
               {stat.icon}
             </div>
             <h2 className="text-3xl font-bold text-[#173B8A]">{stat.value}</h2>
+
             {stat.label === "Success Rate" ? (
-              <div className="w-full bg-gray-200 h-2 rounded-full">
-                <div
-                  className="h-2 rounded-full bg-gradient-to-r from-[#173B8A] to-[#F37526]"
-                  style={{ width: `${dashboardStatsLocal.successRate}%` }}
-                />
+              // NEW: orange baseline with blue overlay when > 0%
+              <div className="relative w-full h-2 rounded-full overflow-hidden bg-gray-200">
+                {/* Orange baseline (always visible) */}
+                <div className="absolute inset-0 bg-[#F37526]" />
+                {/* Blue overlay that blends to transparent; only when > 0 */}
+                {Number(dashboardStatsLocal.successRate) > 0 && (
+                  <div
+                    className="absolute left-0 top-0 h-2"
+                    style={{
+                      width: `${dashboardStatsLocal.successRate}%`,
+                      background:
+                        "linear-gradient(to right, #173B8A 0%, rgba(23,59,138,0.85) 65%, rgba(23,59,138,0) 100%)",
+                    }}
+                  />
+                )}
               </div>
             ) : (
               <p className="text-xs text-gray-400 mt-1"></p>

@@ -6,41 +6,36 @@ const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
 export default function ApplyModal({ jobId, onClose }) {
   const [questions, setQuestions] = useState([]);
-  const [answers, setAnswers] = useState({});
+  const [answersByIndex, setAnswersByIndex] = useState({});
   const [resume, setResume] = useState(null);
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // ✅ Fetch screening questions
+  // Fetch screening questions
   useEffect(() => {
-    const fetchQuestions = async () => {
+    (async () => {
       try {
         const res = await fetch(`${API_BASE}/api/jobs/${jobId}/screening`);
         const data = await res.json();
-        if (res.ok) setQuestions(data.questions || []);
+        if (res.ok) setQuestions(Array.isArray(data.questions) ? data.questions : []);
       } catch (err) {
         console.error("❌ Failed to fetch questions", err);
       }
-    };
-    fetchQuestions();
+    })();
   }, [jobId]);
 
   const handleAnswerChange = (index, value) => {
-    setAnswers((prev) => ({ ...prev, [index]: value }));
+    setAnswersByIndex((prev) => ({ ...prev, [index]: value }));
   };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (
-      ![
-        "application/pdf",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      ].includes(file.type)
-    ) {
-      toast.error("Please upload a PDF or DOCX file.");
-      return;
-    }
+    const ok = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ].includes(file.type);
+    if (!ok) return toast.error("Please upload a PDF or DOCX file.");
     setResume(file);
   };
 
@@ -49,59 +44,50 @@ export default function ApplyModal({ jobId, onClose }) {
     if (!resume) return toast.error("Please upload your resume first.");
 
     const token = localStorage.getItem("ic_token");
-    if (!token) {
-      toast.error("Please login first.");
-      return;
+    if (!token) return toast.error("Please login first.");
+
+    // ✅ Build ARRAY of { question, answer } with the exact question text
+    const answersArray = questions.map((q, i) => ({
+      question: typeof q === "string" ? q : q?.text || q?.question || `Question ${i + 1}`,
+      answer: String(answersByIndex[i] || "").trim(),
+    }));
+
+    // (optional) require all answers if there are questions
+    if (questions.length && answersArray.some(a => !a.answer)) {
+      return toast.error("Please answer all screening questions.");
     }
 
     const formData = new FormData();
     formData.append("jobId", jobId);
-    formData.append("message", message);
+    formData.append("message", message.trim());
     formData.append("resume", resume);
-    formData.append("answers", JSON.stringify(answers));
+    formData.append("answers", JSON.stringify(answersArray)); // ← send array with question text
 
     try {
       setSubmitting(true);
       const res = await fetch(`${API_BASE}/api/student/apply`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` }, // don't set Content-Type for multipart
         body: formData,
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Application failed");
 
-      // ✅ PLAY SOUND + SUCCESS TOAST
-      const successSound = new Audio("/src/assets/sounds/success.mp3");
-      successSound.volume = 0.6;
-      successSound.play().catch(() => {});
-
-      toast.success("✅ Application Sent!", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        });
-
-            onClose();
-            } catch (err) {
-            toast.error(err.message || "Something went wrong");
-            } finally {
-            setSubmitting(false);
-            }
-        };
+      new Audio("/src/assets/sounds/success.mp3").play().catch(() => {});
+      toast.success("✅ Application Sent!", { autoClose: 3000 });
+      onClose();
+    } catch (err) {
+      toast.error(err.message || "Something went wrong");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-white/60 backdrop-blur-xs">
       <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 relative animate-fadeIn">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-800"
-        >
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-800">
           <X size={20} />
         </button>
 
@@ -114,25 +100,24 @@ export default function ApplyModal({ jobId, onClose }) {
           {/* Screening Questions */}
           {questions.length > 0 && (
             <div>
-              <h3 className="text-lg font-medium text-gray-800 mb-3">
-                Screening Questions
-              </h3>
+              <h3 className="text-lg font-medium text-gray-800 mb-3">Screening Questions</h3>
               <div className="space-y-4">
-                {questions.map((q, i) => (
-                  <div key={i}>
-                    <label className="font-medium text-gray-700">
-                      Q{i + 1}. {q}
-                    </label>
-                    <textarea
-                      rows={3}
-                      className="w-full mt-2 border rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-300"
-                      placeholder="Your answer..."
-                      value={answers[i] || ""}
-                      onChange={(e) => handleAnswerChange(i, e.target.value)}
-                      required
-                    />
-                  </div>
-                ))}
+                {questions.map((q, i) => {
+                  const label = typeof q === "string" ? q : q?.text || q?.question || `Question ${i + 1}`;
+                  return (
+                    <div key={i}>
+                      <label className="font-medium text-gray-700">{label}</label>
+                      <textarea
+                        rows={3}
+                        className="w-full mt-2 border rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-300"
+                        placeholder="Your answer..."
+                        value={answersByIndex[i] || ""}
+                        onChange={(e) => handleAnswerChange(i, e.target.value)}
+                        required
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -150,24 +135,14 @@ export default function ApplyModal({ jobId, onClose }) {
               <span className="text-sm text-gray-600">
                 {resume ? resume.name : "PDF or DOCX files"}
               </span>
-              <p className="text-xs text-gray-400 mt-1">
-                Accepted formats: PDF, DOCX
-              </p>
-              <input
-                id="resume"
-                type="file"
-                accept=".pdf,.docx"
-                className="hidden"
-                onChange={handleFileChange}
-              />
+              <p className="text-xs text-gray-400 mt-1">Accepted formats: PDF, DOCX</p>
+              <input id="resume" type="file" accept=".pdf,.docx" className="hidden" onChange={handleFileChange} />
             </label>
           </div>
 
           {/* Message */}
           <div>
-            <h3 className="text-lg font-medium text-gray-800 mb-2">
-              Leave a message
-            </h3>
+            <h3 className="text-lg font-medium text-gray-800 mb-2">Leave a message</h3>
             <textarea
               rows={4}
               className="w-full border rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-300"
@@ -182,9 +157,7 @@ export default function ApplyModal({ jobId, onClose }) {
             type="submit"
             disabled={submitting}
             className={`w-full py-3 text-white font-medium rounded-md transition ${
-              submitting
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-[#F37526] hover:bg-[#e36210]"
+              submitting ? "bg-gray-400 cursor-not-allowed" : "bg-[#F37526] hover:bg-[#e36210]"
             }`}
           >
             {submitting ? "Submitting..." : "Submit Application"}

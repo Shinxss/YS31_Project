@@ -6,11 +6,11 @@ export default function JobPostingsPage({ token }) {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-[#E9EDF5] py-10">
+    <div className="min-h-screen bg-white rounded-2xl pt-8">
       <div className="max-w-6xl mx-auto relative">
         {/* Header Section */}
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-[#1A2B6D]">
+          <h1 className="text-xl font-semibold text-[#1A2B6D]">
             Job Postings
           </h1>
 
