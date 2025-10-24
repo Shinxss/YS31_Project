@@ -1,0 +1,185 @@
+/* src/styles/UserManagement.css - typography + layout to match screenshot and bigger fonts */
+
+.um-page { min-height: 100vh; }
+
+/* main container next to sidebar (assumes sidebar width ~ 18rem / 288px) */
+.um-main {
+  margin-left: 18rem; /* if your sidebar width differs change this */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Topbar already handled by your Topbar.jsx - content sits below it */
+.um-content {
+  padding-top: 1rem;
+}
+
+/* header */
+.um-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 18px;
+}
+
+/* title */
+.um-title {
+  font-size: 32px; /* BIG title */
+  margin: 0;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.um-sub {
+  margin: 6px 0 0;
+  color: #4b5563;
+  font-size: 15px;
+}
+
+/* controls area (tabs + search) */
+.um-controls {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+/* tabs */
+.um-tabs { display: flex; gap: 10px; align-items: center; }
+
+.um-tab {
+  padding: 10px 20px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  border: 1px solid #e6e9ef;
+  font-weight: 700;
+  font-size: 16px;
+  color: #111827;
+  cursor: pointer;
+}
+
+.um-tab.active {
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+}
+
+/* search input */
+.um-search .um-input {
+  min-width: 360px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #e6e9ef;
+  font-size: 16px;
+}
+
+/* card */
+.um-card {
+  background: white;
+  border-radius: 12px;
+  padding: 18px;
+  border: 1px solid #eef2f7;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+}
+
+/* table container */
+.um-table-wrap { width: 100%; }
+
+.um-table-toprow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+/* result text & pagination */
+.um-results { color: #6b7280; font-size: 15px; }
+.um-pagination { display:flex; gap:10px; align-items:center; }
+
+.um-p-btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e6e9ef;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+/* table */
+.um-table-card { overflow-x: auto; }
+.um-table { width: 100%; border-collapse: collapse; min-width: 980px; }
+
+.um-th {
+  text-align: left;
+  padding: 18px 14px;
+  font-size: 16px;
+  color: #0f172a;
+  font-weight: 800;
+  background: #ffffff;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.um-td {
+  padding: 16px 14px;
+  font-size: 15px;
+  color: #111827;
+  vertical-align: middle;
+}
+
+.um-row-alt { background: #fbfbfd; }
+
+.um-td.subtle { color: #6b7280; }
+
+/* badges */
+.um-badge {
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.um-badge.active {
+  background: #dff6e9;
+  color: #047857;
+}
+
+.um-badge.disabled {
+  background: #fff0f0;
+  color: #b91c1c;
+}
+
+/* actions */
+.um-action {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #e6e9ef;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.um-action.um-edit {
+  background: #1d3b8b;
+  color: white;
+  border: none;
+}
+
+.um-action.um-toggle {
+  background: white;
+  color: #111827;
+}
+
+/* empty / loading */
+.um-empty {
+  padding: 48px 18px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 16px;
+}
+
+/* responsive small screen: reduce controls */
+@media (max-width: 980px) {
+  .um-search .um-input { min-width: 220px; }
+  .um-title { font-size: 26px; }
+  .um-tab { font-size: 14px; padding: 8px 14px; }
+}
