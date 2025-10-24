@@ -25,15 +25,12 @@ import StudentSettings from "./pages/studentDashboard/StudentSettings.jsx";
 import CompanyDash from "./pages/dashboard/CompanyDashboard.jsx";
 import CompanySettings from "./pages/dashboard/CompanySettings.jsx";
 import CompanyStudentProfile from "./pages/dashboard/CompanyStudentProfile.jsx";
+import JobDetailPage from "./pages/dashboard/JobDetailPage";
 
 /* Route guards */
 import ProtectedRoute from "./components/ProtectedRoute";
 import GuestRoute from "./components/GuestRoute";
 
-/* Admin */
-import AdminLogin from "./pages/admin/AdminLogin.jsx";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import RequireAdmin from "./components/RequireAdmin";
 
 export default function App() {
   return (
@@ -74,17 +71,6 @@ export default function App() {
           <Route path="/company/settings/*" element={<CompanySettings />} />
           <Route path="/company/students/:id" element={<CompanyStudentProfile />} />
         </Route>
-
-        {/* Admin */}
-        <Route path="/admin" element={<AdminLogin />} />
-        <Route
-          path="/admin/dashboard/*"
-          element={
-            <RequireAdmin>
-              <AdminDashboard />
-            </RequireAdmin>
-          }
-        />
 
         {/* fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

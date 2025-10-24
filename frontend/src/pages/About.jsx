@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Header from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
@@ -49,6 +50,7 @@ export default function About() {
 
   return (
     <div className="bg-[#E9F3FF]">
+      <Header/>
       {/* ===== Hero ===== */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8 text-center">
         <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-[#0F1D3B]">
@@ -122,6 +124,8 @@ export default function About() {
           </div>
         </div>
       </section>
+
+      
 
       {/* ===== Values FIRST (moved up) ===== */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">

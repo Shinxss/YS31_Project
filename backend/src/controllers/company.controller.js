@@ -1,4 +1,5 @@
 import Company from "../models/company.model.js";
+import Job from "../models/job.model.js";
 import CompanyEmployees from "../models/companyEmployees.model.js";
 import path from "path";
 import fs from "fs";
@@ -206,3 +207,79 @@ export async function listCompanyJobs(req, res) {
     res.status(500).json({ message: "Failed to fetch company jobs" });
   }
 }
+
+
+
+//NEW CHANGES OR ADDED
+
+
+/**
+ * Update a job (edit fields or change status/isArchived)
+ * PATCH /api/company/jobs/:id
+ */
+export const updateJob = async (req, res) => {
+  const { id } = req.params;
+  const payload = { ...req.body };
+
+  try {
+    // normalize status string if present
+    if (payload.status && typeof payload.status === "string") {
+      payload.status = payload.status.trim();
+    }
+
+    // whitelist allowed keys to avoid accidental schema errors
+    const allowed = [
+      "title",
+      "description",
+      "location",
+      "category",
+      "status",       // e.g., "open", "pending", "closed", "archived", "deleted", "suspended"
+      "isArchived",
+      "datePosted",
+      "closingDate",
+      // add others as per your Job model
+    ];
+    const patch = {};
+    for (const k of Object.keys(payload || {})) {
+      if (allowed.includes(k)) patch[k] = payload[k];
+    }
+
+    // Optional ownership check: uncomment if your auth sets req.user.companyId
+    // const jobBefore = await Job.findById(id);
+    // if (!jobBefore) return res.status(404).json({ message: "Job not found" });
+    // if (String(jobBefore.company) !== String(req.user?.companyId)) {
+    //   return res.status(403).json({ message: "Forbidden" });
+    // }
+
+    const updated = await Job.findByIdAndUpdate(id, patch, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!updated) return res.status(404).json({ message: "Job not found" });
+    return res.json(updated);
+  } catch (err) {
+    console.error("updateJob error:", err);
+    return res.status(500).json({ message: err.message || "Failed to update job" });
+  }
+};
+
+export const deleteJob = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+   
+    const softPatch = { status: "deleted", isArchived: true };
+    const updated = await Job.findByIdAndUpdate(id, softPatch, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!updated) return res.status(404).json({ message: "Job not found" });
+
+    return res.json({ message: "Job soft-deleted", job: updated });
+  } catch (err) {
+    console.error("deleteJob error:", err);
+    return res.status(500).json({ message: err.message || "Failed to delete job" });
+  }
+};

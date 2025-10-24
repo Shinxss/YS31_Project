@@ -22,16 +22,250 @@ const API = {
 ------------------------------------------------------- */
 const normalize = (v = "") => String(v).trim().toLowerCase().replace(/\s+/g, " ");
 
+/**
+ * statusBadge - maps raw status to label + tailwind classes
+ * supported labels: Open, Pending Review, Closed, Archived, Deleted, Suspended
+ */
 const statusBadge = (raw) => {
   const s = normalize(raw);
-  if (s.includes("closed") || s.includes("archive"))
-    return { label: "Closed", cls: "bg-red-50 text-red-700 border-red-200" };
+  if (s.includes("deleted"))
+    return { label: "Deleted", cls: "bg-red-50 text-red-700 border-red-200" };
+  if (s.includes("archiv"))
+    return { label: "Archived", cls: "bg-gray-50 text-gray-700 border-gray-200" };
+  if (s.includes("suspend"))
+    return { label: "Suspended", cls: "bg-amber-50 text-amber-700 border-amber-200" };
   if (s.includes("pending"))
     return { label: "Pending Review", cls: "bg-amber-50 text-amber-700 border-amber-200" };
+  if (s.includes("closed"))
+    return { label: "Closed", cls: "bg-red-50 text-red-700 border-red-200" };
+  // default -> open
   return { label: "Open", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
 };
 
 const KebabIcon = ({ className = "" }) => <span className={className} aria-hidden>⋯</span>;
+
+/* -------------------------------------------------------
+   Job Detail Modal (inline) - modified UI per request
+   - separator line between header and content
+   - right column uses floating cards (no border stroke)
+   - Work Experience, Education, Certifications: plain text blocks (no card bg/border)
+------------------------------------------------------- */
+function JobDetailModal({ job, apps, onClose, onEdit, onToggleArchive, onCloseReopen, onDelete }) {
+  if (!job) return null;
+
+  const appsForJob = apps.filter((a) => {
+    const jid = String(a?.job?._id || a?.jobId || a?.job || a?.job?._id?.$oid || "");
+    const jobId = String(job._id || job.id || job.slug || "");
+    return jid === jobId;
+  });
+
+  const st = statusBadge(job.status || (job.isActive ? "Open" : "Closed"));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-6 bg-black/40">
+      <div className="w-full max-w-[1150px] bg-white rounded-2xl shadow-xl overflow-auto max-h-[90vh]">
+        {/* Header */}
+        <div className="px-6 py-5 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold text-[#173B8A]">{job.title || "Untitled"}</h2>
+            <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+              <span>{job.location || job.city || "Remote / —"}</span>
+              <span>•</span>
+              <span className="inline-flex items-center rounded-full px-3 py-1 text-xs">
+                <span className={`${st.cls} inline-block rounded-full px-2 py-0.5 text-xs`}>{st.label}</span>
+              </span>
+              <span>•</span>
+              <span>{job.salary || ""}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onEdit}
+              className="px-3 py-2 rounded-lg border text-sm hover:bg-gray-50"
+            >
+              Edit
+            </button>
+
+            <button
+              onClick={() => onToggleArchive(job)}
+              className="px-3 py-2 rounded-lg border text-sm hover:bg-gray-50"
+            >
+              {normalize(job.status || "").includes("archiv") ? "Unarchive" : "Archive"}
+            </button>
+
+            <button
+              onClick={() => onCloseReopen(job)}
+              className="px-3 py-2 rounded-lg border text-sm hover:bg-gray-50"
+            >
+              {normalize(job.status || "").includes("closed") ? "Reopen" : "Close Job"}
+            </button>
+
+            <button
+              onClick={() => onDelete(job)}
+              className="px-3 py-2 rounded-lg border text-sm text-red-600 hover:bg-red-50"
+            >
+              Delete
+            </button>
+
+            <button onClick={onClose} aria-label="Close" className="ml-2 px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200">
+              Close
+            </button>
+          </div>
+        </div>
+
+        {/* Separator line between header and the rest */}
+        <hr className="border-t border-gray-200" />
+
+        {/* Content */}
+        <div className="px-6 py-6 grid grid-cols-12 gap-6">
+          {/* Left column: Description + requirements + profile-like sections */}
+          <div className="col-span-7 space-y-6">
+            <section className="rounded-lg">
+              <div className="p-4">
+                <h3 className="font-medium text-gray-800 mb-2">Job Description</h3>
+                <div className="text-sm text-gray-700 space-y-3">
+                  <div dangerouslySetInnerHTML={{ __html: job.description || job.shortDescription || "<p>No description provided.</p>" }} />
+                </div>
+              </div>
+            </section>
+
+            <section className="">
+              <div className="px-0 py-0">
+                <h3 className="font-medium text-gray-800 mb-2">Requirements</h3>
+                <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                  {(job.requirements && Array.isArray(job.requirements) ? job.requirements : (job.requirements ? [job.requirements] : []))
+                    .map((r, i) => <li key={i}>{r}</li>)}
+                  {/* fallback bullets from common fields */}
+                  {!job.requirements && (
+                    <>
+                      {job.minQualifications && <li>{job.minQualifications}</li>}
+                      {job.skills && Array.isArray(job.skills) && job.skills.map((s, idx) => <li key={`s${idx}`}>{s}</li>)}
+                      {!job.minQualifications && !job.skills && <li>No specific requirements listed.</li>}
+                    </>
+                  )}
+                </ul>
+              </div>
+            </section>
+
+            {/* WORK EXPERIENCE - removed card bg + border */}
+            <section className="">
+              <div className="px-0 py-0">
+                <h3 className="font-medium text-gray-800 mb-2">Work Experience</h3>
+                <div className="text-sm text-gray-700 space-y-2">
+                  {(job.workExperience && Array.isArray(job.workExperience) ? job.workExperience : [])
+                    .map((w, i) => (
+                      <div key={i} className="text-sm">
+                        <div className="font-medium">{w.role || w.title}</div>
+                        <div className="text-gray-500 text-xs">{w.company} • {w.period}</div>
+                        {w.description && <div className="mt-1">{w.description}</div>}
+                      </div>
+                    ))}
+                  {!job.workExperience && <div className="text-gray-500">No work experience listed.</div>}
+                </div>
+              </div>
+            </section>
+
+            {/* EDUCATION - removed card bg + border */}
+            <section className="">
+              <div className="px-0 py-0">
+                <h3 className="font-medium text-gray-800 mb-2">Education</h3>
+                <div className="text-sm text-gray-700 space-y-2">
+                  {(job.education && Array.isArray(job.education) ? job.education : [])
+                    .map((e, idx) => (
+                      <div key={idx} className="text-sm">
+                        <div className="font-medium">{e.institution}</div>
+                        <div className="text-gray-500 text-xs">{e.degree} • {e.year}</div>
+                      </div>
+                    ))}
+                  {!job.education && <div className="text-gray-500">No education listed.</div>}
+                </div>
+              </div>
+            </section>
+
+            {/* CERTIFICATIONS - removed card bg + border */}
+            <section className="">
+              <div className="px-0 py-0">
+                <h3 className="font-medium text-gray-800 mb-2">Certifications</h3>
+                <div className="text-sm text-gray-700 space-y-1">
+                  {(job.certifications && Array.isArray(job.certifications) ? job.certifications : [])
+                    .map((c, i) => <div key={i} className="text-sm">{c}</div>)}
+                  {!job.certifications && <div className="text-gray-500">No certifications listed.</div>}
+                </div>
+              </div>
+            </section>
+          </div>
+
+          {/* Right column: floating cards (no stroke, subtle shadow) */}
+          <div className="col-span-5 space-y-6">
+            <div className="rounded-lg bg-white p-4 shadow-md">
+              <h4 className="text-sm font-semibold text-gray-700">Quick Info</h4>
+              <div className="mt-3 text-sm text-gray-600 space-y-2">
+                <div><span className="font-medium text-gray-800">Category:</span> {job.category || job.department || "—"}</div>
+                <div><span className="font-medium text-gray-800">Type:</span> {job.type || "—"}</div>
+                <div><span className="font-medium text-gray-800">Duration:</span> {job.duration || "—"}</div>
+                <div><span className="font-medium text-gray-800">Posted:</span> {job.createdAt ? new Date(job.createdAt).toISOString().slice(0,10) : "—"}</div>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-white p-4 shadow-md">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-gray-700">Applicants</h4>
+                <span className="text-sm text-gray-500">{appsForJob.length} applicants</span>
+              </div>
+
+              <div className="mt-3">
+                {appsForJob.length === 0 ? (
+                  <div className="text-sm text-gray-500">No applicants yet.</div>
+                ) : (
+                  <ul className="space-y-3">
+                    {appsForJob.map((a) => {
+                      const applicant = a.applicant || a.user || a.candidate || {};
+                      const name = applicant.name || `${applicant.firstName || ""} ${applicant.lastName || ""}`.trim() || applicant.email || "Applicant";
+                      const appliedAt = a.createdAt || a.appliedAt || a.date || null;
+                      return (
+                        <li key={String(a._id || a.id || Math.random())} className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-sm text-gray-700 overflow-hidden">
+                              {applicant.avatar ? <img src={applicant.avatar} alt={name} className="w-full h-full object-cover" /> : (name[0] || "U")}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-gray-900 truncate">{name}</div>
+                              <div className="text-xs text-gray-500">{appliedAt ? new Date(appliedAt).toISOString().slice(0,10) : ""}</div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={`/company/application/${a._id || a.id || ""}`}
+                              className="text-sm text-[#0B63F8] hover:underline"
+                              onClick={(e) => {
+                                /* in-app behavior: allow router to handle or prevent if necessary */
+                              }}
+                            >
+                              Review
+                            </a>
+
+                            <button
+                              className="text-sm px-2 py-1 border rounded text-gray-700"
+                              onClick={() => window.open(applicant.resumeUrl || a.resumeUrl || "#", "_blank")}
+                            >
+                              Resume
+                            </button>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* -------------------------------------------------------
    Page
@@ -73,6 +307,9 @@ export default function JobPostingsPage() {
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
+  // selected job for modal
+  const [selectedJob, setSelectedJob] = useState(null);
+
   /* ---------- Load jobs + applications ---------- */
   useEffect(() => {
     let cancelled = false;
@@ -86,8 +323,8 @@ export default function JobPostingsPage() {
           fetch(API.companyApps, { credentials: "include", headers: { ...authHeader() } }),
         ]);
 
-        const jjson = await jr.json();
-        const ajson = await ar.json();
+        const jjson = await jr.json().catch(() => ({}));
+        const ajson = await ar.json().catch(() => ({}));
 
         if (!jr.ok) throw new Error(jjson?.message || "Failed to load jobs");
         if (!ar.ok) throw new Error(ajson?.message || "Failed to load applications");
@@ -132,14 +369,17 @@ export default function JobPostingsPage() {
     return Array.from(set);
   }, [jobs]);
 
+  /* Partition: archived tab should contain ONLY jobs whose status includes 'archiv' */
   const partitioned = useMemo(() => {
     const active = [];
     const archived = [];
+
     for (const j of jobs) {
       const s = normalize(j.status || j.state || (j.isActive ? "open" : "closed"));
-      const isArchived = j.isArchived || s.includes("archive") || s.includes("closed");
-      (isArchived ? archived : active).push(j);
+      const isArchivedStatus = s.includes("archiv"); // only status with 'archiv' counts
+      (isArchivedStatus ? archived : active).push(j);
     }
+
     return { active, archived };
   }, [jobs]);
 
@@ -161,7 +401,10 @@ export default function JobPostingsPage() {
         st === "all" ||
         (st === "open" && status.includes("open")) ||
         (st === "pending" && status.includes("pending")) ||
-        (st === "closed" && (status.includes("closed") || status.includes("archive")));
+        (st === "closed" && status.includes("closed")) ||
+        (st === "archived" && status.includes("archiv")) ||
+        (st === "deleted" && status.includes("deleted")) ||
+        (st === "suspended" && status.includes("suspend"));
 
       return matchQ && matchCat && matchStatus;
     });
@@ -216,11 +459,12 @@ export default function JobPostingsPage() {
     );
   };
 
-  /* ---------- Actions: delete (status-only), edit, archive/unarchive ---------- */
-  const handleDelete = async (id) => {
-    // status-only delete: mark as deleted/closed instead of hard-delete if backend expects it.
-    // Ask user for confirmation (safe UX)
-    const ok = window.confirm("Delete this job? This will mark it as deleted/closed.");
+  /* ---------- Actions: delete (soft), edit, archive/unarchive, close/reopen ---------- */
+
+  // Delete -> soft-delete (status: "deleted", isArchived: true)
+  const handleDelete = async (jobOrId) => {
+    const id = String(jobOrId._id || jobOrId.id || jobOrId);
+    const ok = window.confirm("Delete this job? This will mark it as deleted and archive it.");
     if (!ok) {
       setOpenMenuId(null);
       return;
@@ -228,64 +472,54 @@ export default function JobPostingsPage() {
 
     setActionLoadingId(id);
     setErr("");
+    // find job's current values
+    const job = jobs.find((j) => String(j._id || j.id || j.slug || "") === id);
+    const currentStatus = job?.status || (job?.isActive ? "open" : "closed");
+
+    // optimistic update
+    updateJobInState(id, { status: "deleted", isArchived: true });
+
     try {
-      // Try soft-delete via PATCH status = 'deleted' or isArchived: true
-      const payload = { status: "deleted", isArchived: true };
       const res = await fetch(`${API.companyJobs}/${id}`, {
-        method: "PATCH",
+        method: "DELETE",
         credentials: "include",
         headers: {
-          "Content-Type": "application/json",
           ...authHeader(),
         },
-        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        // fallback: attempt DELETE
-        const del = await fetch(`${API.companyJobs}/${id}`, {
-          method: "DELETE",
-          credentials: "include",
-          headers: { ...authHeader() },
-        });
-        if (!del.ok) {
-          const errJson = await del.json().catch(() => ({}));
-          throw new Error(errJson?.message || "Failed to delete job");
-        } else {
-          // remove from local state entirely
-          setJobs((prev) => prev.filter((j) => String(j._id || j.id || j.slug || "") !== String(id)));
-        }
-      } else {
-        const updated = await res.json().catch(() => ({}));
-        updateJobInState(id, { ...(updated || {}), isArchived: true });
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson?.message || "Failed to delete job");
       }
+
+      const data = await res.json().catch(() => null);
+      if (data?.job) updateJobInState(id, data.job);
     } catch (e) {
+      // revert
+      updateJobInState(id, { status: currentStatus, isArchived: job?.isArchived || false });
       setErr(e.message || "Failed to delete job.");
     } finally {
       setActionLoadingId(null);
       setOpenMenuId(null);
+      setSelectedJob(null);
     }
   };
 
-  const handleEdit = (id) => {
-    // Navigate to your edit page — adjust path if your routing differs
-    setOpenMenuId(null);
-    navigate(`/company/post-job/${id}`); // assumes same page handles edit when id param present
-  };
-
-  const handleToggleArchive = async (id) => {
+  // Archive / Unarchive -> archive = status: "archived", isArchived: true
+  const handleToggleArchive = async (jobOrId) => {
+    const id = String(jobOrId._id || jobOrId.id || jobOrId);
     setActionLoadingId(id);
     setErr("");
 
-    // Find job in state to know current
-    const job = jobs.find((j) => String(j._id || j.id || j.slug || "") === String(id));
-    const currentStatus = (job && (job.status || (job.isActive ? "open" : "closed"))) || "open";
-    const isCurrentlyArchived = job?.isArchived || normalize(currentStatus).includes("closed") || normalize(currentStatus).includes("archive") || normalize(currentStatus).includes("deleted");
+    const job = jobs.find((j) => String(j._id || j.id || j.slug || "") === id);
+    const currentStatus = job?.status || (job?.isActive ? "open" : "closed");
+    const isCurrentlyArchived = normalize(currentStatus).includes("archiv");
 
-    const newStatus = isCurrentlyArchived ? "open" : "closed";
+    const newStatus = isCurrentlyArchived ? "open" : "archived";
     const payload = { status: newStatus, isArchived: !isCurrentlyArchived };
 
-    // Optimistic update
+    // optimistic update
     updateJobInState(id, { status: newStatus, isArchived: payload.isArchived });
 
     try {
@@ -304,7 +538,51 @@ export default function JobPostingsPage() {
         throw new Error(errJson?.message || "Failed to update job status");
       }
 
-      // If backend returns updated job, merge it
+      const updated = await res.json().catch(() => null);
+      if (updated) updateJobInState(id, updated);
+    } catch (e) {
+      // revert
+      updateJobInState(id, { status: currentStatus, isArchived: job?.isArchived || false });
+      setErr(e.message || "Failed to update job status.");
+    } finally {
+      setActionLoadingId(null);
+      setOpenMenuId(null);
+      setSelectedJob(null);
+    }
+  };
+
+  // Close / Reopen -> closed <-> open, do NOT archive here
+  const handleCloseOrReopen = async (jobOrId) => {
+    const id = String(jobOrId._id || jobOrId.id || jobOrId);
+    setActionLoadingId(id);
+    setErr("");
+
+    const job = jobs.find((j) => String(j._id || j.id || j.slug || "") === id);
+    const currentStatus = job?.status || (job?.isActive ? "open" : "closed");
+    const isCurrentlyClosed = normalize(currentStatus).includes("closed");
+
+    const newStatus = isCurrentlyClosed ? "open" : "closed";
+    const payload = { status: newStatus, isArchived: false };
+
+    // optimistic update
+    updateJobInState(id, { status: newStatus, isArchived: false });
+
+    try {
+      const res = await fetch(`${API.companyJobs}/${id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader(),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson?.message || "Failed to update job status");
+      }
+
       const updated = await res.json().catch(() => null);
       if (updated) updateJobInState(id, updated);
     } catch (e) {
@@ -314,7 +592,15 @@ export default function JobPostingsPage() {
     } finally {
       setActionLoadingId(null);
       setOpenMenuId(null);
+      setSelectedJob(null);
     }
+  };
+
+  const handleEdit = (jobOrId) => {
+    const id = String(jobOrId._id || jobOrId.id || jobOrId);
+    setOpenMenuId(null);
+    setSelectedJob(null);
+    navigate(`/company/post-job/${id}`);
   };
 
   /* ---------- Render ---------- */
@@ -373,6 +659,9 @@ export default function JobPostingsPage() {
               <option value="open">Open</option>
               <option value="pending">Pending Review</option>
               <option value="closed">Closed</option>
+              <option value="archived">Archived</option>
+              <option value="deleted">Deleted</option>
+              <option value="suspended">Suspended</option>
             </select>
           </div>
 
@@ -438,7 +727,7 @@ export default function JobPostingsPage() {
                 const appsCount = appsPerJob.get(id) || 0;
                 const st = statusBadge(j.status || (j.isActive ? "Open" : "Closed"));
                 const isActionLoading = actionLoadingId === id;
-                const isArchived = j.isArchived || normalize(j.status || (j.isActive ? "open" : "closed")).includes("closed") || normalize(j.status || "").includes("archive") || normalize(j.status || "").includes("deleted");
+                const isArchived = normalize(j.status || "").includes("archiv");
 
                 return (
                   <li key={id} className="px-4 py-4 grid grid-cols-12 gap-3 items-center">
@@ -484,12 +773,13 @@ export default function JobPostingsPage() {
                       </button>
 
                       {openMenuId === id && (
-                        <div className="absolute right-0 top-9 w-44 rounded-md border bg-white shadow-md z-10">
+                        <div className="absolute right-0 top-9 w-48 rounded-md border bg-white shadow-md z-10">
                           <button
                             className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
                             onClick={() => {
+                              // open modal view
+                              setSelectedJob(j);
                               setOpenMenuId(null);
-                              navigate(`/company/job/${id}`); // view route, adjust if needed
                             }}
                           >
                             View
@@ -497,23 +787,31 @@ export default function JobPostingsPage() {
 
                           <button
                             className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-                            onClick={() => handleEdit(id)}
+                            onClick={() => handleEdit(j)}
                           >
                             Edit
                           </button>
 
                           <button
                             className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-                            onClick={() => handleToggleArchive(id)}
+                            onClick={() => handleToggleArchive(j)}
                             disabled={isActionLoading}
                           >
-                            {isActionLoading ? "Updating…" : isArchived ? "Unarchive / Reopen" : "Archive / Close"}
+                            {isActionLoading ? "Updating…" : isArchived ? "Unarchive" : "Archive"}
+                          </button>
+
+                          <button
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                            onClick={() => handleCloseOrReopen(j)}
+                            disabled={isActionLoading}
+                          >
+                            {isActionLoading ? "Updating…" : normalize(j.status || "").includes("closed") ? "Reopen" : "Close Job"}
                           </button>
 
                           <div className="h-px bg-gray-100" />
                           <button
                             className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                            onClick={() => handleDelete(id)}
+                            onClick={() => handleDelete(j)}
                             disabled={isActionLoading}
                           >
                             {isActionLoading ? "Deleting…" : "Delete"}
@@ -541,7 +839,7 @@ export default function JobPostingsPage() {
                 <option key={n} value={n}>{n}</option>
               ))}
             </select>
-            <span className="ml-3">{startIdx + 1}-{Math.min(startIdx + rowsPerPage, totalResults)} of {totalResults} results</span>
+            <span className="ml-3">{totalResults === 0 ? 0 : startIdx + 1}-{Math.min(startIdx + rowsPerPage, totalResults)} of {totalResults} results</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -568,6 +866,19 @@ export default function JobPostingsPage() {
           </div>
         </div>
       </div>
+
+      {/* Job detail modal */}
+      {selectedJob && (
+        <JobDetailModal
+          job={selectedJob}
+          apps={apps}
+          onClose={() => setSelectedJob(null)}
+          onEdit={() => handleEdit(selectedJob)}
+          onToggleArchive={() => handleToggleArchive(selectedJob)}
+          onCloseReopen={() => handleCloseOrReopen(selectedJob)}
+          onDelete={() => handleDelete(selectedJob)}
+        />
+      )}
     </div>
   );
 }

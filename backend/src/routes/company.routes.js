@@ -7,6 +7,8 @@ import {
   validateCompanyName,
   saveCompanyDetails,
   getCompanyDetails,
+  updateJob, 
+  deleteJob
 } from "../controllers/company.controller.js";
 
 
@@ -24,6 +26,9 @@ router.get("/details/:userId", auth, getCompanyDetails);
 
 router.get("/applications", auth, listCompanyApplications);
 router.get("/jobs", auth, listMyCompanyJobs);
+
+router.patch("/jobs/:id", auth, updateJob);
+router.delete("/jobs/:id", auth, deleteJob);
 
 
 export default router; // ✅ essential export
