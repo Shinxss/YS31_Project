@@ -8,11 +8,58 @@ import CompanyEmployees from "../models/companyEmployees.model.js";
 import OtpToken from "../models/otpToken.model.js";
 import { sendMail } from "../utils/mailer.js";
 
+/* ------------------ helpers ------------------ */
 const reqd = (v, name) => {
-  if (!v || (typeof v === "string" && !v.trim())) throw new Error(`${name} is required`);
+  if (!v || (typeof v === "string" && !v.trim()))
+    throw new Error(`${name} is required`);
 };
 
-// ------------------ Send Signup OTP ------------------
+// Resolve the canonical Company _id for a user (owner or employee)
+async function resolveCompanyIdByUser({ userId, email, companyNameHint }) {
+  const emailL = (email || "").toLowerCase();
+
+  // 1) Owner by explicit link or email on Company
+  if (userId) {
+    const byUser = await Company.findOne({ user: userId }).lean();
+    if (byUser?._id) return byUser._id;
+  }
+  if (emailL) {
+    const byEmail = await Company.findOne({ email: emailL }).lean();
+    if (byEmail?._id) return byEmail._id;
+  }
+
+  // 2) Employee via CompanyEmployees -> Company (by companyName)
+  let companyName = companyNameHint;
+  if (!companyName && emailL) {
+    const empDoc = await CompanyEmployees.findOne({
+      "employees.email": emailL,
+    })
+      .collation({ locale: "en", strength: 2 })
+      .lean();
+    if (empDoc?.companyName) companyName = empDoc.companyName;
+  }
+
+  if (companyName) {
+    const comp = await Company.findOne({ companyName })
+      .collation({ locale: "en", strength: 2 })
+      .lean();
+    if (comp?._id) return comp._id;
+  }
+
+  return null;
+}
+
+// Sign a JWT and include companyId for company users when available
+function signJwt({ userId, role, email, companyId }) {
+  const payload = { sub: userId, role, email };
+  if (companyId) payload.companyId = String(companyId);
+
+  return jwt.sign(payload, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+  });
+}
+
+/* ------------------ Send Signup OTP ------------------ */
 export const sendSignupOtp = async (req, res) => {
   try {
     const { role } = req.body;
@@ -27,7 +74,8 @@ export const sendSignupOtp = async (req, res) => {
 
     // block duplicate email
     const existing = await User.findOne({ email });
-    if (existing) return res.status(409).json({ message: "Email already registered" });
+    if (existing)
+      return res.status(409).json({ message: "Email already registered" });
 
     // hash password BEFORE persisting to any storage
     const hashedPassword = await bcrypt.hash(rawPassword, 10);
@@ -36,32 +84,32 @@ export const sendSignupOtp = async (req, res) => {
     let payload = { role, email, hashedPassword };
 
     if (role === "student") {
-      // Removed school and major (only keep required fields)
       const { firstName, lastName, course } = req.body;
       reqd(firstName, "firstName");
       reqd(lastName, "lastName");
       reqd(course, "course");
-
       payload = { ...payload, firstName, lastName, course };
     } else {
-      const { companyName, firstName, lastName, companyRole, industry } = req.body;
+      const { companyName, firstName, lastName, companyRole, industry } =
+        req.body;
       reqd(companyName, "companyName");
       reqd(firstName, "firstName");
       reqd(lastName, "lastName");
       reqd(companyRole, "companyRole");
 
-      // Only require industry if companyRole === "Owner"
       if (companyRole === "Owner") {
         reqd(industry, "industry");
       }
 
-      // Owner must have unique companyName; non-owners must join existing
       const existingCompanyDoc = await CompanyEmployees.findOne({ companyName })
-        .collation({ locale: "en", strength: 2 });
+        .collation({ locale: "en", strength: 2 })
+        .lean();
 
       if (companyRole === "Owner") {
         if (existingCompanyDoc)
-          return res.status(409).json({ message: "Company name already exists" });
+          return res
+            .status(409)
+            .json({ message: "Company name already exists" });
       } else {
         if (!existingCompanyDoc) {
           return res.status(404).json({
@@ -70,7 +118,6 @@ export const sendSignupOtp = async (req, res) => {
         }
       }
 
-      // Only attach industry if Owner
       payload = {
         ...payload,
         companyName,
@@ -114,11 +161,13 @@ export const sendSignupOtp = async (req, res) => {
     return res.json({ message: "OTP sent" });
   } catch (err) {
     console.error("sendSignupOtp error:", err);
-    return res.status(400).json({ message: err.message || "Failed to send OTP" });
+    return res
+      .status(400)
+      .json({ message: err.message || "Failed to send OTP" });
   }
 };
 
-// ------------------ Verify OTP + Create Account (no transaction) ------------------
+/* ------------------ Verify OTP + Create Account ------------------ */
 export const verifySignupOtp = async (req, res) => {
   try {
     const email = String(req.body.email || "").toLowerCase().trim();
@@ -128,7 +177,8 @@ export const verifySignupOtp = async (req, res) => {
     reqd(code, "code");
 
     const record = await OtpToken.findOne({ email });
-    if (!record) return res.status(400).json({ message: "No pending verification" });
+    if (!record)
+      return res.status(400).json({ message: "No pending verification" });
 
     if (record.expiresAt < new Date()) {
       await OtpToken.deleteOne({ _id: record._id });
@@ -156,7 +206,7 @@ export const verifySignupOtp = async (req, res) => {
 
     const payload = record.payload;
 
-    // 1) Create User (authoritative credentials)
+    // 1) Create User
     const createdUser = await User.create({
       email,
       password: payload.hashedPassword,
@@ -164,9 +214,10 @@ export const verifySignupOtp = async (req, res) => {
       status: "active",
     });
 
-    // 2) Role-specific document (no password duplication)
+    // 2) Role-specific document
+    let companyIdForJwt = null;
+
     if (payload.role === "student") {
-      // Cleaned: no school or major
       await Student.create({
         firstName: payload.firstName,
         lastName: payload.lastName,
@@ -175,7 +226,8 @@ export const verifySignupOtp = async (req, res) => {
         user: createdUser._id,
       });
     } else {
-      await Company.create({
+      // Company owner or employee
+      const companyDoc = await Company.create({
         companyName: payload.companyName,
         firstName: payload.firstName,
         lastName: payload.lastName,
@@ -184,6 +236,8 @@ export const verifySignupOtp = async (req, res) => {
         industry: payload.industry,
         user: createdUser._id,
       });
+
+      companyIdForJwt = companyDoc?._id || null;
 
       if (payload.companyRole === "Owner") {
         await CompanyEmployees.updateOne(
@@ -215,29 +269,53 @@ export const verifySignupOtp = async (req, res) => {
           },
           { collation: { locale: "en", strength: 2 } }
         );
+
+        // For employees, ensure we store the *existing* company _id in JWT
+        // (If above created a company doc for a non-owner, look up the canonical one)
+        if (!companyIdForJwt) {
+          companyIdForJwt = await resolveCompanyIdByUser({
+            email,
+            companyNameHint: payload.companyName,
+          });
+        }
       }
     }
 
     // Cleanup OTP
     await OtpToken.deleteOne({ _id: record._id });
 
-    // 4) Issue JWT
-    const token = jwt.sign(
-      { sub: createdUser._id.toString(), role: createdUser.role, email: createdUser.email },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
-    );
+    // 3) Issue JWT (with companyId for company users)
+    const token = signJwt({
+      userId: createdUser._id.toString(),
+      role: createdUser.role,
+      email: createdUser.email,
+      companyId:
+        createdUser.role === "company"
+          ? companyIdForJwt ||
+            (await resolveCompanyIdByUser({
+              userId: createdUser._id,
+              email: createdUser.email,
+              companyNameHint: payload.companyName,
+            }))
+          : null,
+    });
 
-    return res
-      .status(201)
-      .json({ message: "Account verified & created", token, role: createdUser.role });
+    return res.status(201).json({
+      message: "Account verified & created",
+      token,
+      role: createdUser.role,
+      companyId:
+        createdUser.role === "company"
+          ? jwt.decode(token)?.companyId || null
+          : null,
+    });
   } catch (err) {
     console.error("verifySignupOtp error:", err);
     return res.status(400).json({ message: err.message || "Verification failed" });
   }
 };
 
-// ------------------ Resend OTP ------------------
+/* ------------------ Resend OTP ------------------ */
 export const resendSignupOtp = async (req, res) => {
   try {
     const email = String(req.body.email || "").toLowerCase().trim();
@@ -284,12 +362,14 @@ export const resendSignupOtp = async (req, res) => {
   }
 };
 
-// ------------------ Login ------------------
+/* ------------------ Login ------------------ */
 export const login = async (req, res) => {
   try {
     const { email = "", password = "", role } = req.body;
     if (!email || !password || !role) {
-      return res.status(400).json({ message: "email, password and role are required" });
+      return res
+        .status(400)
+        .json({ message: "email, password and role are required" });
     }
 
     const user = await User.findOne({ email: email.toLowerCase().trim() });
@@ -300,13 +380,28 @@ export const login = async (req, res) => {
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) return res.status(401).json({ message: "Invalid credentials" });
 
-    const token = jwt.sign(
-      { sub: user._id.toString(), role: user.role, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
-    );
+    // Compute companyId for company users (owner or employee)
+    const companyId =
+      user.role === "company"
+        ? await resolveCompanyIdByUser({
+            userId: user._id,
+            email: user.email,
+          })
+        : null;
 
-    return res.json({ message: "Logged in", token, role: user.role });
+    const token = signJwt({
+      userId: user._id.toString(),
+      role: user.role,
+      email: user.email,
+      companyId,
+    });
+
+    return res.json({
+      message: "Logged in",
+      token,
+      role: user.role,
+      companyId: companyId ? String(companyId) : null,
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Login failed" });

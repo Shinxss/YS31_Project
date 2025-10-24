@@ -2,6 +2,7 @@ import Company from "../models/company.model.js";
 import CompanyEmployees from "../models/companyEmployees.model.js";
 import path from "path";
 import fs from "fs";
+import resolveCompanyId from "../utils/resolveCompanyId.js";
 
 // =======================================================
 // 🧩 1️⃣ Helper: Save base64 or file buffer uploads like Profile page
@@ -184,3 +185,24 @@ export const validateCompanyName = async (req, res) => {
     res.status(500).json({ message: "Failed to validate name" });
   }
 };
+
+export async function listCompanyJobs(req, res) {
+  try {
+    const companyId = await resolveCompanyId(req);
+    if (!companyId) return res.status(403).json({ message: "Company not found for user." });
+
+    const jobs = await Job.find({
+      $or: [
+        { companyId: companyId },                    // when Job.companyId = CompanyEmployees _id
+        { "companyId._id": companyId },              // when populated/embedded
+      ],
+    })
+    .sort({ createdAt: -1 })
+    .lean();
+
+    res.json(jobs);
+  } catch (err) {
+    console.error("listCompanyJobs error:", err);
+    res.status(500).json({ message: "Failed to fetch company jobs" });
+  }
+}

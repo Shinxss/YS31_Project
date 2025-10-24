@@ -1,13 +1,15 @@
+// src/pages/Internships.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import Header from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   MapPin,
   Clock3,
   Tag,
   Search as SearchIcon,
   ChevronDown,
+  X as XIcon,
 } from "lucide-react";
 
 /* ---------- API base (relative by default) ---------- */
@@ -27,6 +29,11 @@ export default function Internships() {
   const [loc, setLoc] = useState("All Locations");
 
   const locationHook = useLocation();
+  const navigate = useNavigate();
+
+  // modal state for login-required
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState(null);
 
   // ⬇️ read ?q=&location= and pre-fill filters
   useEffect(() => {
@@ -74,7 +81,6 @@ export default function Internships() {
   const locations = useMemo(() => {
     const s = new Set();
     jobs.forEach((j) => j.location && s.add(j.location));
-    // If the URL gave a custom 'loc' that isn't in the set, include it once
     if (loc !== "All Locations" && loc && !s.has(loc)) s.add(loc);
     return ["All Locations", ...Array.from(s)];
   }, [jobs, loc]);
@@ -97,6 +103,22 @@ export default function Internships() {
       return matchQ && matchField && matchType && matchLoc;
     });
   }, [jobs, q, field, jtype, loc]);
+
+  // open modal helper (stores job id to redirect back after login/signup)
+  const openLoginModalForJob = (jobId) => {
+    setSelectedJobId(jobId ?? null);
+    setLoginModalOpen(true);
+  };
+
+  const handleNavigateToLogin = () => {
+    const redirect = selectedJobId ? `/jobs/${selectedJobId}` : "/jobs";
+    navigate(`/login?redirect=${encodeURIComponent(redirect)}`);
+  };
+
+  const handleNavigateToSignup = () => {
+    const redirect = selectedJobId ? `/jobs/${selectedJobId}` : "/jobs";
+    navigate(`/signup?redirect=${encodeURIComponent(redirect)}`);
+  };
 
   return (
     <div className="bg-[#F6F8FC] min-h-screen flex flex-col">
@@ -158,7 +180,7 @@ export default function Internships() {
           {/* Results list */}
           <div className="mt-3 space-y-4">
             {filtered.map((job) => (
-              <JobCard key={job._id} job={job} />
+              <JobCard key={job._id} job={job} onRequestLogin={() => openLoginModalForJob(job._id)} />
             ))}
             {!loading && !error && filtered.length === 0 && (
               <div className="text-center text-gray-500 py-12">No results.</div>
@@ -166,13 +188,78 @@ export default function Internships() {
           </div>
         </div>
       </main>
+
+      <Footer />
+
+      {/* LOGIN REQUIRED MODAL */}
+      
+      {loginModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          aria-modal="true"
+          role="dialog"
+        >
+          {/* overlay */}
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setLoginModalOpen(false)}
+          />
+
+          {/* modal card */}
+          <div className="relative z-10 w-full max-w-sm mx-4">
+            <div className="bg-white rounded-xl border-4 border-blue-500 shadow-lg overflow-hidden">
+              {/* Optional close X (top-right) */}
+              <button
+                onClick={() => setLoginModalOpen(false)}
+                aria-label="Close"
+                className="absolute right-3 top-3 z-20 text-blue-700 hover:text-blue-900"
+              >
+                {/* small X — can remove if you don't want it visible */}
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.28 4.28a.75.75 0 011.06 0L10 8.94l4.66-4.66a.75.75 0 111.06 1.06L11.06 10l4.66 4.66a.75.75 0 11-1.06 1.06L10 11.06l-4.66 4.66a.75.75 0 11-1.06-1.06L8.94 10 4.28 5.34a.75.75 0 010-1.06z" clipRule="evenodd" />
+                </svg>
+              </button>
+
+              <div className="p-6 pt-8 text-center">
+                <h2 className="text-blue-700 font-bold text-xl">Login Required</h2>
+                <p className="text-sm text-gray-600 mt-2">
+                  Please login or sign up to apply for this job
+                </p>
+
+                <div className="mt-5 space-y-3">
+                  <button
+                    onClick={handleNavigateToLogin}
+                    className="w-full block bg-[#F37526] hover:bg-[#e36210] text-white py-3 rounded-md text-lg font-medium shadow-sm focus:outline-none"
+                  >
+                    Login
+                  </button>
+
+                  <button
+                    onClick={handleNavigateToSignup}
+                    className="w-full block bg-[#F37526] hover:bg-[#e36210] text-white py-3 rounded-md text-lg font-medium shadow-sm focus:outline-none"
+                  >
+                    Sign Up
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setLoginModalOpen(false)}
+                  className="mt-4 text-xs text-gray-500 underline"
+                >
+                  Continue browsing
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 /* ---------------- Components ---------------- */
 
-function JobCard({ job }) {
+function JobCard({ job, onRequestLogin }) {
   const company = job.companyName || "Company";
   const title = job.title || "Internship";
   const description = job.description || "";
@@ -221,12 +308,16 @@ function JobCard({ job }) {
                   </div>
                 </div>
               )}
-              <Link
-                to={`/jobs/${job._id}`}
+              {/* LANDING: open login-required modal instead of navigating */}
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  onRequestLogin?.();
+                }}
                 className="inline-flex items-center justify-center bg-[#F37526] hover:bg-orange-600 text-white text-sm font-medium px-4 py-2 rounded-md"
               >
                 View Details
-              </Link>
+              </button>
             </div>
           </div>
 

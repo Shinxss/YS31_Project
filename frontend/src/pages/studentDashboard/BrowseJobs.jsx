@@ -576,8 +576,6 @@ export default function BrowseJobs() {
                         </h3>
                         <div className="flex items-center gap-1 text-sm text-gray-600">
                           <span>{companyDisplayName}</span>
-                          <Star className="w-4 h-4 text-yellow-500 fill-yellow-500 ml-1" />
-                          <span>{company.rating ?? "4.8"}</span>
                         </div>
 
                         <p className="text-gray-600 text-sm mt-1 max-w-xl">

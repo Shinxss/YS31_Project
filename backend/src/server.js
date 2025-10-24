@@ -16,6 +16,7 @@ import statsRoutes from "./routes/stats.routes.js";
 import studentRoutes from "./routes/student.routes.js";
 import applicationsRoutes from "./routes/applications.routes.js";
 import companyApplicationsRoutes from "./routes/company.applications.routes.js";
+import companyNotificationsRoutes from "./routes/company.notifications.routes.js";
 
 
 
@@ -100,6 +101,7 @@ app.use(["/api/students", "/api/student"], studentRoutes);
 app.use("/api", applicationsRoutes);
 app.use("/api/applications", applicationsRoutes);
 app.use("/api/company", companyApplicationsRoutes);
+app.use("/api/company", companyNotificationsRoutes);
 
 
 

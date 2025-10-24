@@ -1,8 +1,15 @@
 import { Navigate, Outlet } from "react-router-dom";
 
 export default function GuestRoute() {
-  const token = localStorage.getItem("ic_token");
-  const role = localStorage.getItem("ic_role");
-  if (token) return <Navigate to={role === "student" ? "/student" : "/company"} replace />;
+  const studentToken = localStorage.getItem("ic_token");
+  const companyToken = localStorage.getItem("ic_company_token");
+  const storedRole = localStorage.getItem("ic_role");
+
+  if (studentToken || companyToken) {
+    const role =
+      storedRole || (companyToken ? "company" : studentToken ? "student" : "");
+    return <Navigate to={role === "company" ? "/company" : "/student"} replace />;
+  }
+
   return <Outlet />;
 }

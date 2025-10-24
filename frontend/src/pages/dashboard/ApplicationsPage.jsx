@@ -67,6 +67,10 @@ export default function ApplicationsPage({ token: propToken }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("default"); // default | name-asc | name-desc
 
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10); // choices: 10,25,50,100
+
   // cache for fetching missing profile pics/course when needed
   const [studentProfiles, setStudentProfiles] = useState({}); // { [id]: { profilePicture, course } }
 
@@ -326,6 +330,26 @@ export default function ApplicationsPage({ token: propToken }) {
     return list;
   }, [filtered, sortOrder]);
 
+  // Reset page when query/status/sort/perPage change (so user always sees page 1 of new result)
+  useEffect(() => {
+    setPage(1);
+  }, [query, statusFilter, sortOrder, perPage, filteredAndSorted.length]);
+
+  // Pagination calculations
+  const totalItems = filteredAndSorted.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / perPage));
+
+  // Ensure page is within bounds
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+    if (page < 1) setPage(1);
+  }, [page, totalPages]);
+
+  const pagedApps = useMemo(() => {
+    const start = (page - 1) * perPage;
+    return filteredAndSorted.slice(start, start + perPage);
+  }, [filteredAndSorted, page, perPage]);
+
   const STATUS_OPTIONS = [
     { value: "all", label: "All statuses" },
     { value: "new", label: "New" },
@@ -340,6 +364,8 @@ export default function ApplicationsPage({ token: propToken }) {
     { value: "name-desc", label: "Student Z–A" },
   ];
 
+  const PER_PAGE_OPTIONS = [10, 25, 50, 100];
+
   /* ------------------------------ */
   return (
     <section className="bg-white rounded-2xl shadow-sm p-6 h-[600px] md:h-[670px] flex flex-col">
@@ -351,10 +377,10 @@ export default function ApplicationsPage({ token: propToken }) {
           </h1>
           {!loading && (
             <span className="text-sm text-gray-500">
-              {filteredAndSorted.length} shown
-              {filteredAndSorted.length !== apps.length
-                ? ` of ${apps.length}`
-                : ""}
+              {/* show current page count vs total */}
+              {pagedApps.length} shown
+              {totalItems !== apps.length ? ` of ${totalItems}` : totalItems !== 0 ? ` of ${apps.length}` : ""}
+              {/* Note: the above keeps compatibility with previous phrasing */}
             </span>
           )}
         </div>
@@ -470,7 +496,7 @@ export default function ApplicationsPage({ token: propToken }) {
               {/* Scrollable list */}
               <div className="flex-1 overflow-y-auto">
                 <ul className="divide-y divide-gray-100">
-                  {filteredAndSorted.map((app) => {
+                  {pagedApps.map((app) => {
                     const student = app.student || {};
                     const fullName =
                       student.fullName ||
@@ -544,7 +570,7 @@ export default function ApplicationsPage({ token: propToken }) {
                             <button
                               disabled={isBusy}
                               onClick={() => handleReview(app)}
-                              className="px-2.5 py-1.5 rounded-lg bg-[#1337B6] text-white hover:bg-[#0F2FA0] text-xs disabled:opacity-60"
+                              className="px-2.5 py-1.5 rounded-lg bg-[#F37526] text-white hover:bg-[#d35405] text-xs disabled:opacity-60"
                             >
                               {isBusy ? "…" : "Review Application"}
                             </button>
@@ -554,6 +580,71 @@ export default function ApplicationsPage({ token: propToken }) {
                     );
                   })}
                 </ul>
+              </div>
+
+              {/* Pagination controls */}
+              <div className="flex items-center justify-between px-4 py-3 border-t bg-white">
+                <div className="flex items-center gap-3 text-sm text-gray-700">
+                  <div>
+                    <label className="text-xs text-gray-500 mr-2">Show</label>
+                    <select
+                      value={perPage}
+                      onChange={(e) => setPerPage(Number(e.target.value))}
+                      className="rounded-lg border border-gray-300 px-2 py-1 bg-white focus:outline-none"
+                    >
+                      {PER_PAGE_OPTIONS.map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="text-xs text-gray-500">
+                    {/* e.g. Showing 1–10 of 42 */}
+                    {totalItems === 0 ? (
+                      "No items"
+                    ) : (
+                      <>
+                        Showing{" "}
+                        <span className="font-medium">
+                          {(totalItems === 0 ? 0 : (page - 1) * perPage + 1)}
+                        </span>{" "}
+                        –{" "}
+                        <span className="font-medium">
+                          {Math.min(page * perPage, totalItems)}
+                        </span>{" "}
+                        of <span className="font-medium">{totalItems}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="px-3 py-1 rounded-lg border bg-white text-sm disabled:opacity-50"
+                  >
+                    Prev
+                  </button>
+
+                  <div className="text-sm text-gray-700">
+                    Page{" "}
+                    <span className="font-medium">{page}</span> of{" "}
+                    <span className="font-medium">{totalPages}</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                    className="px-3 py-1 rounded-lg border bg-white text-sm disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             </div>
           )}

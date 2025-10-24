@@ -1,4 +1,3 @@
-
 import React, { useEffect, useMemo, useState } from "react";
 import { Bell, PanelLeft } from "lucide-react";
 
@@ -157,3 +156,5 @@ export default function HeaderBar({
     </header>
   );
 }
+
+

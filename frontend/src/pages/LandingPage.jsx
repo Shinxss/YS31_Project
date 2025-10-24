@@ -1,3 +1,4 @@
+// src/pages/LandingPage.jsx
 import React, { useEffect, useState } from "react";
 import Header from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -16,6 +17,7 @@ import {
   Tag,
   ClipboardList,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 const JOBS_URL = `${API_BASE}/api/jobs`; // from controllers/job.controller.js:getAllJobs
@@ -29,6 +31,22 @@ export default function LandingPage() {
   });
   const [loadingStats, setLoadingStats] = useState(true);
   const [statsError, setStatsError] = useState("");
+
+  // Success rate state
+  const [acceptedCount, setAcceptedCount] = useState(null);
+  const [totalCount, setTotalCount] = useState(null);
+  const [successRate, setSuccessRate] = useState(null);
+  const [loadingSuccessRate, setLoadingSuccessRate] = useState(true);
+
+  const navigate = useNavigate();
+
+  // login modal state (for apply/login flow)
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState(null);
+
+  // search inputs
+  const [searchQ, setSearchQ] = useState("");
+  const [searchLocation, setSearchLocation] = useState("");
 
   useEffect(() => {
     let ignore = false;
@@ -59,11 +77,143 @@ export default function LandingPage() {
       }
     })();
 
+    // Also fetch application/hire stats to compute success rate
+    (async () => {
+      setLoadingSuccessRate(true);
+      const tryEndpoints = [
+        `${API_BASE}/api/stats/public`, // might contain more fields
+        `${API_BASE}/api/stats/applications`,
+        `${API_BASE}/api/applications/stats`,
+        `${API_BASE}/api/applications/summary`,
+        // add more server-side endpoints here if your API exposes them
+      ];
+
+      // helper to extract accepted and total from a response object
+      const extractCounts = (obj) => {
+        if (!obj || typeof obj !== "object") return null;
+        // candidates for accepted/hired
+        const acceptedKeys = [
+          "accepted",
+          "acceptedApplications",
+          "accepted_count",
+          "hires",
+          "hired",
+          "hiredCount",
+          "successes",
+        ];
+        const totalKeys = [
+          "totalApplications",
+          "applications",
+          "total",
+          "total_count",
+          "applicationCount",
+          "submitted",
+        ];
+
+        let accepted = null;
+        let total = null;
+
+        for (const k of acceptedKeys) {
+          if (k in obj && Number.isFinite(Number(obj[k]))) {
+            accepted = Number(obj[k]);
+            break;
+          }
+        }
+        for (const k of totalKeys) {
+          if (k in obj && Number.isFinite(Number(obj[k]))) {
+            total = Number(obj[k]);
+            break;
+          }
+        }
+
+        // Also handle nested shapes like { apps: { accepted: X, total: Y } }
+        if ((accepted === null || total === null)) {
+          for (const v of Object.values(obj)) {
+            if (v && typeof v === "object") {
+              const nested = extractCounts(v);
+              if (nested) {
+                if (accepted === null && Number.isFinite(nested.accepted)) accepted = nested.accepted;
+                if (total === null && Number.isFinite(nested.total)) total = nested.total;
+              }
+            }
+            if (accepted !== null && total !== null) break;
+          }
+        }
+
+        if (accepted !== null && total !== null && total > 0) {
+          return { accepted, total };
+        }
+        return null;
+      };
+
+      try {
+        for (const url of tryEndpoints) {
+          try {
+            const r = await fetch(url, { credentials: "include" });
+            if (!r.ok) continue;
+            const d = await r.json();
+            // sometimes the top-level contains both stats and sub-objects
+            const found = extractCounts(d) || extractCounts(d.data) || extractCounts(d.stats);
+            if (found) {
+              if (!ignore) {
+                setAcceptedCount(found.accepted);
+                setTotalCount(found.total);
+                setSuccessRate(Math.round((found.accepted / found.total) * 100));
+              }
+              break;
+            }
+          } catch (e) {
+            // ignore endpoint-specific failures and continue trying
+            continue;
+          }
+        }
+      } catch (e) {
+        // no-op, we'll fallback below
+      } finally {
+        if (!ignore) {
+          // fallback: if we couldn't compute, keep placeholder 95
+          setLoadingSuccessRate(false);
+          if (successRate === null) {
+            setSuccessRate(95);
+          }
+        }
+      }
+    })();
+
     return () => {
       ignore = true;
       ctrl.abort();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // --- handlers for buttons/navigation/modal ---
+  const goToInternships = () => navigate("/internships");
+  const goToPostOpportunities = () => navigate("/company"); // company page
+
+  const openLoginModalForJob = (jobId) => {
+    setSelectedJobId(jobId || null);
+    setLoginModalOpen(true);
+  };
+
+  const handleNavigateToLogin = () => {
+    const redirect = selectedJobId ? `/jobs/${selectedJobId}` : "/jobs";
+    navigate(`/login?redirect=${encodeURIComponent(redirect)}`);
+  };
+
+  const handleNavigateToSignup = () => {
+    const redirect = selectedJobId ? `/jobs/${selectedJobId}` : "/jobs";
+    navigate(`/signup?redirect=${encodeURIComponent(redirect)}`);
+  };
+
+  const onSearchSubmit = (e) => {
+    e?.preventDefault();
+    const params = new URLSearchParams();
+    if (searchQ?.trim()) params.set("q", searchQ.trim());
+    if (searchLocation?.trim()) params.set("location", searchLocation.trim());
+    const qs = params.toString();
+    navigate(`/internships${qs ? `?${qs}` : ""}`);
+  };
 
   return (
     <>
@@ -86,35 +236,49 @@ export default function LandingPage() {
 
         {/* Buttons with icons */}
         <div className="flex justify-center gap-4 mt-8">
-          <button className="bg-blue-900 text-white font-medium px-8 py-3 rounded-md hover:bg-blue-800 transition inline-flex items-center gap-2">
+          <button
+            onClick={goToInternships}
+            className="bg-blue-900 text-white font-medium px-8 py-3 rounded-md hover:bg-blue-800 transition inline-flex items-center gap-2"
+          >
             <Users className="w-5 h-5" />
             Find Internships
           </button>
-          <button className="border border-gray-300 px-8 py-3 rounded-md font-medium hover:border-blue-900 transition inline-flex items-center gap-2">
+
+          <button
+            onClick={goToPostOpportunities}
+            className="border border-gray-300 px-8 py-3 rounded-md font-medium hover:border-blue-900 transition inline-flex items-center gap-2"
+          >
             <ClipboardList className="w-5 h-5" />
             Post Opportunities
           </button>
         </div>
 
         {/* Search */}
-        <div className="w-full max-w-[1000px] h-[90px] bg-white shadow-md rounded-xl mt-10 flex items-center p-4 gap-4 mx-auto">
+        <form onSubmit={onSearchSubmit} className="w-full max-w-[1000px] h-[90px] bg-white shadow-md rounded-xl mt-10 flex items-center p-4 gap-4 mx-auto">
           <input
             type="text"
             placeholder="Search Internships, companies, or skills..."
             className="flex-1 border rounded-md px-4 py-2 h-[60px] outline-none"
+            value={searchQ}
+            onChange={(e) => setSearchQ(e.target.value)}
           />
           <input
             type="text"
             placeholder="Location"
             className="w-1/3 border rounded-md px-4 py-2 h-[60px] outline-none"
+            value={searchLocation}
+            onChange={(e) => setSearchLocation(e.target.value)}
           />
-          <button className="bg-[#F37526] h-[60px] text-white px-6 py-2 rounded-md font-medium hover:bg-orange-600 transition">
+          <button
+            type="submit"
+            className="bg-[#F37526] h-[60px] text-white px-6 py-2 rounded-md font-medium hover:bg-orange-600 transition"
+          >
             Search
           </button>
-        </div>
+        </form>
 
         {/* Stats (live) */}
-        <div className="max-w-[1000px] mx-auto mt-8 flex justify-between text-center">
+        <div className="max-w-[1000px] mx-auto mt-8 flex justify-between text-center items-center">
           <Stat
             label="Active Students"
             value={stats.activeStudents}
@@ -133,9 +297,26 @@ export default function LandingPage() {
             loading={loadingStats}
             error={statsError}
           />
-          <div>
-            <h3 className="text-2xl font-bold text-blue-900">95%</h3>
+
+          {/* Success Rate */}
+          <div className="min-w-[160px]">
+            {/* show loading spinner or rate */}
+            <h3
+              className="text-2xl font-bold text-blue-900"
+              title={
+                acceptedCount != null && totalCount != null
+                  ? `${acceptedCount} accepted of ${totalCount} applications`
+                  : undefined
+              }
+            >
+              {loadingSuccessRate ? "…" : `${successRate ?? 95}%`}
+            </h3>
             <p className="text-gray-600">Success Rate</p>
+            {!loadingSuccessRate && acceptedCount != null && totalCount != null && (
+              <p className="text-xs text-gray-500 mt-1">
+                {acceptedCount.toLocaleString()} accepted / {totalCount.toLocaleString()} total
+              </p>
+            )}
           </div>
         </div>
       </section>
@@ -216,11 +397,14 @@ export default function LandingPage() {
         />
 
         <div className="max-w-7xl mx-auto px-6">
-          <FeaturedJobsGrid />
+          <FeaturedJobsGrid onRequestLogin={openLoginModalForJob} />
           <div className="mt-10 flex justify-center">
-            <a className="border border-gray-300 hover:border-[#F37526] px-6 py-2 rounded-md" href="/jobs">
+            <button
+              onClick={() => navigate("/internships")}
+              className="border border-gray-300 hover:border-[#F37526] px-6 py-2 rounded-md bg-white"
+            >
               View All Opportunities
-            </a>
+            </button>
           </div>
         </div>
       </section>
@@ -243,7 +427,10 @@ export default function LandingPage() {
               <p className="text-gray-600 mt-3">
                 Create your profile and start applying to internships from top companies. Build your career with meaningful opportunities.
               </p>
-              <button className="mt-30 bg-[#F37526] hover:bg-orange-600 text-white px-8 py-3 rounded-md font-medium transition">
+              <button
+                onClick={() => navigate("/signup")}
+                className="mt-30 bg-[#F37526] hover:bg-orange-600 text-white px-8 py-3 rounded-md font-medium transition"
+              >
                 Start your journey →
               </button>
             </div>
@@ -256,7 +443,10 @@ export default function LandingPage() {
               <p className="text-gray-600 mt-3">
                 Connect with pre-screened students from top universities. Post your internship opportunities and find the perfect talent.
               </p>
-              <button className="mt-30 border border-gray-300 hover:border-[#F37526] px-8 py-3 rounded-md font-medium transition">
+              <button
+                onClick={goToPostOpportunities}
+                className="mt-30 border border-gray-300 hover:border-[#F37526] px-8 py-3 rounded-md font-medium transition"
+              >
                 Post your First Job →
               </button>
             </div>
@@ -265,6 +455,56 @@ export default function LandingPage() {
       </section>
 
       <Footer />
+
+      {/* LOGIN REQUIRED MODAL (styled per screenshot) */}
+      {loginModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setLoginModalOpen(false)} />
+          <div className="relative z-10 w-full max-w-sm mx-4">
+            <div className="bg-white rounded-xl border-4 border-blue-500 shadow-lg overflow-hidden">
+              <button
+                onClick={() => setLoginModalOpen(false)}
+                aria-label="Close"
+                className="absolute right-3 top-3 z-20 text-blue-700 hover:text-blue-900"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.28 4.28a.75.75 0 011.06 0L10 8.94l4.66-4.66a.75.75 0 111.06 1.06L11.06 10l4.66 4.66a.75.75 0 11-1.06 1.06L10 11.06l-4.66 4.66a.75.75 0 11-1.06-1.06L8.94 10 4.28 5.34a.75.75 0 010-1.06z" clipRule="evenodd" />
+                </svg>
+              </button>
+
+              <div className="p-6 pt-8 text-center">
+                <h2 className="text-blue-700 font-bold text-xl">Login Required</h2>
+                <p className="text-sm text-gray-600 mt-2">
+                  Please login or sign up to apply for this job
+                </p>
+
+                <div className="mt-5 space-y-3">
+                  <button
+                    onClick={handleNavigateToLogin}
+                    className="w-full block bg-[#F37526] hover:bg-[#e36210] text-white py-3 rounded-md text-lg font-medium shadow-sm focus:outline-none"
+                  >
+                    Login
+                  </button>
+
+                  <button
+                    onClick={handleNavigateToSignup}
+                    className="w-full block bg-[#F37526] hover:bg-[#e36210] text-white py-3 rounded-md text-lg font-medium shadow-sm focus:outline-none"
+                  >
+                    Sign Up
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setLoginModalOpen(false)}
+                  className="mt-4 text-xs text-gray-500 underline"
+                >
+                  Continue browsing
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -338,8 +578,8 @@ function timeAgo(iso) {
   return "just now";
 }
 
-/* ---------- Dynamic Featured Jobs Grid ---------- */
-function FeaturedJobsGrid() {
+/* ---------- Dynamic Featured Jobs Grid (now accepts onRequestLogin prop) ---------- */
+function FeaturedJobsGrid({ onRequestLogin }) {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -370,19 +610,7 @@ function FeaturedJobsGrid() {
     return (
       <div className="grid md:grid-cols-3 gap-8">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="bg-white border border-gray-200 shadow-lg rounded-2xl p-8 animate-pulse">
-            <div className="h-6 w-40 bg-gray-200 rounded mb-2" />
-            <div className="h-4 w-24 bg-gray-200 rounded mb-6" />
-            <div className="h-6 w-3/4 bg-gray-200 rounded mb-3" />
-            <div className="h-4 w-full bg-gray-200 rounded mb-2" />
-            <div className="h-4 w-5/6 bg-gray-200 rounded mb-6" />
-            <div className="flex gap-2 mt-4">
-              <div className="h-6 w-16 bg-gray-200 rounded-full" />
-              <div className="h-6 w-24 bg-gray-200 rounded-full" />
-              <div className="h-6 w-20 bg-gray-200 rounded-full" />
-            </div>
-            <div className="h-10 w-full bg-gray-200 rounded mt-6" />
-          </div>
+          <div key={i} className="bg-white border border-gray-200 shadow-lg rounded-2xl p-8 animate-pulse min-h-[520px]"/>
         ))}
       </div>
     );
@@ -398,7 +626,7 @@ function FeaturedJobsGrid() {
         const jobTitle = job.title || "Internship";
         const description = job.description || "";
         const location = job.location || "—";
-        const jobType = job.jobType || job.workType || ""; // NO “months” here
+        const jobType = job.jobType || job.workType || "";
         const category = job.department || "—";
         const skills = Array.isArray(job.skills) ? job.skills.slice(0, 6) : [];
         const posted = timeAgo(job.createdAt);
@@ -412,7 +640,6 @@ function FeaturedJobsGrid() {
                 </div>
                 <div>
                   <div className="font-semibold text-lg leading-tight">{company}</div>
-                  {/* No rating in schema; omit Star unless you add one */}
                 </div>
               </div>
               {posted && (
@@ -450,12 +677,12 @@ function FeaturedJobsGrid() {
               </div>
             )}
 
-            <a
-              href={`/jobs/${job._id || ""}`}
+            <button
+              onClick={() => onRequestLogin?.(job._id)}
               className="mt-6 block w-full text-center bg-[#F37526] hover:bg-orange-600 text-white py-3 rounded-md font-medium transition"
             >
               Apply Now
-            </a>
+            </button>
           </div>
         );
       })}

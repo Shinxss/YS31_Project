@@ -492,7 +492,7 @@ export default function DashboardHome() {
                 <h3 className="text-lg font-semibold text-gray-900">Application Trends</h3>
                 <button
                   onClick={goToApplications}
-                  className="px-2.5 py-1.5 text-xs rounded-lg bg-[#0B63F8] text-white shadow-sm"
+                  className="px-2.5 py-1.5 text-xs rounded-lg bg-[#F37526] text-white shadow-sm"
                 >
                   View List
                 </button>

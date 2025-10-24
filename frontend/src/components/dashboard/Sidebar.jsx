@@ -104,7 +104,6 @@ export default function Sidebar({ collapsed, onLogout }) {
             )}
 
             <nav className="px-2 flex flex-col gap-1">
-              <NavItem icon={<UserCog className="w-4 h-4" />} label="Employees" to="/company/employees" collapsed={collapsed} />
               <NavItem icon={<SettingsIcon className="w-4 h-4" />} label="Settings" to="/company/settings" collapsed={collapsed} />
             </nav>
           </>

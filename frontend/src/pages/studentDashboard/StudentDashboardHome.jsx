@@ -486,7 +486,7 @@ export default function StudentDashboardHome({
                           {salaryNum ? `${peso(salaryNum)}/${salaryPeriod}` : ""}
                         </div>
                         <button
-                          onClick={() => navigate(`/jobs/${job._id}`)}
+                          onClick={() => navigate(`/student/jobs/${job._id}`)}
                           className="text-sm bg-[#F37526] hover:bg-orange-600 text-white px-4 py-2 rounded-md"
                         >
                           View Details
