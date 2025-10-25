@@ -441,3 +441,61 @@ export async function getApplicantMessage(req, res) {
     res.status(500).json({ message: "Server error" });
   }
 }
+
+
+//----------------NEW-----------------------
+
+export async function getApplicationCounts(req, res) {
+  try {
+    const { companyId, jobId, studentId } = req.query;
+
+    // Build optional filters
+    const match = {};
+    if (companyId) match.company = companyId;
+    if (jobId) match.job = jobId;
+    if (studentId) match.student = studentId;
+
+    // Aggregate per-status counts (case-insensitive)
+    const grouped = await Application.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: {
+            $cond: [
+              { $or: [{ $eq: ["$status", null] }, { $eq: ["$status", ""] }] },
+              "unknown",
+              { $toLower: "$status" },
+            ],
+          },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { count: -1 } },
+    ]);
+
+    const byStatus = grouped.map((g) => ({
+      status: g._id,
+      count: g.count,
+    }));
+
+    const totalApplications =
+      byStatus.reduce((acc, x) => acc + x.count, 0) || 0;
+
+    // Also return a convenient object map
+    const statuses = byStatus.reduce((acc, x) => {
+      acc[x.status] = x.count;
+      return acc;
+    }, {});
+
+    return res.json({
+      totalApplications,
+      statuses, // e.g., { accepted: 10, rejected: 5, pending: 7 }
+      byStatus, // array form if you prefer for charts
+    });
+  } catch (err) {
+    console.error("getApplicationCounts error:", err);
+    return res
+      .status(500)
+      .json({ message: "Failed to compute application counts" });
+  }
+}

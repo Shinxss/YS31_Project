@@ -7,7 +7,8 @@ import {
   applyToJob,
   updateApplicationStatus, 
   getScreeningAnswers, 
-  getApplicantMessage } from "../controllers/Applications.controller.js";
+  getApplicantMessage, 
+  getApplicationCounts} from "../controllers/Applications.controller.js";
   
 
 const router = express.Router();
@@ -21,5 +22,9 @@ router.post("/student/apply", auth, requireRole("student"), uploadResume, applyT
 
 router.get("/applications/:id/screening-answers", auth, getScreeningAnswers);
 router.get("/applications/:id/message", auth, getApplicantMessage);
+router.get("/applications/stats", getApplicationCounts);
+
+// Works when the router is mounted at /api/applications
+router.get("/stats", getApplicationCounts);
 
 export default router;

@@ -16,24 +16,15 @@ function Initials({ name = "", size = 32 }) {
   );
 }
 
-/**
- * Company Header
- * Props:
- *  - companyName: string (e.g., "Shinxss")
- *  - userName: string (e.g., "Jachin Adam Aliman")
- *  - userRole: string (e.g., "Owner")
- *  - onToggleSidebar: fn
- */
 export default function Header({
-  companyName = "Company",
   userName = "",
-  userRole = "",
+  userRole = "Admin",
   onToggleSidebar,
 }) {
   return (
     <header className="sticky top-0 z-30 h-16 bg-[#173B8A] text-white border-b border-white/10">
       <div className="h-full flex items-center justify-between px-4 md:px-6">
-        {/* Left: toggle + company name */}
+        {/* Left: toggle + title */}
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -43,10 +34,10 @@ export default function Header({
           >
             <PanelLeft className="w-5 h-5" />
           </button>
-          <div className="text-lg md:text-xl font-semibold">{companyName}</div>
+          <div className="text-lg md:text-xl font-semibold">Admin Dashboard</div>
         </div>
 
-        {/* Right: bell + user card */}
+        {/* Right: notifications + user */}
         <div className="flex items-center gap-4">
           <button
             type="button"
@@ -60,7 +51,7 @@ export default function Header({
             <Initials name={userName} size={36} />
             <div className="hidden sm:block leading-tight">
               <div className="text-[13px] font-medium">{userName || "—"}</div>
-              <div className="text-[11px] opacity-80">{userRole || ""}</div>
+              <div className="text-[11px] opacity-80">{userRole}</div>
             </div>
           </div>
         </div>

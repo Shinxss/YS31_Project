@@ -19,8 +19,8 @@ import Admin from "./src/models/Admin.js"; // ensure relative path matches
 
 const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/internconnect";
 const ADMIN_NAME = process.env.ADMIN_NAME || "System Admin";
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "admin@example.com").toLowerCase().trim();
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Admin@12345";
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "admin@internconnect.com").toLowerCase().trim();
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin12345";
 const ADMIN_ROLE = process.env.ADMIN_ROLE || "admin";
 
 const main = async () => {
