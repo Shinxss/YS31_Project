@@ -1,42 +1,37 @@
+// backend/models/Admin.js
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
-// Admin Schema
-const adminSchema = new mongoose.Schema(
+const AdminSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+    name: { type: String, required: true, trim: true, minlength: 2, maxlength: 80 },
     email: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
       trim: true,
+      match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
     },
-    password: {
-      type: String,
-      required: true,
-    },
+    password: { type: String, required: true, minlength: 8, select: false },
+    role: { type: String, enum: ["admin", "superadmin"], default: "admin" },
+    status: { type: String, enum: ["active", "suspended"], default: "active" },
   },
-  { timestamps: true }
+  { timestamps: true, collection: "admins" }
 );
 
-// Pre-save hook to hash password before saving it
-adminSchema.pre("save", async function (next) {
-  if (this.isModified("password")) {
-    this.password = await bcrypt.hash(this.password, 10);
-  }
+// Hash password before save (works with create() and save())
+AdminSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
   next();
 });
 
-// Method to compare passwords during login
-adminSchema.methods.matchPassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+// Helper instance method to compare password
+AdminSchema.methods.comparePassword = async function (plainPassword) {
+  return bcrypt.compare(plainPassword, this.password);
 };
 
-const Admin = mongoose.model("Admin", adminSchema);
-
+const Admin = mongoose.models.Admin || mongoose.model("Admin", AdminSchema);
 export default Admin;

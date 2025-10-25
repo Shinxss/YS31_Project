@@ -28,9 +28,16 @@ import CompanyStudentProfile from "./pages/dashboard/CompanyStudentProfile.jsx";
 import JobDetailPage from "./pages/dashboard/JobDetailPage";
 
 
+/*Admin*/
+import Login from "./pages/admin/AdminLogin.jsx";
+import Dashboard from "./pages/admin/AdminDashboard.jsx";
+
+
 /* Route guards */
 import ProtectedRoute from "./components/ProtectedRoute";
 import GuestRoute from "./components/GuestRoute";
+import ProtectedAdminRoute from "./components/adminProtectedRoutes";
+import { isLoggedIn } from "./utils/adminAuth.js";
 
 
 export default function App() {
@@ -72,6 +79,26 @@ export default function App() {
           <Route path="/company/settings/*" element={<CompanySettings />} />
           <Route path="/company/students/:id" element={<CompanyStudentProfile />} />
         </Route>
+
+        <Route path="/admin/login" element={<Login />} />
+
+        {/* Admin routes */}
+        <Route path="/admin/login" element={<Login />} />
+
+        {/* /admin root: redirect to login or dashboard based on auth */}
+        <Route
+          path="/admin"
+          element={isLoggedIn() ? <Navigate to="/admin/dashboard" replace /> : <Navigate to="/admin/login" replace />}
+        />
+
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedAdminRoute>
+              <Dashboard />
+            </ProtectedAdminRoute>
+          }
+        />
 
         {/* fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

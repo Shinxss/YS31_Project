@@ -1,135 +1,105 @@
-// frontend/src/pages/AdminLogin.jsx
-import React, { useState } from "react";
-import { Mail, Lock, Eye, EyeOff, Shield } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
+// src/pages/admin/AdminLogin.jsx
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { saveAdminAuth, isLoggedIn } from "../../utils/adminAuth";
+import { MdEmail, MdLock } from "react-icons/md";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
 export default function AdminLogin() {
-  const [email, setEmail] = useState("admin@internconnect.local");
-  const [password, setPassword] = useState("Admin@12345");
-  const [show, setShow] = useState(false);
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // Use env var for backend; fallback to 5000 (backend)
-  const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:5000";
+  useEffect(() => {
+    if (isLoggedIn()) navigate("/admin/dashboard", { replace: true });
+  }, [navigate]);
 
-  async function handleSubmit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
     setLoading(true);
-
     try {
-      // debug: confirm what we're posting to at runtime
-      console.log("Posting admin login to:", `${API_BASE}/api/auth/admin-login`);
-
-      const res = await fetch(`${API_BASE}/api/auth/admin-login`, {
+      const res = await fetch(`${API_BASE}/api/admin/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.toLowerCase().trim(), password }),
       });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        const msg = data.message || `Login failed (${res.status})`;
-        toast.error(msg);
-        setLoading(false);
-        return;
-      }
-
-      if (!data.token) {
-        toast.error("Login did not return a token.");
-        setLoading(false);
-        return;
-      }
-
-      // Save token and role (dev: localStorage)
-      localStorage.setItem("authToken", data.token);
-      localStorage.setItem("role", data.role || "admin");
-
-      toast.success("Welcome back, Admin!");
-
-      // Redirect to protected Admin Dashboard
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Login failed");
+      saveAdminAuth({ token: data.token, admin: data.admin });
       navigate("/admin/dashboard", { replace: true });
     } catch (err) {
-      console.error("admin login error", err);
-      toast.error("Network error — could not contact server.");
-    } finally {
+      setError(err.message || "Login error");
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
-        <div className="flex items-center gap-3 justify-center mb-4">
-          <Shield size={28} className="text-orange-500" />
-          <h2 className="text-2xl font-semibold text-center">Welcome Back, Admin</h2>
-        </div>
+    <div className="min-h-screen grid place-items-center bg-slate-100 p-6">
+      <div className="w-[420px] bg-white rounded-xl border border-slate-200 shadow-[0_6px_24px_rgba(16,24,40,0.08)] overflow-hidden">
+        <div className="px-6 py-7">
+          <h1 className="text-[26px] font-bold leading-tight text-[#233b8a] text-center">
+            Welcome Back Admin
+          </h1>
+          <p className="mt-1 text-sm text-slate-500 text-center">
+            Login Your Account
+          </p>
 
-        <form onSubmit={handleSubmit} className="space-y-5 mt-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Mail size={18} className="text-gray-400" />
-              </div>
+          <form onSubmit={handleSubmit} className="mt-5 space-y-3" noValidate>
+            <label className="text-sm text-slate-900">Email</label>
+            <div className="flex items-center h-11 rounded-lg border border-slate-200 bg-white transition
+                            focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/10">
+              <span className="w-11 grid place-items-center text-slate-500">
+                <MdEmail size={18} />
+              </span>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
                 required
-                className="w-full border border-gray-200 rounded-xl py-3 pl-12 pr-4 text-sm placeholder-gray-400
-                  focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-transparent transition"
+                placeholder="Enter your email"
+                aria-label="email"
+                className="flex-1 h-full bg-transparent outline-none text-sm text-slate-900 placeholder:text-slate-400 pr-3"
               />
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Lock size={18} className="text-gray-400" />
-              </div>
-
+            <label className="text-sm text-slate-900">Password</label>
+            <div className="flex items-center h-11 rounded-lg border border-slate-200 bg-white transition
+                            focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/10">
+              <span className="w-11 grid place-items-center text-slate-500">
+                <MdLock size={18} />
+              </span>
               <input
-                type={show ? "text" : "password"}
+                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
                 required
-                className="w-full border border-gray-200 rounded-xl py-3 pl-12 pr-12 text-sm placeholder-gray-400
-                  focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-transparent transition"
+                placeholder="Enter your password"
+                aria-label="password"
+                className="flex-1 h-full bg-transparent outline-none text-sm text-slate-900 placeholder:text-slate-400 pr-3"
               />
-
-              <button
-                type="button"
-                onClick={() => setShow((s) => !s)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                aria-label="Toggle password visibility"
-              >
-                {show ? <EyeOff size={18} className="text-gray-500" /> : <Eye size={18} className="text-gray-500" />}
-              </button>
             </div>
-          </div>
 
-          <button
-            type="submit"
-            className="w-full py-3 rounded-xl text-white font-semibold text-lg shadow-md"
-            style={{
-              background: "#F37526",
-              boxShadow: "0 6px 12px rgba(243,117,38,0.18)",
-            }}
-            disabled={loading}
-          >
-            {loading ? "Signing in…" : "Sign in as Admin"}
-          </button>
-        </form>
+            {error && (
+              <div className="mt-1 rounded-lg border border-red-200 bg-red-100 text-red-800 text-sm px-3 py-2.5">
+                {error}
+              </div>
+            )}
 
-        <p className="text-center text-sm text-gray-600 mt-5">
-          Back to the main site? <Link to="/" className="text-blue-600 font-medium hover:underline">Go home</Link>
-        </p>
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-1.5 h-12 w-full rounded-lg bg-orange-500 text-white font-semibold text-[15px]
+                         hover:brightness-95 active:translate-y-px disabled:opacity-60
+                         transition-[filter,transform,opacity] duration-150"
+            >
+              {loading ? "Logging in..." : "Sign in"}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

@@ -23,7 +23,7 @@ try {
 
 function getStudentDisplayName(s = {}, fallbackEmail = "") {
   return (
-    s.fullname ||            // e.g. "Juan Dela Cruz"
+    s.fullname ||
     s.fullName ||
     s.name ||
     (s.firstName && s.lastName ? `${s.firstName} ${s.lastName}` : null) ||
@@ -33,6 +33,9 @@ function getStudentDisplayName(s = {}, fallbackEmail = "") {
     "Applicant"
   );
 }
+
+
+
 
 /* ----------------------------- Multer ------------------------------ */
 
@@ -304,13 +307,16 @@ export async function updateApplicationStatus(req, res) {
       return res.status(400).json({ message: "Invalid status value" });
     }
 
+    // Ensure the caller is a company user
     const company = await Company
       .findOne({ user: req.user.id })
-      .select("_id companyName");
+      .select("_id companyName email contactEmail")
+      .lean();
     if (!company) {
       return res.status(403).json({ message: "No company profile for this user" });
     }
 
+    // Update the application (and ensure it's theirs)
     const app = await Application.findOneAndUpdate(
       {
         _id: id,
@@ -321,11 +327,82 @@ export async function updateApplicationStatus(req, res) {
       },
       { $set: { status: canonical } },
       { new: true, runValidators: true }
-    );
+    ).lean();
 
     if (!app) {
       return res.status(404).json({ message: "Application not found" });
     }
+
+    // ---- Build & send student notification + email (best-effort; non-blocking) ----
+    (async () => {
+      try {
+        const [student, job] = await Promise.all([
+          Student.findById(app.student)
+            .select("email fullname fullName name firstName lastName")
+            .lean(),
+          Job.findById(app.job).select("title companyName companyId").lean(),
+        ]);
+
+        const studentEmail = (student?.email || "").toLowerCase();
+        const applicantName = getStudentDisplayName(student || {}, studentEmail);
+        const jobTitle = job?.title || "the position";
+        const companyName = job?.companyName || company.companyName || "the company";
+
+        // resolve a company contact email for the 'accepted' template
+        const companyEmail =
+          company?.email || company?.contactEmail || null;
+
+        // Email body templates (exact text you provided)
+        const acceptedBody =
+`Hi ${applicantName},
+your application for ${jobTitle} in ${companyName} has been accepted.
+contact us ${companyEmail || "(no-reply)"} for more details.
+— ${companyName}`;
+
+        const rejectedBody =
+`Hi ${applicantName},
+your application for ${jobTitle} in ${companyName} has been rejected.
+— ${companyName}`;
+
+        const bodyText = canonical === "Accepted" ? acceptedBody : rejectedBody;
+
+        // Create a Notification targeted to the student
+        await Notification.create({
+          title: `Application ${canonical} — ${jobTitle}`,
+          body: bodyText,
+          type: "status",
+          status: canonical,
+          companyId: company?._id || undefined,
+          recipientEmail: studentEmail || undefined,
+          createdBy: req.user?.id, // company user
+          data: {
+            jobId: job?._id,
+            jobTitle,
+            companyName,
+            companyEmail,
+            studentId: student?._id,
+            applicantName,
+            applicantEmail: studentEmail,
+            status: canonical,
+          },
+        });
+
+        // Send the email (if we have the student's email)
+        if (studentEmail) {
+          try {
+            await sendPlainEmail({
+              to: studentEmail,
+              subject: `Your application was ${canonical} — ${jobTitle}`,
+              text: bodyText,
+            });
+          } catch (e) {
+            console.warn("Student email send failed:", e?.message || e);
+          }
+        }
+      } catch (notifyErr) {
+        console.warn("Student notification/email failed:", notifyErr?.message || notifyErr);
+      }
+    })();
 
     return res.json({ message: "Status updated", application: app });
   } catch (err) {
@@ -333,6 +410,7 @@ export async function updateApplicationStatus(req, res) {
     return res.status(500).json({ message: "Failed to update status" });
   }
 }
+
 
 export async function getScreeningAnswers(req, res) {
   try {

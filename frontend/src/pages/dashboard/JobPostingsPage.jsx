@@ -777,9 +777,7 @@ export default function JobPostingsPage() {
                           <button
                             className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
                             onClick={() => {
-                              // open modal view
-                              setSelectedJob(j);
-                              setOpenMenuId(null);
+                              navigate(`/company/job/${j._id || j.id || j.slug}`);
                             }}
                           >
                             View

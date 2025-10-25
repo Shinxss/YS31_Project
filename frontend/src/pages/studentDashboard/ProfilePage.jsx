@@ -444,7 +444,7 @@ function SectionBlock({ title, addLabel, onAdd, children }) {
         <h3 className="text-xl font-semibold text-gray-900">{title}</h3>
         <button
           onClick={onAdd}
-          className="inline-flex items-center gap-2 rounded-md bg-black px-3 py-2 text-xs font-semibold text-white"
+          className="inline-flex items-center gap-2 rounded-md bg-orange-500 px-3 py-2 text-xs font-semibold text-white"
         >
           <Plus className="h-4 w-4" />
           {addLabel}
@@ -500,7 +500,7 @@ function List({ type, items = [], onEdit, onDelete, icon: Icon }) {
         <div className="flex items-center gap-3">
           <button
             onClick={() => onEdit(item)}
-            className="text-gray-700 hover:text-gray-900"
+            className="text-blue-600 hover:text-gray-900"
             title="Edit"
           >
             <Pencil className="h-5 w-5" />
