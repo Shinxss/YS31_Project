@@ -27,6 +27,7 @@ import CompanySettings from "./pages/dashboard/CompanySettings.jsx";
 import CompanyStudentProfile from "./pages/dashboard/CompanyStudentProfile.jsx";
 import JobDetailPage from "./pages/dashboard/JobDetailPage";
 
+import DashboardHome from "./pages/admin/AdminDashboard.jsx";
 
 /* Route guards */
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -72,6 +73,11 @@ export default function App() {
           <Route path="/company/settings/*" element={<CompanySettings />} />
           <Route path="/company/students/:id" element={<CompanyStudentProfile />} />
         </Route>
+
+        {/* ✅ Admin */}
+      <Route element={<ProtectedRoute allow={["admin"]} />}>
+        <Route path="/admin/*" element={<DashboardHome />} />
+      </Route>
 
         {/* fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
