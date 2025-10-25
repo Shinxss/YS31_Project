@@ -19,7 +19,8 @@ import companyApplicationsRoutes from "./routes/company.applications.routes.js";
 import companyNotificationsRoutes from "./routes/company.notifications.routes.js";
 import studentNotificationsRoutes from "./routes/student.notifications.routes.js";
 import adminAuthRoutes from "./routes/adminAuth.routes.js";
-
+import adminUsersRoutes from "./routes/admin.users.routes.js";
+import adminExportRoutes from "./routes/admin.export.routes.js";
 
 // ---------- App ----------
 const app = express();
@@ -105,8 +106,8 @@ app.use("/api/company", companyNotificationsRoutes);
 app.use("/api/company/notifications", companyNotificationsRoutes);
 app.use("/api/student/notifications", studentNotificationsRoutes);
 app.use("/api/admin", adminAuthRoutes);
-
-
+app.use("/api/admin/users", adminUsersRoutes);
+app.use("/api/admin/export", adminExportRoutes);
 
 // Health check
 app.get("/api/health", (_req, res) => {
