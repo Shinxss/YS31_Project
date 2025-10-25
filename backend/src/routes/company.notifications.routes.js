@@ -1,15 +1,59 @@
-// src/routes/company.notifications.routes.js
-import express from "express";
-import auth, { requireRole } from "../middlewares/auth.js";
+import { Router } from "express";
 import {
-  listNotifications,
-  markAllRead,
-  markOneRead,
-} from "../controllers/companyNotifications.controller.js";
+  createCompanyNotification,
+  sendCompanyEmail,
+  listCompanyNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  deleteNotification,
+} from "../controllers/company.notifications.controller.js";
+import { protect } from "../middlewares/auth.js";
+// import { allowRoles } from "../middlewares/roles.js"; // optional
 
-const router = express.Router();
-router.get("/notifications", auth, requireRole("company"), listNotifications);
-router.post("/notifications/mark-all-read", auth, requireRole("company"), markAllRead);
-router.post("/notifications/:id/read", auth, requireRole("company"), markOneRead);
+const router = Router();
+
+// Read/list
+router.get(
+  "/",
+  protect,
+  // allowRoles("company", "admin"),
+  listCompanyNotifications
+);
+
+// Mark all read MUST be before the :id route
+router.patch(
+  "/read-all",
+  protect,
+  // allowRoles("company", "admin"),
+  markAllNotificationsRead
+);
+
+// Mark one as read
+router.patch(
+  "/:id/read",
+  protect,
+  // allowRoles("company", "admin"),
+  markNotificationRead
+);
+
+// Delete one
+router.delete(
+  "/:id",
+  protect,
+  // allowRoles("company", "admin"),
+  deleteNotification
+);
+
+// Existing: create (from student/apply) and email
+router.post(
+  "/",
+  protect, // if you allow students too, replace with allowRoles("student","admin","company")
+  createCompanyNotification
+);
+router.post(
+  "/email",
+  protect, // allowRoles("student","company","admin"),
+  sendCompanyEmail
+);
 
 export default router;

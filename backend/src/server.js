@@ -102,6 +102,7 @@ app.use("/api", applicationsRoutes);
 app.use("/api/applications", applicationsRoutes);
 app.use("/api/company", companyApplicationsRoutes);
 app.use("/api/company", companyNotificationsRoutes);
+app.use("/api/company/notifications", companyNotificationsRoutes);
 
 
 

@@ -27,6 +27,7 @@ import CompanySettings from "./pages/dashboard/CompanySettings.jsx";
 import CompanyStudentProfile from "./pages/dashboard/CompanyStudentProfile.jsx";
 import JobDetailPage from "./pages/dashboard/JobDetailPage";
 
+
 /* Route guards */
 import ProtectedRoute from "./components/ProtectedRoute";
 import GuestRoute from "./components/GuestRoute";

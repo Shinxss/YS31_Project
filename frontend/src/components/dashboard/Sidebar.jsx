@@ -16,6 +16,7 @@ import {
   FileText,
   Shield,
   ArrowLeft,
+  Bell, // ⬅️ added
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -88,6 +89,8 @@ export default function Sidebar({ collapsed, onLogout }) {
               <NavItem icon={<Home className="w-4 h-4" />} label="Dashboard" to="/company" collapsed={collapsed} />
               <NavItem icon={<Briefcase className="w-4 h-4" />} label="Job Postings" to="/company/postings" collapsed={collapsed} />
               <NavItem icon={<Users className="w-4 h-4" />} label="Applications" to="/company/applications" collapsed={collapsed} />
+              {/* ⬇️ New Notifications tab */}
+              <NavItem icon={<Bell className="w-4 h-4" />} label="Notifications" to="/company/notifications" collapsed={collapsed} />
               <NavItem icon={<BarChart3 className="w-4 h-4" />} label="Analytics" to="/company/analytics" collapsed={collapsed} />
             </nav>
 

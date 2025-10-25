@@ -39,6 +39,158 @@ export default function ApplyModal({ jobId, onClose }) {
     setResume(file);
   };
 
+  /**
+   * Helper: fetch minimal job + company details for notif/email.
+   * Tries to be defensive about response shape.
+   */
+  const fetchJobAndCompany = async () => {
+    const res = await fetch(`${API_BASE}/api/jobs/${jobId}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to load job details");
+
+    // Possible shapes supported:
+    const job = data.job || data.data || data;
+    const company =
+      job.company ||
+      data.company ||
+      job.postedBy ||
+      {};
+
+    const jobTitle =
+      job.title ||
+      job.jobTitle ||
+      job.position ||
+      "Untitled Role";
+
+    const companyName =
+      company.name ||
+      company.companyName ||
+      job.companyName ||
+      "Unknown Company";
+
+    const companyEmail =
+      company.email ||
+      company.contactEmail ||
+      data.companyEmail ||
+      null;
+
+    const companyId =
+      company._id ||
+      company.id ||
+      job.companyId ||
+      null;
+
+    return { jobTitle, companyName, companyEmail, companyId };
+  };
+
+  /**
+   * Helper: fetch current student (applicant) minimal info.
+   */
+  const fetchApplicant = async (token) => {
+    const res = await fetch(`${API_BASE}/api/student/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to load profile");
+    const applicantName = data.name || data.fullname || data.fullName || "Applicant";
+    const applicantEmail = data.email || null;
+    const applicantId = data._id || data.id || null;
+    return { applicantName, applicantEmail, applicantId };
+  };
+
+  /**
+   * Create company notification after successful application.
+   * Saves: applicant name, applicant email, company email, company name, job title, message, jobId, status
+   */
+  const createCompanyNotification = async ({
+    token,
+    applicantName,
+    applicantEmail,
+    applicantId,
+    companyEmail,
+    companyName,
+    companyId,
+    jobTitle,
+    jobId,
+    message,
+  }) => {
+    const title = `New applicant — ${applicantName} for ${jobTitle}`;
+    const body = `Heads up, ${applicantName} applied for ${jobTitle}`;
+
+    const payload = {
+      // Required common fields (based on your earlier validation error)
+      title,
+      body,
+      type: "application",        // e.g., application | status | system
+      status: "Applied",          // storing status as requested
+      // Targeting
+      companyId,                  // optional but ideal if you have it
+      recipientEmail: companyEmail, // fallback targeting
+      // Rich metadata for your dashboards
+      data: {
+        jobId,
+        jobTitle,
+        companyName,
+        companyEmail,
+        applicantId,
+        applicantName,
+        applicantEmail,
+        message,
+        appliedAt: new Date().toISOString(),
+      },
+    };
+
+    const res = await fetch(`${API_BASE}/api/company/notifications`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    // It’s okay if your API responds with created notification or simple msg
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to create notification");
+    return data;
+  };
+
+  /**
+   * Optional: send email to company with your template.
+   * Subject: New applicant — {applicantName} for {jobTitle}
+   * Body:    Heads up, {applicantName} applied for {jobTitle}
+   * If your backend uses another route, just change the path.
+   */
+  const sendCompanyEmail = async ({
+    token,
+    to,
+    applicantName,
+    jobTitle,
+  }) => {
+    if (!to) return; // no company email available; silently skip
+
+    const subject = `New applicant — ${applicantName} for ${jobTitle}`;
+    const text = `Heads up, ${applicantName} applied for ${jobTitle}`;
+
+    // Adjust this endpoint to your mailer route
+    const res = await fetch(`${API_BASE}/api/company/notifications/email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ to, subject, text }),
+    });
+
+    // Email might be optional; don’t throw on non-2xx if you prefer
+    try {
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Email send failed");
+    } catch (e) {
+      // If backend returns no JSON, still ignore
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!resume) return toast.error("Please upload your resume first.");
@@ -52,8 +204,7 @@ export default function ApplyModal({ jobId, onClose }) {
       answer: String(answersByIndex[i] || "").trim(),
     }));
 
-    // (optional) require all answers if there are questions
-    if (questions.length && answersArray.some(a => !a.answer)) {
+    if (questions.length && answersArray.some((a) => !a.answer)) {
       return toast.error("Please answer all screening questions.");
     }
 
@@ -61,19 +212,65 @@ export default function ApplyModal({ jobId, onClose }) {
     formData.append("jobId", jobId);
     formData.append("message", message.trim());
     formData.append("resume", resume);
-    formData.append("answers", JSON.stringify(answersArray)); // ← send array with question text
+    formData.append("answers", JSON.stringify(answersArray));
 
     try {
       setSubmitting(true);
+
+      // 1) Submit the application
       const res = await fetch(`${API_BASE}/api/student/apply`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }, // don't set Content-Type for multipart
         body: formData,
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Application failed");
 
+      // 2) Gather details for notification & email
+      let applicant, jobCompany;
+      try {
+        [applicant, jobCompany] = await Promise.all([
+          fetchApplicant(token),
+          fetchJobAndCompany(),
+        ]);
+      } catch (infoErr) {
+        console.warn("ℹ️ Proceeding without full notif context:", infoErr);
+      }
+
+      // 3) Create company notification (non-blocking if it fails)
+      try {
+        await createCompanyNotification({
+          token,
+          applicantName: applicant?.applicantName || "Applicant",
+          applicantEmail: applicant?.applicantEmail || null,
+          applicantId: applicant?.applicantId || null,
+          companyEmail: jobCompany?.companyEmail || null,
+          companyName: jobCompany?.companyName || "Unknown Company",
+          companyId: jobCompany?.companyId || null,
+          jobTitle: jobCompany?.jobTitle || "Untitled Role",
+          jobId,
+          message: message.trim(),
+        });
+      } catch (notifErr) {
+        console.error("❌ Notification create failed:", notifErr);
+        toast.warn("Application sent, but notifying the company failed.");
+      }
+
+      // 4) Send company email (optional; non-blocking)
+      try {
+        if (jobCompany?.companyEmail) {
+          await sendCompanyEmail({
+            token,
+            to: jobCompany.companyEmail,
+            applicantName: applicant?.applicantName || "Applicant",
+            jobTitle: jobCompany?.jobTitle || "Untitled Role",
+          });
+        }
+      } catch (mailErr) {
+        console.error("📧 Email send failed:", mailErr);
+      }
+
+      // 5) UX success
       new Audio("/src/assets/sounds/success.mp3").play().catch(() => {});
       toast.success("✅ Application Sent!", { autoClose: 3000 });
       onClose();

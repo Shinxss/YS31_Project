@@ -10,6 +10,8 @@ import JobPostingsPage from "./JobPostingsPage.jsx";
 import ApplicationsPage from "./ApplicationsPage.jsx";
 import AnalyticsPage from "./AnalyticsPage.jsx";
 import PostJobPage from "./PostJobPage.jsx";
+import Notifications from "./Notifications.jsx";
+
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
@@ -148,6 +150,7 @@ export default function CompanyDashboard() {
               <Route path="applications" element={<ApplicationsPage token={token} />} />
               <Route path="analytics" element={<AnalyticsPage token={token} />} />
               <Route path="post-job" element={<PostJobPage token={token} />} />
+              <Route path="notifications" element={<Notifications token={token} />} />
             </Routes>
           )}
         </main>
