@@ -32,6 +32,23 @@ const applicationSchema = new Schema(
         answer: String,
       },
     ],
+    purpose: {
+      type: String,
+      trim: true,
+      enum: [
+        "Career Growth",
+        "Skill Development",
+        "Academic Requirement",
+        "Financial Motivation",
+        "Career Exploration",
+        "Networking",
+        "Personal Development",
+        "Future Employment",
+        "Other",
+      ],
+      required: true,
+    },
+    purposeDetail: { type: String, trim: true, default: "" },
   },
   { timestamps: true }
 );

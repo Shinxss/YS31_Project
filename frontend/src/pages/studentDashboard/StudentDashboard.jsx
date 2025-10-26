@@ -11,6 +11,7 @@ import StudentDashboardHome from "@/pages/studentDashboard/StudentDashboardHome.
 import BrowseJobs from "@/pages/studentDashboard/BrowseJobs.jsx";
 import StudentProfile from "@/pages/studentDashboard/ProfilePage.jsx";
 import MyApplications from "@/pages/studentDashboard/MyApplications.jsx";
+import StudentNotifications from "../studentDashboard/Notifications";
 
 /* ---------------------- helpers ---------------------- */
 const timeAgo = (d) => {
@@ -27,10 +28,22 @@ const timeAgo = (d) => {
 export default function StudentDashboard() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   // strictly allow only these labels
-  const VALID_TABS = new Set(["Dashboard", "Browse Jobs", "Profile", "My Applications"]);
+  const VALID_TABS = new Set([
+    "Dashboard",
+    "Browse Jobs",
+    "Profile",
+    "My Applications",
+    "Notifications", // ✅ NEW
+  ]);
+
   const getInitialTab = () => {
+    // If direct route is /student/notifications, force that tab
+    if (location.pathname.startsWith("/student/notifications")) {
+      return "Notifications";
+    }
     // 1) URL ?tab=...
     const params = new URLSearchParams(location.search);
     const fromQuery = params.get("tab");
@@ -43,6 +56,7 @@ export default function StudentDashboard() {
     // 3) fallback
     return "Dashboard";
   };
+
   const [activeTab, setActiveTab] = useState(getInitialTab);
   const [student, setStudent] = useState(null);
 
@@ -70,8 +84,6 @@ export default function StudentDashboard() {
     type: "",
   });
   const [quickNote, setQuickNote] = useState("");
-
-  const navigate = useNavigate();
 
   /* ---------------------- API base resolver ---------------------- */
   const RAW_BASE =
@@ -241,11 +253,22 @@ export default function StudentDashboard() {
     try {
       localStorage.setItem("student_activeTab", activeTab);
     } catch {}
-    const params = new URLSearchParams(location.search);
-    if (params.get("tab") !== activeTab) {
-      params.set("tab", activeTab);
-      // replace so we don't spam history while just switching tabs
-      navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+
+    if (activeTab === "Notifications") {
+      // route to a clean /student/notifications (no ?tab)
+      if (
+        !location.pathname.startsWith("/student/notifications") ||
+        location.search
+      ) {
+        navigate({ pathname: "/student/notifications", search: "" }, { replace: true });
+      }
+    } else {
+      // stay on /student and reflect the tab in ?tab=
+      const params = new URLSearchParams(location.search);
+      if (params.get("tab") !== activeTab || location.pathname !== "/student") {
+        params.set("tab", activeTab);
+        navigate({ pathname: "/student", search: params.toString() }, { replace: true });
+      }
     }
   }, [activeTab, location.pathname, location.search, navigate]);
 
@@ -350,6 +373,9 @@ export default function StudentDashboard() {
           {activeTab === "Profile" && <StudentProfile />}
 
           {activeTab === "My Applications" && <MyApplications />}
+
+          {/* ✅ Notifications tab renders the page component */}
+          {activeTab === "Notifications" && <StudentNotifications />}
         </main>
       </div>
     </div>
