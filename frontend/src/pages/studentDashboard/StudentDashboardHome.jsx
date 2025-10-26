@@ -33,7 +33,7 @@ const normalizeStatus = (raw = "") => {
   return "Application Sent";
 };
 
-// "sent" = ALL non-withdrawn submissions (even if Accepted/Rejected later)
+// Client-side fallback only (when server stats unavailable)
 function computeDashboardStats(applications = []) {
   let sent = 0;
   let accepted = 0;
@@ -130,10 +130,11 @@ export default function StudentDashboardHome({
     }
   };
 
-  /* ---------- Dashboard stats (server fetch with client fallback) ---------- */
+  /* ---------- Dashboard stats (server fetch; client fallback only if needed) ---------- */
   const [dashboardStatsLocal, setDashboardStatsLocal] = useState(
     dashboardStats || { sent: 0, accepted: 0, rejected: 0, successRate: 0 }
   );
+  const [statsFromServer, setStatsFromServer] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -147,7 +148,12 @@ export default function StudentDashboardHome({
         });
         const data = await res.json();
         if (!res.ok || !data?.ok) return false;
-        if (!cancelled) setDashboardStatsLocal(data.stats);
+
+        if (!cancelled) {
+          // Use server totals for overall application/accepted/rejected
+          setDashboardStatsLocal(data.stats);
+          setStatsFromServer(true);
+        }
         return true;
       } catch {
         return false;
@@ -156,24 +162,25 @@ export default function StudentDashboardHome({
 
     (async () => {
       const ok = await fetchServerStats();
-      if (!ok) {
+      if (!ok && !cancelled) {
+        // Fallback to local compute if server endpoint not available
         const stats = computeDashboardStats(safeRecent);
-        if (!cancelled) setDashboardStatsLocal(stats);
+        setDashboardStatsLocal(stats);
+        setStatsFromServer(false);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [student?._id, API_BASE, getAuthHeaders, safeRecent]);
+  }, [student?._id, API_BASE, getAuthHeaders]);
 
-  // Keep in sync with any new recentApplications
+  // Only recompute from client if we DON'T have server stats
   useEffect(() => {
-    setDashboardStatsLocal((prev) => ({
-      ...prev,
-      ...computeDashboardStats(safeRecent),
-    }));
-  }, [safeRecent]);
+    if (!statsFromServer) {
+      setDashboardStatsLocal(computeDashboardStats(safeRecent));
+    }
+  }, [safeRecent, statsFromServer]);
 
   /* ---------- Recommended for you (1 job) ---------- */
   const [recommendedJobs, setRecommendedJobs] = useState([]);
@@ -277,7 +284,7 @@ export default function StudentDashboardHome({
         <p className="text-gray-600 text-sm mt-1">Here's your internship journey overview</p>
       </div>
 
-      {/* STATS CARDS */}
+      {/* STATS CARDS (server totals when available) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
           { label: "Application Sent", value: dashboardStatsLocal.sent, icon: <Send size={16} className="text-gray-400" /> },
@@ -293,11 +300,8 @@ export default function StudentDashboardHome({
             <h2 className="text-3xl font-bold text-[#173B8A]">{stat.value}</h2>
 
             {stat.label === "Success Rate" ? (
-              // NEW: orange baseline with blue overlay when > 0%
               <div className="relative w-full h-2 rounded-full overflow-hidden bg-gray-200">
-                {/* Orange baseline (always visible) */}
                 <div className="absolute inset-0 bg-[#F37526]" />
-                {/* Blue overlay that blends to transparent; only when > 0 */}
                 {Number(dashboardStatsLocal.successRate) > 0 && (
                   <div
                     className="absolute left-0 top-0 h-2"
@@ -365,6 +369,7 @@ export default function StudentDashboardHome({
               </p>
             ) : (
               <div className="space-y-4 max-h-[340px] overflow-y-auto pr-1">
+                {/* ⛔ No limit — render all filtered items */}
                 {filteredRecentApplications.map((app, index) => (
                   <div
                     key={`${app.title}-${index}`}

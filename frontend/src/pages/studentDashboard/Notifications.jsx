@@ -12,6 +12,10 @@ import { toast } from "react-toastify";
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 const PAGE_SIZE = 20;
 
+/* ----------- hard filters ----------- */
+const PERM_TYPE = "status";
+const ALLOWED_STATUSES = new Set(["Accepted", "Rejected"]);
+
 function timeAgo(iso) {
   if (!iso) return "";
   const diff = Date.now() - new Date(iso).getTime();
@@ -53,16 +57,24 @@ export default function StudentNotifications() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
-  const [filter, setFilter] = useState("all"); // all | unread | status
+  const [filter, setFilter] = useState("all"); // all | unread
 
   const token = typeof window !== "undefined" ? localStorage.getItem("ic_token") : null;
 
+  // Always enforce Accepted/Rejected status-type notifications
+  const baseFiltered = useMemo(() => {
+    return (items || []).filter(
+      (n) =>
+        String(n?.type || "").toLowerCase() === PERM_TYPE &&
+        ALLOWED_STATUSES.has(n?.status || n?.data?.status)
+    );
+  }, [items]);
+
   const filtered = useMemo(() => {
-    let data = items;
+    let data = baseFiltered;
     if (filter === "unread") data = data.filter((n) => !n.isRead);
-    if (filter === "status") data = data.filter((n) => n.type === "status");
     return data;
-  }, [items, filter]);
+  }, [baseFiltered, filter]);
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -74,19 +86,33 @@ export default function StudentNotifications() {
     try {
       showSpinner ? setLoading(true) : setRefreshing(true);
       setError("");
-      const res = await fetch(
-        `${API_BASE}/api/student/notifications?limit=${PAGE_SIZE}&page=${page}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+
+      // Backend hints: only status updates that are Accepted or Rejected
+      const url = `${API_BASE}/api/student/notifications?limit=${PAGE_SIZE}&page=${page}&type=${encodeURIComponent(
+        PERM_TYPE
+      )}&statuses=${encodeURIComponent("Accepted,Rejected")}`;
+
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to load notifications");
+
       const list = Array.isArray(data) ? data : data.notifications || [];
-      setItems(list);
+
+      // Defensive filter in case backend ignores params
+      const applied = list.filter(
+        (n) =>
+          String(n?.type || "").toLowerCase() === PERM_TYPE &&
+          ALLOWED_STATUSES.has(n?.status || n?.data?.status)
+      );
+
+      setItems(applied);
       setTotal(
         typeof data.total === "number"
           ? data.total
-          : list.length < PAGE_SIZE && page === 1
-          ? list.length
+          : applied.length < PAGE_SIZE && page === 1
+          ? applied.length
           : page * PAGE_SIZE
       );
     } catch (e) {
@@ -145,7 +171,7 @@ export default function StudentNotifications() {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) {
+    if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.message || "Delete failed");
       }
@@ -175,7 +201,9 @@ export default function StudentNotifications() {
           </div>
           <div>
             <h1 className="text-xl font-semibold text-gray-900">Notifications</h1>
-            <p className="text-sm text-gray-500">Updates about your applications</p>
+            <p className="text-sm text-gray-500">
+              Showing only <span className="font-medium">Accepted &amp; Rejected</span> updates
+            </p>
           </div>
         </div>
 
@@ -203,12 +231,11 @@ export default function StudentNotifications() {
       <div className="flex items-center gap-2 mb-4">
         <div className="flex items-center gap-2 px-2 py-1 text-gray-600">
           <Filter size={16} />
-          <span className="text-sm">Filter:</span>
+          <span className="text-sm">View:</span>
         </div>
         {[
-          { key: "all", label: "All" },
-          { key: "unread", label: "Unread" },
-          { key: "status", label: "Status" },
+          { key: "all", label: "All (Accepted/Rejected)" },
+          { key: "unread", label: "Unread (Accepted/Rejected)" },
         ].map((f) => (
           <button
             key={f.key}
@@ -236,8 +263,8 @@ export default function StudentNotifications() {
       ) : filtered.length === 0 ? (
         <div className="p-10 border border-dashed border-gray-300 rounded-xl text-center bg-gray-50">
           <Bell className="mx-auto mb-2" />
-          <p className="font-medium text-gray-800">No notifications yet</p>
-          <p className="text-sm text-gray-500">We’ll let you know when there are updates.</p>
+          <p className="font-medium text-gray-800">No accepted/rejected updates</p>
+          <p className="text-sm text-gray-500">We’ll let you know when there are decisions.</p>
         </div>
       ) : (
         <div className="grid gap-3">
@@ -245,21 +272,15 @@ export default function StudentNotifications() {
             const isUnread = !n.isRead;
             const jobTitle = n?.data?.jobTitle || "—";
             const companyName = n?.data?.companyName || "—";
-            const statusIntent =
-              n.status === "Accepted"
-                ? "success"
-                : n.status === "Rejected"
-                ? "warn"
-                : "info";
+            const status = n?.status || n?.data?.status || "Update";
+            const statusIntent = status === "Accepted" ? "success" : status === "Rejected" ? "warn" : "info";
 
-            // Title/body fallback if backend didn’t include them
-            const title =
-              n?.title || `Application ${n.status || "Update"} — ${jobTitle}`;
+            const title = n?.title || `Application ${status} — ${jobTitle}`;
             const body =
               n?.body ||
-              (n.status === "Accepted"
+              (status === "Accepted"
                 ? `Hi, your application for ${jobTitle} in ${companyName} has been accepted.`
-                : n.status === "Rejected"
+                : status === "Rejected"
                 ? `Hi, your application for ${jobTitle} in ${companyName} has been rejected.`
                 : `Update on your application for ${jobTitle} at ${companyName}.`);
 
@@ -270,10 +291,7 @@ export default function StudentNotifications() {
                   isUnread ? "bg-amber-50 border-amber-200" : "bg-white border-gray-100 hover:bg-gray-50"
                 }`}
               >
-                {/* left accent bar for unread */}
-                {isUnread && (
-                  <span className="absolute left-0 top-0 h-full w-1 bg-amber-500 rounded-l-xl" />
-                )}
+                {isUnread && <span className="absolute left-0 top-0 h-full w-1 bg-amber-500 rounded-l-xl" />}
 
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 w-8 h-8 rounded-full bg-gray-200 text-gray-700 font-medium grid place-items-center shrink-0">
@@ -286,7 +304,7 @@ export default function StudentNotifications() {
                         {title}
                       </h3>
                       {isUnread && <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />}
-                      <Chip intent={statusIntent}>{n.status || "Update"}</Chip>
+                      <Chip intent={statusIntent}>{status}</Chip>
                       {n.type && <Chip>{n.type}</Chip>}
                     </div>
 
@@ -302,7 +320,6 @@ export default function StudentNotifications() {
                       <span>{timeAgo(n.createdAt)}</span>
                     </div>
 
-                    {/* Optional: quick links */}
                     {(n?.data?.jobId || n?.data?.status) && (
                       <div className="mt-2 flex items-center gap-3 text-sm">
                         {n?.data?.jobId && (
@@ -317,7 +334,6 @@ export default function StudentNotifications() {
                     )}
                   </div>
 
-                  {/* actions */}
                   <div className="flex items-center gap-2 shrink-0">
                     {isUnread && (
                       <button

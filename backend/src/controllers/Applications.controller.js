@@ -34,9 +34,25 @@ function getStudentDisplayName(s = {}, fallbackEmail = "") {
   );
 }
 
+const PURPOSE_ALLOWED = new Set([
+      "Career Growth",
+      "Skill Development",
+      "Academic Requirement",
+      "Financial Motivation",
+      "Career Exploration",
+      "Networking",
+      "Personal Development",
+      "Future Employment",
+      "Other",
+    ]);
 
-
-
+    function normalizePurposeFields(reqBody = {}) {
+      const raw = String(reqBody.purpose || "").trim();
+      const rawDetail = String(reqBody.purposeDetail || "").trim();
+      const purpose = PURPOSE_ALLOWED.has(raw) ? raw : "";
+      const purposeDetail = purpose === "Other" ? rawDetail : "";
+      return { purpose, purposeDetail };
+    }
 /* ----------------------------- Multer ------------------------------ */
 
 const storage = multer.diskStorage({
@@ -106,6 +122,11 @@ export const applyToJob = async (req, res) => {
   try {
     const jobId = req.params.jobId || req.body.jobId;
     const { message } = req.body;
+    const { purpose, purposeDetail } = normalizePurposeFields(req.body);
+    if (!purpose) return res.status(400).json({ message: "Purpose is required." });
+    if (purpose === "Other" && !purposeDetail) {
+      return res.status(400).json({ message: "Please specify your purpose." });
+    }
 
     // 1) Find the Student profile for this logged-in user
     const uid = req.user?.id;
@@ -168,8 +189,9 @@ export const applyToJob = async (req, res) => {
       message: message || "",
       answers: parsedAnswers,
       status: "Application Sent",
+      purpose,          // NEW
+      purposeDetail,
     });
-
     // 6) Server-side: create a company notification + send email (best practice)
     (async () => {
       try {
@@ -213,6 +235,8 @@ export const applyToJob = async (req, res) => {
             applicantEmail,
             message: message || "",
             appliedAt: new Date(),
+            purpose,         // NEW 
+            purposeDetail,
           },
         });
 
