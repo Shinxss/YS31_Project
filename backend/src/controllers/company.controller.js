@@ -219,64 +219,135 @@ export async function listCompanyJobs(req, res) {
  */
 export const updateJob = async (req, res) => {
   const { id } = req.params;
-  const payload = { ...req.body };
+  const body = req.body || {};
+
+  const pickFirst = (...vals) =>
+    vals.find(v => v !== undefined && v !== null && String(v).trim() !== "");
+
+  const toArray = (v) => {
+    if (Array.isArray(v)) return v.map(String).map(s => s.trim()).filter(Boolean);
+    if (typeof v === "string") {
+      return v.split(/,|\n|•|-/).map(s => s.trim()).filter(Boolean);
+    }
+    return [];
+  };
+
+  const toDate = (v) => {
+    if (!v) return undefined;
+    const s = String(v);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return new Date(s); // "YYYY-MM-DD"
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? undefined : d;
+  };
 
   try {
-    // normalize status string if present
-    if (payload.status && typeof payload.status === "string") {
-      payload.status = payload.status.trim();
-    }
+    // Load current job so we can safely merge the date range
+    const current = await Job.findById(id);
+    if (!current) return res.status(404).json({ message: "Job not found" });
 
-    // whitelist allowed keys to avoid accidental schema errors
-    const allowed = [
-      "title",
-      "description",
-      "location",
-      "category",
-      "status",       // e.g., "open", "pending", "closed", "archived", "deleted", "suspended"
-      "isArchived",
-      "datePosted",
-      "closingDate",
-      // add others as per your Job model
-    ];
     const patch = {};
-    for (const k of Object.keys(payload || {})) {
-      if (allowed.includes(k)) patch[k] = payload[k];
+
+    // Core text
+    if (body.title !== undefined) patch.title = String(body.title).trim();
+    if (body.description !== undefined) patch.description = String(body.description || "");
+
+    // Department (your schema uses 'department', not 'category')
+    const department = pickFirst(body.department, body.category, body.categoryName);
+    if (department !== undefined) patch.department = String(department).trim();
+
+    // Location
+    const location = pickFirst(body.location, body.city);
+    if (location !== undefined) patch.location = String(location).trim();
+
+    // Employment type
+    const jobType = pickFirst(body.jobType, body.type, body.employmentType);
+    if (jobType !== undefined) patch.jobType = String(jobType).trim();
+
+    // Work arrangement
+    const workType = pickFirst(body.workType, body.mode, body.workArrangement, body.locationType);
+    if (workType !== undefined) patch.workType = String(workType).trim();
+
+    // Salary (setter pesoifies)
+    const salary = pickFirst(body.salaryMax, body.salary, body.salaryRange);
+    if (salary !== undefined) patch.salaryMax = salary;
+
+    // Arrays (required in your schema)
+    if (body.skills !== undefined || body.skillsText !== undefined) {
+      patch.skills = toArray(body.skills ?? body.skillsText);
+    }
+    if (body.requirements !== undefined || body.requirementsText !== undefined) {
+      patch.requirements = toArray(body.requirements ?? body.requirementsText);
+    }
+    if (body.responsibilities !== undefined || body.responsibilitiesText !== undefined) {
+      patch.responsibilities = toArray(body.responsibilities ?? body.responsibilitiesText);
+    }
+    if (body.offers !== undefined || body.perks !== undefined) {
+      patch.offers = toArray(body.offers ?? body.perks);
+    }
+    if (body.educationLevel !== undefined) {
+      patch.educationLevel = toArray(body.educationLevel);
+    }
+    if (body.languages !== undefined || body.languagesText !== undefined) {
+      patch.languages = toArray(body.languages ?? body.languagesText);
+    }
+    if (body.screeningQuestions !== undefined) {
+      patch.screeningQuestions = toArray(body.screeningQuestions);
     }
 
-    // Optional ownership check: uncomment if your auth sets req.user.companyId
-    // const jobBefore = await Job.findById(id);
-    // if (!jobBefore) return res.status(404).json({ message: "Job not found" });
-    // if (String(jobBefore.company) !== String(req.user?.companyId)) {
-    //   return res.status(403).json({ message: "Forbidden" });
-    // }
+    // Experience level
+    const exp = pickFirst(body.experienceLevel, body.level);
+    if (exp !== undefined) patch.experienceLevel = String(exp).trim();
 
-    const updated = await Job.findByIdAndUpdate(id, patch, {
-      new: true,
-      runValidators: true,
-    });
+    // Timeline: map flat fields to nested startDateRange
+    let from = pickFirst(body.startDateFrom, body.startFrom, body.startDateRange?.from);
+    let to   = pickFirst(body.startDateTo, body.startTo, body.startDateRange?.to);
+    if (from !== undefined || to !== undefined) {
+      const newFrom = toDate(from) || current.startDateRange?.from;
+      const newTo   = toDate(to)   || current.startDateRange?.to;
+      patch.startDateRange = { from: newFrom, to: newTo };
+    }
+
+    // Application deadline
+    if (body.applicationDeadline !== undefined || body.deadline !== undefined) {
+      const dl = toDate(pickFirst(body.applicationDeadline, body.deadline));
+      if (dl) patch.applicationDeadline = dl;
+    }
+
+    // Status (no isArchived in schema)
+    if (typeof body.status === "string") {
+      patch.status = body.status.trim(); // "open" | "pending" | "closed" | "archived" | "deleted" | "suspended"
+    }
+
+    if (Object.keys(patch).length === 0) {
+      return res.status(400).json({ message: "No valid fields to update" });
+    }
+
+    const updated = await Job.findByIdAndUpdate(
+      id,
+      { $set: patch },
+      { new: true, runValidators: true }
+    );
 
     if (!updated) return res.status(404).json({ message: "Job not found" });
-    return res.json(updated);
+
+    // Frontend expects { job }
+    return res.json({ job: updated });
   } catch (err) {
     console.error("updateJob error:", err);
     return res.status(500).json({ message: err.message || "Failed to update job" });
   }
 };
 
+
 export const deleteJob = async (req, res) => {
   const { id } = req.params;
-
   try {
-   
-    const softPatch = { status: "deleted", isArchived: true };
-    const updated = await Job.findByIdAndUpdate(id, softPatch, {
-      new: true,
-      runValidators: true,
-    });
-
+    const updated = await Job.findByIdAndUpdate(
+      id,
+      { $set: { status: "deleted" } },
+      { new: true, runValidators: true }
+    );
     if (!updated) return res.status(404).json({ message: "Job not found" });
-
     return res.json({ message: "Job soft-deleted", job: updated });
   } catch (err) {
     console.error("deleteJob error:", err);

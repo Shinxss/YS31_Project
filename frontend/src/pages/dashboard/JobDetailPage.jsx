@@ -1,23 +1,71 @@
-// src/pages/dashboard/JobDetailPage.jsx
+// src/pages/company/JobDetailPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import {
+  MapPin,
+  DollarSign,
+  Briefcase,
+  Clock,
+  CalendarDays,
+  Building2,
+  Archive,
+  Edit2,
+} from "lucide-react";
 
 /* -------------------------------------------------------
-   API base resolver (same logic as JobPostingsPage)
+   API base + helpers
 ------------------------------------------------------- */
-const RAW_API_BASE =
+const API_BASE =
   (import.meta.env?.VITE_API_BASE ||
     (typeof window !== "undefined" && /:5173|:5174/.test(window.location.origin)
       ? "http://localhost:5000"
-      : "")).trim();
-const api = (p) => (RAW_API_BASE ? `${RAW_API_BASE}${p}` : p);
+      : "")).replace(/\/+$/, "");
 
-const API = {
-  companyJobs: api("/api/company/jobs"),
-  companyApps: api("/api/company/applications"),
-};
+const api = (p) => (API_BASE ? `${API_BASE}${p}` : p);
 
 const normalize = (v = "") => String(v).trim().toLowerCase().replace(/\s+/g, " ");
+
+const getJobId = (job) =>
+  String(job?._id?.$oid || job?._id || job?.id || job?.slug || "");
+
+const PESO = "₱";
+
+/* -------------------------------------------------------
+   Small UI helpers
+------------------------------------------------------- */
+const timeAgo = (iso) => {
+  if (!iso) return "—";
+  const diff = Date.now() - new Date(iso).getTime();
+  const s = Math.floor(diff / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `${d}d ago`;
+  const mo = Math.floor(d / 30);
+  if (mo < 12) return `${mo}mo ago`;
+  const y = Math.floor(mo / 12);
+  return `${y}y ago`;
+};
+
+const fmt = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? ""
+    : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+};
+
+const getInitials = (name) => {
+  const parts = String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!parts.length) return "U";
+  return (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase();
+};
 
 const statusBadge = (raw) => {
   const s = normalize(raw);
@@ -34,331 +82,541 @@ const statusBadge = (raw) => {
   return { label: "Open", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
 };
 
-export default function JobDetailPage() {
-  const { id } = useParams();
+const appStatusBadge = (raw) => {
+  const s = normalize(raw);
+  if (!s || s === "new" || s.includes("pending"))
+    return { label: "New", cls: "bg-blue-50 text-blue-700 border-blue-200" };
+  if (s.includes("review"))
+    return { label: "Reviewed", cls: "bg-amber-50 text-amber-700 border-amber-200" };
+  if (s.includes("accept") || s.includes("hire"))
+    return { label: "Hired", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+  if (s.includes("reject"))
+    return { label: "Rejected", cls: "bg-rose-50 text-rose-700 border-rose-200" };
+  return { label: raw || "New", cls: "bg-gray-50 text-gray-700 border-gray-200" };
+};
+
+/* -------------------------------------------------------
+   Page
+------------------------------------------------------- */
+export default function JobDetailPage({ token: propToken }) {
+  const { id: routeId } = useParams();
+  const { state } = useLocation();
   const navigate = useNavigate();
 
-  const [job, setJob] = useState(null);
+  // prefer explicit prop token, else localStorage (company first)
+  const token = useMemo(
+    () =>
+      propToken ||
+      (typeof window !== "undefined" &&
+        (localStorage.getItem("ic_company_token") || localStorage.getItem("ic_token"))) ||
+      "",
+    [propToken]
+  );
+  const authHeader = () => (token ? { Authorization: `Bearer ${token}` } : {});
+
+  // if we got here by clicking "View", we may already have the job
+  const [job, setJob] = useState(state?.job || null);
   const [apps, setApps] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!state?.job);
   const [err, setErr] = useState("");
-  const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [busyAction, setBusyAction] = useState(false);
 
-  const authHeader = () => {
-    const token =
-      (typeof window !== "undefined" && localStorage.getItem("ic_company_token")) ||
-      (typeof window !== "undefined" && localStorage.getItem("ic_token")) ||
-      null;
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setErr("");
+  /* ---------- Fetch job (with plural/singular/public fallbacks) ---------- */
+  async function fetchJobById(jobId) {
+    const attempts = [
+      api(`/api/company/jobs/${encodeURIComponent(jobId)}`), // plural
+      api(`/api/company/job/${encodeURIComponent(jobId)}`),  // singular
+      api(`/api/jobs/${encodeURIComponent(jobId)}`),         // public/alt
+    ];
+    let lastErr = "Not found";
+    for (const url of attempts) {
       try {
-        // Fetch job
-        const jobRes = await fetch(`${API.companyJobs}/${id}`, {
-          credentials: "include",
-          headers: { ...authHeader() },
-        });
-        const jobJson = await jobRes.json().catch(() => ({}));
-        if (!jobRes.ok) throw new Error(jobJson?.message || "Failed to load job");
-
-        // Fetch applications filtered by jobId (if backend supports query param).
-        // If your backend uses a different query param, adjust accordingly.
-        const appsRes = await fetch(`${API.companyApps}?jobId=${encodeURIComponent(id)}`, {
-          credentials: "include",
-          headers: { ...authHeader() },
-        });
-        const appsJson = await appsRes.json().catch(() => ({}));
-        if (!appsRes.ok) {
-          // backend might return 200 even if no apps; but if error, we still show job
-          console.warn("Failed to load apps", appsJson);
+        const r = await fetch(url, { credentials: "include", headers: { ...authHeader() } });
+        const j = await r.json().catch(() => ({}));
+        if (r.ok && (j?.job || j?._id || j?.id)) {
+          return j.job || j;
         }
-
-        if (!cancelled) {
-          setJob(jobJson?.job || jobJson); // some APIs return { job }
-          // appsJson might be [] or { items: [...] } or { applications: [...] }
-          const appsList = Array.isArray(appsJson) ? appsJson : appsJson?.items || appsJson?.applications || [];
-          setApps(appsList);
-        }
+        lastErr = j?.message || `${r.status} ${r.statusText}`;
       } catch (e) {
-        if (!cancelled) setErr(e.message || "Failed to load job details");
+        lastErr = e.message || "Network error";
+      }
+    }
+    throw new Error(lastErr || "Not found");
+  }
+
+  /* ---------- Load job + applications ---------- */
+  useEffect(() => {
+    let ignore = false;
+    const ctrl = new AbortController();
+
+    (async () => {
+      try {
+        setErr("");
+        if (!job) setLoading(true);
+
+        const jobId = getJobId(job) || routeId;
+        if (!jobId) throw new Error("Missing job id");
+
+        // refresh the job (keeps UI up to date if status changed)
+        const fresh = await fetchJobById(jobId);
+        if (!ignore) setJob(fresh);
+
+        // fetch all applications, then filter by job
+        const ar = await fetch(api(`/api/company/applications`), {
+          credentials: "include",
+          headers: { ...authHeader() },
+          signal: ctrl.signal,
+        });
+        const ajson = await ar.json().catch(() => ({}));
+        if (!ar.ok) throw new Error(ajson?.message || "Failed to load applicants");
+
+        const list = Array.isArray(ajson) ? ajson : ajson?.items || ajson?.applications || [];
+        const filtered = list.filter((a) => {
+          const jid = String(
+            a?.job?._id?.$oid ||
+              a?.job?._id ||
+              a?.jobId ||
+              a?.job ||
+              ""
+          );
+          return jid === getJobId(fresh);
+        });
+
+        if (!ignore) setApps(filtered);
+      } catch (e) {
+        if (!ignore) setErr(e.message || "Failed to load job details.");
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!ignore) setLoading(false);
       }
     })();
 
     return () => {
-      cancelled = true;
+      ignore = true;
+      ctrl.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [routeId]);
 
-  const st = useMemo(() => statusBadge(job?.status || (job?.isActive ? "Open" : "Closed")), [job]);
-
-  /* ---------- Local optimistic updates + server calls (same semantics as listing page) ---------- */
-  const updateJobLocal = (patch) => setJob((j) => (j ? { ...j, ...patch } : j));
-
-  const handleDelete = async () => {
+  /* ---------- Actions ---------- */
+  const doArchiveToggle = async () => {
     if (!job) return;
-    const ok = window.confirm("Delete this job? This will mark it as deleted and archive it.");
-    if (!ok) return;
+    const isArchived = normalize(job.status || "").includes("archiv");
+    const next = isArchived ? "open" : "archived";
+    const payload = { status: next, isArchived: !isArchived };
 
-    const jobId = String(job._id || job.id || job.slug || "");
-    setActionLoadingId(jobId);
+    setBusyAction(true);
     setErr("");
+    const id = getJobId(job);
+    const prev = job;
 
-    const currentStatus = job?.status || (job?.isActive ? "open" : "closed");
-    updateJobLocal({ status: "deleted", isArchived: true });
+    // optimistic
+    setJob((j) => ({ ...j, ...payload }));
 
     try {
-      const res = await fetch(`${API.companyJobs}/${jobId}`, {
-        method: "DELETE",
-        credentials: "include",
-        headers: { ...authHeader() },
-      });
-      if (!res.ok) {
+      const attempts = [
+        api(`/api/company/jobs/${encodeURIComponent(id)}`),
+        api(`/api/company/job/${encodeURIComponent(id)}`),
+        api(`/api/jobs/${encodeURIComponent(id)}`),
+      ];
+      let ok = false;
+      let updated = null;
+
+      for (const url of attempts) {
+        const res = await fetch(url, {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json", ...authHeader() },
+          body: JSON.stringify(payload),
+        });
         const j = await res.json().catch(() => ({}));
-        throw new Error(j?.message || "Failed to delete job");
+        if (res.ok) {
+          updated = j.job || j;
+          ok = true;
+          break;
+        }
       }
-      const data = await res.json().catch(() => null);
-      if (data?.job) setJob(data.job);
-      else {
-        // best-effort: fetch job again (or navigate back)
-        navigate("/company/jobs");
-      }
-    } catch (e) {
-      updateJobLocal({ status: currentStatus, isArchived: job?.isArchived || false });
-      setErr(e.message || "Failed to delete job");
-    } finally {
-      setActionLoadingId(null);
-    }
-  };
-
-  const handleToggleArchive = async () => {
-    if (!job) return;
-    const jobId = String(job._id || job.id || job.slug || "");
-    setActionLoadingId(jobId);
-    setErr("");
-
-    const currentStatus = job?.status || (job?.isActive ? "open" : "closed");
-    const isCurrentlyArchived = normalize(currentStatus).includes("archiv");
-    const newStatus = isCurrentlyArchived ? "open" : "archived";
-    const payload = { status: newStatus, isArchived: !isCurrentlyArchived };
-
-    updateJobLocal({ status: newStatus, isArchived: payload.isArchived });
-
-    try {
-      const res = await fetch(`${API.companyJobs}/${jobId}`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json", ...authHeader() },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j?.message || "Failed to update job status");
-      }
-      const updated = await res.json().catch(() => null);
+      if (!ok) throw new Error("Failed to update job");
       if (updated) setJob(updated);
     } catch (e) {
-      updateJobLocal({ status: currentStatus, isArchived: job?.isArchived || false });
-      setErr(e.message || "Failed to update job status.");
+      setJob(prev); // revert
+      setErr(e.message || "Failed to update job.");
     } finally {
-      setActionLoadingId(null);
+      setBusyAction(false);
     }
   };
 
-  const handleCloseOrReopen = async () => {
+  const goEdit = () => {
     if (!job) return;
-    const jobId = String(job._id || job.id || job.slug || "");
-    setActionLoadingId(jobId);
-    setErr("");
-
-    const currentStatus = job?.status || (job?.isActive ? "open" : "closed");
-    const isCurrentlyClosed = normalize(currentStatus).includes("closed");
-    const newStatus = isCurrentlyClosed ? "open" : "closed";
-    const payload = { status: newStatus, isArchived: false };
-
-    updateJobLocal({ status: newStatus, isArchived: false });
-
-    try {
-      const res = await fetch(`${API.companyJobs}/${jobId}`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json", ...authHeader() },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j?.message || "Failed to update job status");
-      }
-      const updated = await res.json().catch(() => null);
-      if (updated) setJob(updated);
-    } catch (e) {
-      updateJobLocal({ status: currentStatus, isArchived: job?.isArchived || false });
-      setErr(e.message || "Failed to update job status.");
-    } finally {
-      setActionLoadingId(null);
-    }
+    const id = getJobId(job);
+    // pass the full job so PostJob can prefill instantly
+    navigate(`/company/post-job/${id}`, { state: { job } });
   };
 
-  const handleEdit = () => {
-    if (!job) return;
-    const jobId = String(job._id || job.id || job.slug || "");
-    navigate(`/company/post-job/${jobId}`);
-  };
+  /* ---------- Derived UI bits ---------- */
+  const headerMeta = useMemo(() => {
+    const location = job?.location || job?.city || "Remote / —";
+    const salaryMax =
+      job?.salaryMax ??
+      (job?.salaryRange || job?.salary || "");
+    const employmentType = job?.jobType || job?.type || job?.employmentType || "";
+    const workType = job?.workType || job?.mode || job?.workArrangement || job?.locationType || "";
+    const posted = job?.createdAt || job?.datePosted || "";
+    const dept = job?.department || job?.category || job?.categoryName || "";
+    const st = statusBadge(job?.status || (job?.isActive ? "Open" : "Closed"));
 
-  /* ---------- Rendering ---------- */
+    return {
+      location,
+      salaryMax,
+      employmentType,
+      workType,
+      postedAgo: posted ? timeAgo(posted) : "—",
+      postedOn: posted ? fmt(posted) : "",
+      dept,
+      status: st,
+    };
+  }, [job]);
+
+  /* ---------- Render ---------- */
   if (loading) {
     return (
-      <div className="max-w-[1150px] mx-auto py-6">
-        <div className="h-20 bg-gray-100 rounded mb-4" />
-        <div className="space-y-3">
-          <div className="h-40 bg-gray-100 rounded" />
-          <div className="h-20 bg-gray-100 rounded" />
+      <div className="bg-white rounded-2xl p-6">
+        <div className="h-8 w-64 bg-gray-100 rounded mb-4" />
+        <div className="h-6 w-96 bg-gray-100 rounded mb-2" />
+        <div className="h-6 w-80 bg-gray-100 rounded mb-8" />
+        <div className="h-40 bg-gray-100 rounded mb-4" />
+        <div className="h-40 bg-gray-100 rounded" />
+      </div>
+    );
+  }
+
+  if (err) {
+    return (
+      <div className="bg-white rounded-2xl p-6">
+        <div className="px-4 py-3 rounded-lg border border-red-200 text-red-600 bg-red-50 inline-block">
+          {err}
         </div>
       </div>
     );
   }
 
-  if (!job) {
-    return (
-      <div className="max-w-[1150px] mx-auto py-6">
-        <div className="text-red-600">Job not found.</div>
-      </div>
-    );
-  }
+  if (!job) return null;
 
   return (
-    <div className="bg-white rounded-2xl min-h-[calc(100vh-60px)]">
-      <div className="max-w-[1150px] mx-auto py-6">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{job.title}</h1>
-            <div className="mt-2 text-sm text-gray-600 flex items-center gap-3">
-              <span>{job.location || job.city || "Remote"}</span>
-              <span>•</span>
-              <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs`}>
-                <span className={`${st.cls} inline-block rounded-full px-2 py-0.5 text-xs`}>{st.label}</span>
+    <div className="bg-white rounded-2xl max-w-[1150px] mx-auto">
+      {/* Header */}
+      <div className="px-6 pt-5">
+        <h1 className="text-2xl font-semibold text-[#173B8A]">
+          {job.title || "Untitled Job"}
+        </h1>
+
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-600 mt-2">
+          <div className="inline-flex items-center gap-1.5">
+            <MapPin className="w-4 h-4" />
+            <span>{headerMeta.location}</span>
+          </div>
+
+          {!!headerMeta.salaryMax && (
+            <div className="inline-flex items-center gap-1.5">
+              <DollarSign className="w-4 h-4" />
+              <span>
+                {String(headerMeta.salaryMax).match(/^\d+$/)
+                  ? `${PESO}${headerMeta.salaryMax}`
+                  : String(headerMeta.salaryMax)}
               </span>
-              {job.salary && (
-                <>
-                  <span>•</span>
-                  <span>{job.salary}</span>
-                </>
+            </div>
+          )}
+
+          {!!headerMeta.employmentType && (
+            <div className="inline-flex items-center gap-1.5">
+              <Briefcase className="w-4 h-4" />
+              <span>{headerMeta.employmentType}</span>
+            </div>
+          )}
+
+          <div className="inline-flex items-center gap-1.5">
+            <Clock className="w-4 h-4" />
+            <span>Posted {headerMeta.postedAgo}</span>
+          </div>
+
+          {!!headerMeta.workType && (
+            <div className="inline-flex items-center gap-1.5">
+              <Building2 className="w-4 h-4" />
+              <span>{headerMeta.workType}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 mt-4">
+          <button
+            onClick={goEdit}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-md border hover:bg-gray-50"
+          >
+            <Edit2 className="w-4 h-4" />
+            Edit job
+          </button>
+
+          <button
+            disabled={busyAction}
+            onClick={doArchiveToggle}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-md border hover:bg-gray-50"
+          >
+            <Archive className="w-4 h-4" />
+            {normalize(job.status || "").includes("archiv") ? "Unarchive job" : "Archive job"}
+          </button>
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="mt-4 border-t border-gray-200" />
+
+      {/* Quick facts */}
+      <div className="px-6 pt-5 pb-2">
+        <div className="flex flex-wrap gap-3 text-sm text-gray-700">
+          <Fact label="Department" value={headerMeta.dept || "—"} />
+          <Fact label="Work Type" value={headerMeta.workType || "—"} />
+          <Fact label="Employment" value={headerMeta.employmentType || "—"} />
+          <Fact
+            label="Status"
+            value={
+              <span className={`inline-block rounded-full border text-xs px-2.5 py-0.5 ${headerMeta.status.cls}`}>
+                {headerMeta.status.label}
+              </span>
+            }
+          />
+          <Fact label="Posted on" value={headerMeta.postedOn || "—"} />
+          <Fact
+            label="Start (from)"
+            value={fmt(job.startDateFrom || job.startFrom) || "—"}
+            icon={<CalendarDays className="w-3.5 h-3.5" />}
+          />
+          <Fact
+            label="Start (to)"
+            value={fmt(job.startDateTo || job.startTo) || "—"}
+            icon={<CalendarDays className="w-3.5 h-3.5" />}
+          />
+          <Fact
+            label="Deadline"
+            value={fmt(job.applicationDeadline || job.deadline) || "—"}
+            icon={<CalendarDays className="w-3.5 h-3.5" />}
+          />
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="px-6 py-6 space-y-8">
+        {/* Job Description */}
+        <section>
+          <h2 className="text-base font-semibold text-gray-800">Job Description</h2>
+
+          {/* About the Role */}
+          <div className="mt-4">
+            <h3 className="font-medium text-gray-800">About the Role</h3>
+            <div className="prose prose-sm max-w-none text-gray-700 mt-2">
+              {job.about ? (
+                <p>{job.about}</p>
+              ) : (
+                <div
+                  className="leading-relaxed"
+                  dangerouslySetInnerHTML={{
+                    __html:
+                      job.description ||
+                      job.shortDescription ||
+                      "<p>No description provided.</p>",
+                  }}
+                />
               )}
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button onClick={handleEdit} className="px-3 py-2 rounded-lg bg-[#0B63F8] text-white">Edit Job</button>
-            <button onClick={handleToggleArchive} className="px-3 py-2 rounded-lg border">Archive Job</button>
-            <button onClick={handleCloseOrReopen} className="px-3 py-2 rounded-lg border">Close / Reopen</button>
-            <button onClick={handleDelete} className="px-3 py-2 rounded-lg border text-red-600">Delete</button>
-          </div>
-        </div>
-
-        {/* Error */}
-        {err && <div className="text-sm text-red-600 mb-4">{err}</div>}
-
-        {/* Description & Requirements */}
-        <div className="space-y-4">
-          <section className="rounded-lg border p-4 bg-white">
-            <h3 className="font-semibold mb-2">Job Description</h3>
-            <div className="text-sm text-gray-700" dangerouslySetInnerHTML={{ __html: job.description || job.shortDescription || "<p>No description provided.</p>" }} />
-          </section>
-
-          <section className="rounded-lg border p-4 bg-white">
-            <h3 className="font-semibold mb-2">Requirements</h3>
-            <ul className="list-disc list-inside text-sm text-gray-700">
-              {(job.requirements && Array.isArray(job.requirements) ? job.requirements : (job.requirements ? [job.requirements] : []))
+          {/* Key Responsibilities */}
+          <div className="mt-6">
+            <h3 className="font-medium text-gray-800">Key Responsibilities</h3>
+            <ul className="mt-2 list-disc list-inside text-sm text-gray-700 space-y-1">
+              {(Array.isArray(job.responsibilities) ? job.responsibilities : [])
                 .map((r, i) => <li key={i}>{r}</li>)}
-              {!job.requirements && (
-                <>
-                  {job.skills && Array.isArray(job.skills) && job.skills.map((s, idx) => <li key={`s${idx}`}>{s}</li>)}
-                  {!job.skills && <li>No specific requirements listed.</li>}
-                </>
+              {!job.responsibilities?.length && job.description && (
+                <li>See description above.</li>
               )}
             </ul>
-          </section>
-        </div>
+          </div>
 
-        {/* Applicants table */}
-        <div className="mt-6 rounded-lg border bg-white">
-          <div className="px-4 py-3 text-sm font-semibold text-gray-600 bg-[#F6F7FA]">Applicants</div>
+          {/* What we offer */}
+          {!!(job.offers?.length) && (
+            <div className="mt-6">
+              <h3 className="font-medium text-gray-800">What We Offer</h3>
+              <ul className="mt-2 list-disc list-inside text-sm text-gray-700 space-y-1">
+                {job.offers.map((o, i) => <li key={`offer-${i}`}>{o}</li>)}
+              </ul>
+            </div>
+          )}
+        </section>
 
-          <div>
+        {/* Requirements */}
+        <section>
+          <h2 className="text-base font-semibold text-gray-800">Requirements</h2>
+
+          {/* Skills pills */}
+          <div className="mt-3">
+            <h5 className="text-sm font-semibold text-gray-900 mb-2">Required Skills</h5>
+            {Array.isArray(job.skills) && job.skills.length ? (
+              <div className="flex flex-wrap gap-2">
+                {job.skills.map((s, i) => (
+                  <span
+                    key={`skill-${i}`}
+                    className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs text-gray-800"
+                  >
+                    {s}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">—</p>
+            )}
+          </div>
+
+          {/* Education, languages, level */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm text-gray-800">
+            <Meta label="Education Level" value={Array.isArray(job.educationLevel) && job.educationLevel.length ? job.educationLevel.join(", ") : "—"} />
+            <Meta label="Languages" value={
+              Array.isArray(job.languages) && job.languages.length
+                ? job.languages.join(", ")
+                : (typeof job.languages === "string" && job.languages) || "—"
+            } />
+            <Meta label="Experience Level" value={
+              job.experienceLevel === "Entry" ? "Entry-level (0–2 yrs)"
+              : job.experienceLevel === "Mid" ? "Mid-level (3–5 yrs)"
+              : job.experienceLevel === "Senior" ? "Senior-level (6+ yrs)"
+              : job.experienceLevel || "—"
+            } />
+          </div>
+
+          {/* Other requirements list */}
+          <div className="mt-4">
+            <h5 className="text-sm font-semibold text-gray-900 mb-2">Other Requirements</h5>
+            {Array.isArray(job.requirements) && job.requirements.length ? (
+              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                {job.requirements.map((x, i) => <li key={`req-${i}`}>{x}</li>)}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-500">—</p>
+            )}
+          </div>
+
+          {/* Screening Questions */}
+          <div className="mt-4">
+            <h5 className="text-sm font-semibold text-gray-900 mb-2">Screening Questions</h5>
+            {Array.isArray(job.screeningQuestions) && job.screeningQuestions.length ? (
+              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                {job.screeningQuestions.map((x, i) => <li key={`sq-${i}`}>{x}</li>)}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-500">—</p>
+            )}
+          </div>
+        </section>
+
+        {/* Applicants */}
+        <section>
+          <h2 className="text-base font-semibold text-gray-800">Applicants</h2>
+
+          <div className="mt-3 overflow-hidden rounded-lg border border-gray-200">
+            {/* Head */}
+            <div className="grid grid-cols-12 gap-3 px-4 py-3 text-xs font-semibold text-gray-600 bg-[#F6F7FA]">
+              <div className="col-span-5">Applicant Name</div>
+              <div className="col-span-3">Application Status</div>
+              <div className="col-span-2">Date Applied</div>
+              <div className="col-span-2 text-right">Actions</div>
+            </div>
+
+            {/* Rows */}
             {apps.length === 0 ? (
               <div className="px-4 py-6 text-sm text-gray-600">No applicants yet.</div>
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-gray-500">
-                    <th className="px-4 py-3">Applicant Name</th>
-                    <th className="px-4 py-3">Application Status</th>
-                    <th className="px-4 py-3">Date Applied</th>
-                    <th className="px-4 py-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {apps.map((a) => {
-                    const applicant = a.applicant || a.user || a.candidate || {};
-                    const name = applicant.name || `${applicant.firstName || ""} ${applicant.lastName || ""}`.trim() || applicant.email || "Applicant";
-                    const appliedAt = a.createdAt || a.appliedAt || a.date || null;
-                    const statusLabel = a.status || a.applicationStatus || "New";
-                    return (
-                      <tr key={String(a._id || a.id || Math.random())} className="border-t">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden text-sm">
-                              {applicant.avatar ? <img src={applicant.avatar} alt={name} className="w-full h-full object-cover" /> : (name[0] || "U")}
-                            </div>
-                            <div>
-                              <div className="font-medium text-gray-900">{name}</div>
-                              <div className="text-xs text-gray-500">{applicant.email || ""}</div>
-                            </div>
-                          </div>
-                        </td>
+              <ul className="divide-y divide-gray-200">
+                {apps.map((a) => {
+                  const id = String(a._id || a.id || Math.random());
+                  const person = a.applicant || a.user || a.candidate || {};
+                  const name =
+                    person.name ||
+                    `${person.firstName || ""} ${person.lastName || ""}`.trim() ||
+                    person.email ||
+                    "Applicant";
+                  const status = appStatusBadge(a.status || a.state || a.stage || "New");
+                  const created = a.createdAt || a.appliedAt || a.date || "";
+                  const reviewHref = `/company/applications?job=${encodeURIComponent(
+                    getJobId(job)
+                  )}&app=${encodeURIComponent(id)}`;
 
-                        <td className="px-4 py-3">
-                          <span className={`inline-block rounded-full px-3 py-1 text-xs border ${normalize(statusLabel).includes("review") ? "bg-amber-50 text-amber-700" : normalize(statusLabel).includes("hired") ? "bg-emerald-50 text-emerald-700" : normalize(statusLabel).includes("rejected") ? "bg-red-50 text-red-700" : "bg-gray-50 text-gray-700"}`}>
-                            {statusLabel}
-                          </span>
-                        </td>
+                  return (
+                    <li key={id} className="grid grid-cols-12 gap-3 items-center px-4 py-3">
+                      <div className="col-span-5 flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-sm text-gray-700 overflow-hidden">
+                          {person.avatar ? (
+                            <img src={person.avatar} alt={name} className="w-full h-full object-cover" />
+                          ) : (
+                            getInitials(name)
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-gray-900 truncate">{name}</div>
+                          {person.email && <div className="text-xs text-gray-500 truncate">{person.email}</div>}
+                        </div>
+                      </div>
 
-                        <td className="px-4 py-3 text-sm text-gray-600">{appliedAt ? new Date(appliedAt).toISOString().slice(0,10) : "—"}</td>
+                      <div className="col-span-3">
+                        <span className={`inline-block rounded-full border text-xs px-3 py-1 ${status.cls}`}>
+                          {status.label}
+                        </span>
+                      </div>
 
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <button
-                              className="text-sm text-[#0B63F8] hover:underline"
-                              onClick={() => navigate(`/company/application/${a._id || a.id || ""}`)}
-                            >
-                              Review
-                            </button>
+                      <div className="col-span-2 text-sm text-gray-900">
+                        {created ? new Date(created).toISOString().slice(0, 10) : "—"}
+                      </div>
 
-                            <button
-                              className="text-sm px-2 py-1 border rounded"
-                              onClick={() => window.open(applicant.resumeUrl || a.resumeUrl || "#", "_blank")}
-                            >
-                              Resume
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                      <div className="col-span-2 flex justify-end gap-2">
+                        <a href={reviewHref} className="text-sm text-[#0B63F8] hover:underline">
+                          Review
+                        </a>
+                        {(person.resumeUrl || a.resumeUrl) && (
+                          <button
+                            className="text-sm px-2 py-1 border rounded text-gray-700"
+                            onClick={() => window.open(person.resumeUrl || a.resumeUrl, "_blank")}
+                          >
+                            Resume
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </div>
-        </div>
+        </section>
       </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------
+   Tiny presentational helpers
+------------------------------------------- */
+function Fact({ label, value, icon }) {
+  return (
+    <div className="inline-flex items-center gap-2 mr-4 mb-2">
+      {icon}
+      <span className="text-gray-500">{label}:</span>
+      <span className="font-medium text-gray-800">{value}</span>
+    </div>
+  );
+}
+
+function Meta({ label, value }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-xs text-gray-500">{label}</span>
+      <span className="text-sm text-gray-900">{value || "—"}</span>
     </div>
   );
 }

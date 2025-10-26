@@ -27,8 +27,8 @@ router.get("/me", protect, getStudentProfile);
 router.put("/profile", protect, updateStudentProfile);
 router.post("/reminders", protect, addReminder);
 router.get("/reminders", protect, getReminders);
-router.patch("/students/me/reminders/:reminderId", protect, updateReminder);
-router.delete("/students/me/reminders/:reminderId", protect, deleteReminder);
+router.patch("/me/reminders/:reminderId", protect, updateReminder);
+router.delete("/me/reminders/:reminderId", protect, deleteReminder);
 
 // order matters: protect → uploadResume → applyToJob
 router.post("/apply", protect, uploadResume, applyToJob);

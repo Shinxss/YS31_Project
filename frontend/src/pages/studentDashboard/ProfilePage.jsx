@@ -1,13 +1,29 @@
 // src/pages/Student/ProfilePage.jsx
 import React, { useEffect, useState } from "react";
 import ProfileAddModal from "@/components/studentDashboard/ProfileAddModal";
-import { Briefcase, GraduationCap, Award, Pencil, Trash2, Plus, Mail, Phone, MapPin, Calendar, User, Globe } from "lucide-react";
+import {
+  Briefcase,
+  GraduationCap,
+  Award,
+  Pencil,
+  Trash2,
+  Plus,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  User,
+  Globe,
+  Camera,
+  Loader2, // ⬅ spinner for upload/save
+} from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
 export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [picSaving, setPicSaving] = useState(false); // ⬅ image save state
 
   // which section is opening the modal: "experience" | "education" | "certification" | null
   const [modalType, setModalType] = useState(null);
@@ -61,18 +77,63 @@ export default function ProfilePage() {
   const handleChange = (e) =>
     setProfile({ ...profile, [e.target.name]: e.target.value });
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () =>
-      setProfile((p) => ({ ...p, profilePicture: String(reader.result) }));
-    reader.readAsDataURL(file);
+  /* -------------------- image helpers (auto-save) -------------------- */
+  const fileToDataURL = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const putProfile = async (payload) => {
+    const res = await fetch(`${API_BASE}/api/student/profile`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to update profile");
+    return data;
   };
 
-  const handleRemovePicture = () =>
-    setProfile((p) => ({ ...p, profilePicture: "" }));
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
+    try {
+      setPicSaving(true);
+      const dataUrl = await fileToDataURL(file);
+
+      // Optimistic UI update
+      setProfile((p) => ({ ...p, profilePicture: dataUrl }));
+
+      // Auto-save to DB immediately
+      await putProfile({ profilePicture: dataUrl });
+      // (optional) toast can go here
+    } catch (err) {
+      alert(err.message || "Failed to upload photo");
+    } finally {
+      setPicSaving(false);
+    }
+  };
+
+  const handleRemovePicture = async () => {
+    try {
+      setPicSaving(true);
+      setProfile((p) => ({ ...p, profilePicture: "" })); // optimistic
+      await putProfile({ profilePicture: "" }); // persist removal
+    } catch (err) {
+      alert(err.message || "Failed to remove photo");
+    } finally {
+      setPicSaving(false);
+    }
+  };
+
+  /* -------------------- save other basic fields -------------------- */
   const handleSaveBase = async () => {
     try {
       if (!/^\d{11}$/.test(profile.contactNumber || "")) {
@@ -95,18 +156,9 @@ export default function ProfilePage() {
         contactNumber: profile.contactNumber,
         gender: profile.gender,
         race: profile.race,
-        profilePicture: profile.profilePicture,
+        // profilePicture is saved separately on upload/remove
       };
-      const res = await fetch(`${API_BASE}/api/student/profile`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to update profile");
+      await putProfile(body);
       alert("Profile updated successfully!");
       setIsEditing(false);
     } catch (e) {
@@ -140,15 +192,11 @@ export default function ProfilePage() {
     }
     setProfile((p) => ({ ...p, [type]: updated }));
 
-    const res = await fetch(`${API_BASE}/api/student/profile`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ [type]: updated }),
-    });
-    if (!res.ok) alert("Failed to save.");
+    try {
+      await putProfile({ [type]: updated });
+    } catch {
+      alert("Failed to save.");
+    }
     closeModal();
   };
 
@@ -156,14 +204,11 @@ export default function ProfilePage() {
     if (!confirm("Delete this item?")) return;
     const updated = (profile[type] || []).filter((i) => i._id !== id);
     setProfile((p) => ({ ...p, [type]: updated }));
-    await fetch(`${API_BASE}/api/student/profile`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ [type]: updated }),
-    });
+    try {
+      await putProfile({ [type]: updated });
+    } catch (e) {
+      alert(e.message || "Failed to delete");
+    }
   };
 
   const initials =
@@ -172,10 +217,13 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen w-full bg-white rounded-2xl">
       {/* HEADER */}
-      <div className=" flex items-center justify-between px-8 pt-6">
-          {/* Left: Avatar + Name */}
-          <div className="flex items-center gap-5">
-            <div className="relative h-20 w-20 md:h-24 md:w-24 rounded-full border border-gray-300 overflow-hidden bg-gray-100">
+      <div className="flex items-center justify-between px-8 pt-6">
+        {/* Left: Avatar + Name */}
+        <div className="flex items-center gap-5">
+          {/* Wrapper is relative so the camera badge can sit OUTSIDE the circle */}
+          <div className="relative">
+            {/* Avatar circle */}
+            <div className="h-20 w-20 md:h-24 md:w-24 rounded-full border border-gray-300 overflow-hidden bg-gray-100">
               {profile.profilePicture ? (
                 <img
                   src={profile.profilePicture}
@@ -188,70 +236,85 @@ export default function ProfilePage() {
                   {(profile.lastName?.[0] || " ").toUpperCase()}
                 </div>
               )}
+            </div>
 
-              {/* Restored Change/Remove controls (show only when editing) */}
-              {isEditing && (
-                <div className="absolute -bottom-2 right-0 flex gap-1">
-                  <label className="cursor-pointer rounded-md bg-blue-600 px-2 py-1 text-[10px] md:text-xs text-white shadow">
-                    Change
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                  </label>
-                  {profile.profilePicture && (
-                    <button
-                      onClick={handleRemovePicture}
-                      className="rounded-md bg-red-500 px-2 py-1 text-[10px] md:text-xs text-white shadow"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-            <div>
-              {/* Bigger name + subtitle */}
-              <div className="text-[22px] md:text-[26px] font-semibold leading-tight text-gray-900">
-                {profile.firstName} {profile.lastName}
+            {/* Hidden file input (global so camera always works) */}
+            <input
+              id="profilePicInput"
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+
+            {/* Camera badge OUTSIDE the avatar, always visible */}
+            <label
+              htmlFor="profilePicInput"
+              title="Change photo"
+              className="absolute -bottom-1 -right-1 translate-x-1/3 translate-y-1/3 cursor-pointer"
+            >
+              <div className="h-9 w-9 md:h-10 md:w-10 rounded-full bg-gray-700 text-white border border-black/20 shadow flex items-center justify-center">
+                {picSaving ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Camera className="h-5 w-5" />
+                )}
               </div>
-              <div className="text-sm md:text-base text-gray-500">
-                {profile.course || "Information Technology"}
-              </div>
-            </div>
+            </label>
+
+            {/* Remove shows only in edit mode and when a photo exists */}
+            {isEditing && profile.profilePicture && (
+              <button
+                onClick={handleRemovePicture}
+                title="Remove photo"
+                className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 rounded-md bg-red-500 px-2 py-1 text-[10px] md:text-xs text-white shadow"
+                disabled={picSaving}
+              >
+                Remove
+              </button>
+            )}
           </div>
 
-          {/* Right: actions */}
-          {!isEditing ? (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="inline-flex items-center gap-2 rounded-md bg-orange-500 px-4 py-2 text-sm font-semibold text-white"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" className="opacity-90">
-                <path d="M11 4h2v16h-2zM4 11h16v2H4z" fill="currentColor" />
-              </svg>
-              Edit Profile
-            </button>
-          ) : (
-            <div className="flex gap-2">
-              <button
-                className="rounded-md border px-4 py-2 text-sm"
-                onClick={() => setIsEditing(false)}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveBase}
-                disabled={loading}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-              >
-                {loading ? "Saving..." : "Save Changes"}
-              </button>
+          <div>
+            {/* Bigger name + subtitle */}
+            <div className="text-[22px] md:text-[26px] font-semibold leading-tight text-gray-900">
+              {profile.firstName} {profile.lastName}
             </div>
-          )}
+            <div className="text-sm md:text-base text-gray-500">
+              {profile.course || "Information Technology"}
+            </div>
+          </div>
         </div>
+
+        {/* Right: actions */}
+        {!isEditing ? (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="inline-flex items-center gap-2 rounded-md bg-orange-500 px-4 py-2 text-sm font-semibold text-white"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" className="opacity-90">
+              <path d="M11 4h2v16h-2zM4 11h16v2H4z" fill="currentColor" />
+            </svg>
+            Edit Profile
+          </button>
+        ) : (
+          <div className="flex gap-2">
+            <button
+              className="rounded-md border px-4 py-2 text-sm"
+              onClick={() => setIsEditing(false)}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveBase}
+              disabled={loading}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {loading ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* MAIN GRID */}
       <div className="px-6 md:px-8 pb-10">
@@ -299,16 +362,18 @@ export default function ProfilePage() {
                 />
               ) : (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {profile.skills
-                    ? profile.skills.split(",").map((s, i) => (
-                        <span
-                          key={i}
-                          className="inline-flex items-center rounded-full border px-3 py-1 text-xs text-gray-700 bg-white"
-                        >
-                          {s.trim()}
-                        </span>
-                      ))
-                    : <span className="text-sm text-gray-400">No skills added</span>}
+                  {profile.skills ? (
+                    profile.skills.split(",").map((s, i) => (
+                      <span
+                        key={i}
+                        className="inline-flex items-center rounded-full border px-3 py-1 text-xs text-gray-700 bg-white"
+                      >
+                        {s.trim()}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm text-gray-400">No skills added</span>
+                  )}
                 </div>
               )}
             </Card>
@@ -423,7 +488,7 @@ export default function ProfilePage() {
   );
 }
 
-/* ========== UI PIECES (exact look of the screenshots) ========== */
+/* ========== UI PIECES (unchanged) ========== */
 
 function Card({ children }) {
   return (
@@ -472,7 +537,9 @@ function List({ type, items = [], onEdit, onDelete, icon: Icon }) {
     const sub =
       type === "certification"
         ? (item.companyName || "")
-        : `${formatYear(item.startDate)} - ${item.endDate ? formatYear(item.endDate) : "Present"}`;
+        : `${formatYear(item.startDate)} - ${
+            item.endDate ? formatYear(item.endDate) : "Present"
+          }`;
 
     const rightSub =
       type === "certification" && item.dateReceived
@@ -517,8 +584,6 @@ function List({ type, items = [], onEdit, onDelete, icon: Icon }) {
     );
   });
 }
-
-/* Small pieces used by left column */
 
 function KV({ label, value }) {
   return (

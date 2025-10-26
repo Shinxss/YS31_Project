@@ -1,14 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
-import { MapPin, Clock, Building2, Eye } from "lucide-react";
+import { MapPin, Clock, Building2, Eye, XCircle } from "lucide-react";
 
 /**
  * MyApplications (fixed-height card + scrollable list + A–Z position sort)
  * - Withdrawn applications are excluded immediately after fetch.
+ * - Adds a Cancel button that is enabled ONLY for "Application Sent".
  */
 export default function MyApplications() {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [withdrawingId, setWithdrawingId] = useState(null);
 
   // Filters
   const [query, setQuery] = useState("");
@@ -137,6 +139,45 @@ export default function MyApplications() {
     return <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${cls}`}>{label}</span>;
   };
 
+  // --- Withdraw action ---
+  const deleteApp = async (appObj) => {
+  const id = appObj?._id || appObj?.id;
+  if (!id) return;
+
+  const can = canonicalStatus(appObj?.status) === "application sent";
+  if (!can) return;
+
+  if (!window.confirm("Are you sure you want to cancel this application?")) return;
+
+  try {
+    setWithdrawingId(id);
+
+    const res = await fetch(`${APPS_URL}/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+      headers: { ...getAuthHeaders() }, // no Content-Type needed
+    });
+
+    if (!res.ok) {
+      let msg = `Failed to cancel (${res.status})`;
+      try {
+        const j = await res.json();
+        if (j?.message) msg = j.message;
+      } catch {}
+      throw new Error(msg);
+    }
+
+    // Remove locally
+    setApps((prev) => prev.filter((x) => (x._id || x.id) !== id));
+    toast.success("Application canceled and removed.");
+  } catch (err) {
+    console.error("Delete application error:", err);
+    toast.error(err.message || "Failed to cancel application");
+  } finally {
+    setWithdrawingId(null);
+  }
+};
+
   // Filter first (withdrawn never included in `apps`)
   const filtered = useMemo(() => {
     const q = normalize(query);
@@ -192,7 +233,7 @@ export default function MyApplications() {
   return (
     <div className="space-y-6">
       {/* Fixed-height card */}
-      <section className="bg-white rounded-2xl shadow-sm p-6 h-[600px] md:h-[660px] flex flex-col">
+      <section className="bg-white rounded-2xl shadow-sm p-6 h:[600px] md:h-[660px] flex flex-col">
         <div className="flex items-center justify-between mb-2 shrink-0">
           <h3 className="text-lg font-semibold text-gray-800">My Applications</h3>
           {!loading && (
@@ -300,7 +341,7 @@ export default function MyApplications() {
                 <div className="col-span-5">Company &amp; Position</div>
                 <div className="col-span-3">Location</div>
                 <div className="col-span-2">Applied On</div>
-                <div className="col-span-2 text-right">Status</div>
+                <div className="col-span-2 text-right">Status &amp; Action</div>
               </div>
 
               {/* Scrollable list */}
@@ -315,6 +356,9 @@ export default function MyApplications() {
                     const location = job.location || job.city || a.location || "—";
                     const created = a.createdAt || a.appliedAt || a.date || null;
                     const status = a.status || "Application Sent";
+
+                    const canCancel = canonicalStatus(status) === "application sent";
+                    const busy = withdrawingId === id;
 
                     return (
                       <li key={id} className="px-4 py-4 bg-white hover:bg-gray-50 transition">
@@ -350,8 +394,31 @@ export default function MyApplications() {
                           </div>
 
                           <div className="col-span-6 md:col-span-2 mt-2 md:mt-0 flex md:justify-end">
-                            <StatusPill status={status} />
-                          </div>
+                              {/* stack vertically: status on top, cancel button below */}
+                              <div className="flex flex-col gap-5 items-start md:items-end">
+                                <StatusPill status={status} />
+                                <button
+                                  type="button"
+                                  disabled={!canCancel || busy}
+                                  onClick={() => deleteApp(a)}
+                                  className={[
+                                    "inline-flex items-center gap-1.5 text-xs font-medium rounded-lg px-1.5 py-1.5 transition",
+                                    canCancel && !busy
+                                      ? "bg-red-600 text-white hover:bg-red-700 focus:ring-2 focus:ring-red-400"
+                                      : "bg-gray-200 text-gray-500 cursor-not-allowed",
+                                  ].join(" ")}
+                                  title={
+                                    canCancel
+                                      ? "Cancel application"
+                                      : "You can no longer cancel this application"
+                                  }
+                                >
+                                  <XCircle size={14} />
+                                  {busy ? "Canceling..." : "Cancel"}
+                                </button>
+                              </div>
+                            </div>
+
                         </div>
                       </li>
                     );

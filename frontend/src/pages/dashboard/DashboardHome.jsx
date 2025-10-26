@@ -77,18 +77,16 @@ const Card = ({ children, className = "" }) => (
    Page
 ------------------------------------------------------- */
 export default function DashboardHome() {
-    const [apps, setApps] = useState([]);
-    const [jobs, setJobs] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [err, setErr] = useState("");
+  const [apps, setApps] = useState([]);
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
 
-    const navigate = useNavigate();
-    const goToApplications = () => {
-      // adjust the path if your route differs
-      navigate("/company/applications");
-      // optional: ensure the list starts at the top
-      setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 0);
-    };
+  const navigate = useNavigate();
+  const goToApplications = () => {
+    navigate("/company/applications");
+    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 0);
+  };
 
   // Notes/Tasks (local)
   const [notes, setNotes] = useState(() => {
@@ -436,22 +434,22 @@ export default function DashboardHome() {
     );
   }
 
-  const totalPctRow = [
-    { label: "Applications", value: totalApplications, color: "#6D61F6" },
+  // ——— NEW: statuses-only breakdown (no “Applications” in the legend/ratio) ———
+  const statusBreakdown = [
     { label: "Under Review", value: underReviewCount, color: "#F59E0B" },
     { label: "Accepted", value: acceptedCount, color: "#10B981" },
     { label: "Rejected", value: rejectedCount, color: "#EF4444" },
   ];
-  const totalSum = totalPctRow.reduce((a, b) => a + b.value, 0) || 1;
+  const statusSum = statusBreakdown.reduce((a, b) => a + b.value, 0) || 1;
 
   const softBg = (hex, alpha = 0.15) => {
-  const h = hex.replace('#', '');
-  const bigint = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
-  const r = (bigint >> 16) & 255;
-  const g = (bigint >> 8) & 255;
-  const b = bigint & 255;
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-};
+    const h = hex.replace('#', '');
+    const bigint = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
 
   /* ---------- UI ---------- */
   return (
@@ -463,23 +461,23 @@ export default function DashboardHome() {
           <div className="flex gap-4 flex-wrap">
             <div className="basis-[32%] shrink-0">
               <KPICard 
-              title="Active Job Posts" 
-              value={activeJobs.length} 
-              Icon={Briefcase}/>
+                title="Active Job Posts" 
+                value={activeJobs.length} 
+                Icon={Briefcase}/>
             </div>
             <div className="basis-[32%] shrink-0">
               <KPICard 
-              title="Total Applications" 
-              value={totalApplications} 
-              sub={`${pct(totalApplications, totalSum)}%`}
-              Icon={ClipboardList} />
+                title="Total Applications" 
+                value={totalApplications} 
+                sub={undefined} // keep clean; total is shown in card header below
+                Icon={ClipboardList} />
             </div>
             <div className="basis-[32%] shrink-0">
               <KPICard 
-              title="Hire Rate" 
-              value={`${hireRatePct}%`} 
-              sub={`(${acceptedCount}/${totalApplications || 0})`}
-              Icon={TrendingUp} />
+                title="Hire Rate" 
+                value={`${hireRatePct}%`} 
+                sub={`(${acceptedCount}/${totalApplications || 0})`}
+                Icon={TrendingUp} />
             </div>
           </div>
 
@@ -498,7 +496,7 @@ export default function DashboardHome() {
                 </button>
               </div>
 
-              {/* Legend */}
+              {/* Legend (Accepted/Rejected only — totals are not part of this) */}
               <div className="mt-2 flex items-center gap-4 text-xs text-gray-600">
                 <span className="inline-flex items-center gap-1">
                   <span className="h-2 w-2 rounded-full" style={{ background: "#10b981" }} /> Accepted
@@ -522,7 +520,6 @@ export default function DashboardHome() {
 
               {/* Job list: scrollable, show 4 rows max */}
               <div className="mt-2 flex-1 overflow-hidden">
-                {/* Height ~4 rows; tweak if your row height differs */}
                 <ul className="divide-y divide-gray-200 overflow-y-auto h-[228px]">
                   {activeJobs.length === 0 ? (
                     <li className="px-4 py-3 text-sm text-gray-500">No active jobs.</li>
@@ -558,54 +555,56 @@ export default function DashboardHome() {
 
             {/* RIGHT COLUMN (same total height as left) */}
             <div className={`basis-[33%] shrink-0 flex flex-col gap-4 h-[${COMBINED_H}px] min-h-0`}>
+              {/* —— UPDATED: Total Applications card —— */}
               <Card className={`p-4 h-[${LIST_H}px] flex flex-col min-h-0`}>
-                <h3 className="text-sm font-semibold text-gray-900">Total Applications</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-gray-900">Total Applications</h3>
+                  <span className="text-xs font-medium text-gray-600">{totalApplications}</span>
+                </div>
+
+                {/* Progress bar: statuses ONLY */}
                 <div className="mt-3 h-2 w-full rounded-full bg-[#EEF1FF] overflow-hidden">
                   <div className="flex h-full">
-                    {[
-                      { label: "Applications", value: totalApplications, color: "#6D61F6" },
-                      { label: "Under Review", value: underReviewCount, color: "#F59E0B" },
-                      { label: "Accepted", value: acceptedCount, color: "#10B981" },
-                      { label: "Rejected", value: rejectedCount, color: "#EF4444" },
-                    ].map((r) => (
-                      <div key={r.label} style={{ width: `${(r.value / (totalApplications + underReviewCount + acceptedCount + rejectedCount || 1)) * 100}%`, background: r.color }} />
+                    {statusBreakdown.map((r) => (
+                      <div
+                        key={r.label}
+                        style={{
+                          width: `${(r.value / (statusSum || 1)) * 100}%`,
+                          background: r.color,
+                        }}
+                        title={`${r.label}: ${r.value}`}
+                      />
                     ))}
                   </div>
                 </div>
+
+                {/* Legend/List: statuses ONLY; each line shows ratio vs TOTAL applications */}
                 <ul className="mt-4 text-sm overflow-y-auto flex-1 min-h-0 pr-1">
-                  {[
-                    { label: "Applications", value: totalApplications, color: "#6D61F6" },
-                    { label: "Under Review", value: underReviewCount, color: "#F59E0B" },
-                    { label: "Accepted", value: acceptedCount, color: "#10B981" },
-                    { label: "Rejected", value: rejectedCount, color: "#EF4444" },
-                  ].map((r, i, arr) => {
-                    const sum = totalApplications + underReviewCount + acceptedCount + rejectedCount || 1;
-                    return (
-                      <li key={r.label}>
-                        <div className="flex items-center justify-between py-2">
-                          <span className="inline-flex items-center gap-2">
-                            <span className="h-2.5 w-2.5 rounded-full" style={{ background: r.color }} />
-                            <span className="text-gray-700">{r.label}</span>
+                  {statusBreakdown.map((r, i) => (
+                    <li key={r.label}>
+                      <div className="flex items-center justify-between py-2">
+                        <span className="inline-flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full" style={{ background: r.color }} />
+                          <span className="text-gray-700">{r.label}</span>
+                        </span>
+                        <span className="inline-flex items-center">
+                          <span className="mr-2 text-gray-600">{r.value}</span>
+                          <span
+                            className="px-2 py-0.5 rounded-full text-[11px]"
+                            style={{
+                              color: r.color,
+                              backgroundColor: softBg(r.color, 0.18),
+                              borderColor: r.color,
+                              borderWidth: '1px',
+                            }}
+                          >
+                            {pct(r.value, totalApplications || 1)}%
                           </span>
-                          <span className="inline-flex items-center">
-                            <span className="mr-2 text-gray-600">{r.value}</span>
-                            <span
-                              className="px-2 py-0.5 rounded-full text-[11px]"
-                              style={{
-                                color: r.color,
-                                backgroundColor: softBg(r.color, 0.18), // Background for pill
-                                borderColor: r.color, // Border color matches the label
-                                borderWidth: '1px', // Optional: Border around the pill for better visibility
-                              }}
-                            >
-                              {pct(r.value, sum)}%
-                            </span>
-                          </span>
-                        </div>
-                        <div className={`h-px bg-gray-200 ${i === arr.length - 1 ? "hidden" : ""}`} />
-                      </li>
-                    );
-                  })}
+                        </span>
+                      </div>
+                      <div className={`h-px bg-gray-200 ${i === statusBreakdown.length - 1 ? "hidden" : ""}`} />
+                    </li>
+                  ))}
                 </ul>
               </Card>
 

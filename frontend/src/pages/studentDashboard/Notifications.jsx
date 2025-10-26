@@ -171,7 +171,7 @@ export default function StudentNotifications() {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
-    if (!res.ok) {
+      if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.message || "Delete failed");
       }
@@ -234,8 +234,8 @@ export default function StudentNotifications() {
           <span className="text-sm">View:</span>
         </div>
         {[
-          { key: "all", label: "All (Accepted/Rejected)" },
-          { key: "unread", label: "Unread (Accepted/Rejected)" },
+          { key: "all", label: "All Notifications" },
+          { key: "unread", label: "Unread Notifications" },
         ].map((f) => (
           <button
             key={f.key}
@@ -275,20 +275,20 @@ export default function StudentNotifications() {
             const status = n?.status || n?.data?.status || "Update";
             const statusIntent = status === "Accepted" ? "success" : status === "Rejected" ? "warn" : "info";
 
-            const title = n?.title || `Application ${status} — ${jobTitle}`;
+            const title = n?.title || `Application ${status}`;
             const body =
               n?.body ||
               (status === "Accepted"
-                ? `Hi, your application for ${jobTitle} in ${companyName} has been accepted.`
+                ? `Hi, your application for ${jobTitle} at ${companyName} has been accepted.`
                 : status === "Rejected"
-                ? `Hi, your application for ${jobTitle} in ${companyName} has been rejected.`
+                ? `Hi, your application for ${jobTitle} at ${companyName} has been rejected.`
                 : `Update on your application for ${jobTitle} at ${companyName}.`);
 
             return (
               <div
                 key={n._id}
                 className={`relative p-4 rounded-xl border shadow-sm transition ${
-                  isUnread ? "bg-amber-50 border-amber-200" : "bg-white border-gray-100 hover:bg-gray-50"
+                  isUnread ? "bg-amber-50 border-amber-200" : "bg-gray-100 border-gray-100"
                 }`}
               >
                 {isUnread && <span className="absolute left-0 top-0 h-full w-1 bg-amber-500 rounded-l-xl" />}
@@ -300,7 +300,7 @@ export default function StudentNotifications() {
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-sm sm:text-base font-semibold text-gray-900 truncate">
+                      <h3 className={`text-sm sm:text-base font-semibold text-gray-900 truncate ${isUnread ? "font-bold" : ""}`}>
                         {title}
                       </h3>
                       {isUnread && <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />}
@@ -308,15 +308,9 @@ export default function StudentNotifications() {
                       {n.type && <Chip>{n.type}</Chip>}
                     </div>
 
-                    <p className="text-sm text-gray-700 mt-1">{body}</p>
+                    <p className={`text-sm text-gray-700 mt-1 ${isUnread ? "font-bold" : ""}`}>{body}</p>
 
                     <div className="mt-1 text-xs text-gray-500 flex gap-3 flex-wrap">
-                      <span>
-                        Job: <span className="font-medium text-gray-700">{jobTitle}</span>
-                      </span>
-                      <span>
-                        Company: <span className="font-medium text-gray-700">{companyName}</span>
-                      </span>
                       <span>{timeAgo(n.createdAt)}</span>
                     </div>
 
@@ -325,9 +319,10 @@ export default function StudentNotifications() {
                         {n?.data?.jobId && (
                           <a
                             href={`/student/jobs/${n.data.jobId}`}
-                            className="text-blue-700 hover:underline"
+                            className="inline-flex items-center justify-center px-4 py-2 text-[10px] font-medium rounded-md shadow-md bg-orange-500 text-white hover:bg-orange-600"
+                            title="View job"
                           >
-                            View job →
+                            View job
                           </a>
                         )}
                       </div>

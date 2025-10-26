@@ -30,37 +30,31 @@ export default function StudentDashboard() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // strictly allow only these labels
   const VALID_TABS = new Set([
     "Dashboard",
     "Browse Jobs",
     "Profile",
     "My Applications",
-    "Notifications", // ✅ NEW
+    "Notifications",
   ]);
 
   const getInitialTab = () => {
-    // If direct route is /student/notifications, force that tab
     if (location.pathname.startsWith("/student/notifications")) {
       return "Notifications";
     }
-    // 1) URL ?tab=...
     const params = new URLSearchParams(location.search);
     const fromQuery = params.get("tab");
     if (fromQuery && VALID_TABS.has(fromQuery)) return fromQuery;
-    // 2) localStorage
     try {
       const fromStorage = localStorage.getItem("student_activeTab");
       if (fromStorage && VALID_TABS.has(fromStorage)) return fromStorage;
     } catch {}
-    // 3) fallback
     return "Dashboard";
   };
 
   const [activeTab, setActiveTab] = useState(getInitialTab);
   const [student, setStudent] = useState(null);
 
-  // stats (demo)
   const [dashboardStats, setDashboardStats] = useState({
     sent: 0,
     accepted: 0,
@@ -68,7 +62,6 @@ export default function StudentDashboard() {
     successRate: 0,
   });
 
-  // recent applications list (from backend)
   const [recentApplications, setRecentApplications] = useState([]);
   const [recentAppsLoading, setRecentAppsLoading] = useState(true);
   const [recentAppsError, setRecentAppsError] = useState("");
@@ -99,22 +92,22 @@ export default function StudentDashboard() {
     ? RAW_BASE
     : FALLBACK_BASE
   ).replace(/\/+$/, "");
-  const REMINDERS_URL = `${API_BASE}/api/student/reminders`;
 
-  // auth header
+  // ✅ use plural “students” to match your router mount
+  const REMINDERS_URL = `${API_BASE}/api/students/reminders`;
+  const APPLICATIONS_URL = `${API_BASE}/api/students/applications`;
+
   const getAuthHeaders = () => {
     const token =
       typeof window !== "undefined" ? localStorage.getItem("ic_token") : null;
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
-  // resolve any stored filename or partial path to an absolute URL we can render
   const buildImageUrl = (raw) => {
     if (!raw) return "";
     let v = String(raw).trim();
-    if (/^(https?:\/\/|\/|blob:|data:image)/i.test(v)) return v; // already usable
+    if (/^(https?:\/\/|\/|blob:|data:image)/i.test(v)) return v;
     v = v.replace(/^\/+/, "").replace(/^uploads\//i, "");
-    // if you store students under a subfolder, adjust here (e.g., "students/")
     return `${API_BASE}/uploads/${encodeURIComponent(v)}`;
   };
 
@@ -129,84 +122,151 @@ export default function StudentDashboard() {
         toast.error("Session expired. Please log in again.");
         return;
       }
-      if (!res.ok) throw new Error(`Failed to fetch reminders (${res.status})`);
-      const data = await res.json();
-      setEvents(Array.isArray(data) ? data.slice(0, 20) : []);
+      const data = await res.json().catch(() => ({}));
+      // controller typically returns { reminders: [...] }
+      const list = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.reminders)
+        ? data.reminders
+        : [];
+      setEvents(list.slice(0, 50));
     } catch (err) {
       console.error("Fetch reminders error:", err);
       setEvents([]);
     }
   };
 
-  const saveReminderToDB = async (eventData) => {
-    try {
-      const payload = {
+  const createReminderOnServer = async (eventData) => {
+    const payload = {
+      // your addReminder accepts both top-level or reminder object
+      ...eventData,
+      reminder: {
         title: (eventData.title || "").trim(),
         description: (eventData.description || "").trim(),
         date: eventData.date || "",
         time: eventData.time || "00:00",
         type: eventData.type || "Other",
-        reminder: {
-          title: (eventData.title || "").trim(),
-          description: (eventData.description || "").trim(),
-          date: eventData.date || "",
-          time: eventData.time || "00:00",
-          type: eventData.type || "Other",
-        },
-      };
-
-      const res = await fetch(REMINDERS_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-
-      if (res.status === 401) throw new Error("No token provided");
-      if (!res.ok) {
-        let msg = `Failed to save reminder (${res.status})`;
-        try {
-          const j = await res.json();
-          if (j?.message) msg = j.message;
-        } catch {}
-        throw new Error(msg);
-      }
-      return res.json();
-    } catch (err) {
-      console.error("Save reminder error:", err);
-      throw err;
-    }
+      },
+    };
+    const res = await fetch(REMINDERS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.message || `Failed to save reminder (${res.status})`);
+    return data; // { message, reminders }
   };
 
-  const handleSaveEvent = async () => {
-    const { title, date, time, description, type } = newEvent;
-    const normalizedTime = time || "00:00";
-
-    if (!title || !date || !normalizedTime || !type) {
-      toast.error("Please fill all required fields.");
-      return;
-    }
-
-    const eventData = { title, description, date, time: normalizedTime, type };
-
-    try {
-      await saveReminderToDB(eventData);
-    } catch (err) {
-      toast.error(err.message || "Failed to save reminder");
-      return;
-    }
-
-    setEvents((prev) => [...prev, eventData]);
-    toast.success("Reminder added!");
-    setShowModal(false);
-    setNewEvent({
-      title: "",
-      description: "",
-      date: new Date().toISOString().split("T")[0],
-      time: "",
-      type: "",
+  const updateReminderOnServer = async (eventData) => {
+    const id = eventData?._id || eventData?.id;
+    if (!id) throw new Error("Missing reminder id");
+    const res = await fetch(`${API_BASE}/api/students/me/reminders/${id}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      // your controller reads either body or body.reminder
+      body: JSON.stringify({ reminder: eventData }),
     });
-    fetchReminders();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.message || "Failed to update reminder");
+    return data; // { message, reminder, reminders }
+  };
+
+  const deleteReminderOnServer = async (reminderId) => {
+    const res = await fetch(`${API_BASE}/api/students/me/reminders/${reminderId}`, {
+      method: "DELETE",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.message || "Failed to delete reminder");
+    return data; // { message, reminders }
+  };
+
+  // 🔁 unified handler that the child calls with { op, ... }
+  const handleSaveEvent = async (action) => {
+    const { op } = action || {};
+
+    // ------- DELETE (no validation) -------
+    if (op === "delete") {
+      try {
+        // if child already did server delete, prefer its fresh list
+        if (action.serverDone && Array.isArray(action.reminders)) {
+          setEvents(action.reminders);
+          toast.success("Reminder deleted");
+          return;
+        }
+        if (action.id) {
+          const { reminders } = await deleteReminderOnServer(action.id);
+          setEvents(Array.isArray(reminders) ? reminders : []);
+          toast.success("Reminder deleted");
+        } else if (typeof action.index === "number") {
+          // fallback UI-only remove
+          setEvents((prev) => prev.filter((_, i) => i !== action.index));
+          toast.success("Reminder deleted");
+        } else {
+          toast.error("Missing reminder id.");
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error(err?.message || "Failed to delete reminder");
+      }
+      return;
+    }
+
+    // ------- CREATE / UPDATE (validate) -------
+    if (op === "create" || op === "update") {
+      const ev = action.event || {};
+      const title = (ev.title || "").trim();
+      const date = ev.date || "";
+      const time = ev.time || "00:00";
+      const type = ev.type || "Other";
+
+      if (!title || !date || !time || !type) {
+        toast.error("Please fill all required fields.");
+        return;
+      }
+
+      try {
+        if (op === "create") {
+          const { reminders } = await createReminderOnServer({
+            ...ev,
+            title,
+            date,
+            time,
+            type,
+          });
+          setEvents(Array.isArray(reminders) ? reminders : []);
+          toast.success("Reminder added!");
+          setShowModal(false);
+          setNewEvent({
+            title: "",
+            description: "",
+            date: new Date().toISOString().split("T")[0],
+            time: "",
+            type: "",
+          });
+        } else {
+          const { reminders } = await updateReminderOnServer(ev);
+          setEvents(Array.isArray(reminders) ? reminders : []);
+          toast.success("Reminder updated");
+          setShowModal(false);
+          setNewEvent({
+            title: "",
+            description: "",
+            date: new Date().toISOString().split("T")[0],
+            time: "",
+            type: "",
+          });
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error(err?.message || "Failed to save reminder");
+      }
+      return;
+    }
   };
 
   /* ---------------------- Applications API ---------------------- */
@@ -215,7 +275,8 @@ export default function StudentDashboard() {
       setRecentAppsLoading(true);
       setRecentAppsError("");
 
-      const res = await fetch(`${API_BASE}/api/student/applications`, {
+      // ✅ plural “students”
+      const res = await fetch(APPLICATIONS_URL, {
         credentials: "include",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
       });
@@ -249,13 +310,11 @@ export default function StudentDashboard() {
 
   /* ---------------------- sync URL & storage with activeTab ---------------------- */
   useEffect(() => {
-    // keep URL and localStorage in sync with activeTab
     try {
       localStorage.setItem("student_activeTab", activeTab);
     } catch {}
 
     if (activeTab === "Notifications") {
-      // route to a clean /student/notifications (no ?tab)
       if (
         !location.pathname.startsWith("/student/notifications") ||
         location.search
@@ -263,7 +322,6 @@ export default function StudentDashboard() {
         navigate({ pathname: "/student/notifications", search: "" }, { replace: true });
       }
     } else {
-      // stay on /student and reflect the tab in ?tab=
       const params = new URLSearchParams(location.search);
       if (params.get("tab") !== activeTab || location.pathname !== "/student") {
         params.set("tab", activeTab);
@@ -279,12 +337,9 @@ export default function StudentDashboard() {
         const data = await getStudentProfile();
         const studentData = data.student || data;
         setStudent(studentData);
-
-        // load apps after we know we're authenticated
         fetchStudentApplications();
       } catch {
         toast.error("Failed to load student profile");
-        // still try to fetch apps if token exists
         fetchStudentApplications();
       }
     };
@@ -335,7 +390,6 @@ export default function StudentDashboard() {
               firstName: student?.firstName || "",
               lastName: student?.lastName || "",
               course: student?.course || "",
-              // resolved to absolute url if a filename was stored
               profilePicture: buildImageUrl(student?.profilePicture || ""),
             }}
             onToggleSidebar={() => setCollapsed(!collapsed)}
@@ -346,14 +400,11 @@ export default function StudentDashboard() {
         <main className="flex-1 overflow-y-auto p-6">
           {activeTab === "Dashboard" && (
             <StudentDashboardHome
-              /* identity & stats */
               student={student}
               dashboardStats={dashboardStats}
-              /* recent applications */
               recentApplications={recentApplications}
               recentAppsLoading={recentAppsLoading}
               recentAppsError={recentAppsError}
-              /* reminders panel control + data */
               events={events}
               showModal={showModal}
               setShowModal={setShowModal}
@@ -362,7 +413,6 @@ export default function StudentDashboard() {
               quickNote={quickNote}
               setQuickNote={setQuickNote}
               onSaveEvent={handleSaveEvent}
-              /* infra for child requests */
               API_BASE={API_BASE}
               getAuthHeaders={getAuthHeaders}
             />
@@ -374,7 +424,6 @@ export default function StudentDashboard() {
 
           {activeTab === "My Applications" && <MyApplications />}
 
-          {/* ✅ Notifications tab renders the page component */}
           {activeTab === "Notifications" && <StudentNotifications />}
         </main>
       </div>

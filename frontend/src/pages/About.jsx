@@ -1,3 +1,4 @@
+// src/pages/About.jsx
 import React, { useEffect, useState } from "react";
 import Header from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -13,10 +14,16 @@ export default function About() {
   const [loadingStats, setLoadingStats] = useState(true);
   const [statsError, setStatsError] = useState("");
 
+  // Success rate (dynamic)
+  const [successRate, setSuccessRate] = useState(null);
+  const [loadingSuccess, setLoadingSuccess] = useState(true);
+  const [successError, setSuccessError] = useState("");
+
   useEffect(() => {
     let ignore = false;
     const ctrl = new AbortController();
 
+    // Public stats
     (async () => {
       try {
         setLoadingStats(true);
@@ -39,6 +46,34 @@ export default function About() {
         }
       } finally {
         if (!ignore) setLoadingStats(false);
+      }
+    })();
+
+    // Success rate
+    (async () => {
+      try {
+        setLoadingSuccess(true);
+        setSuccessError("");
+        const r = await fetch(`${API_BASE}/api/applications/success-rate`, {
+          signal: ctrl.signal,
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d?.message || "Failed to load success rate");
+
+        // Accept { successRate } or { accepted, total }
+        const rateFromApi =
+          Number(d.successRate) ||
+          (Number.isFinite(d.accepted) && Number.isFinite(d.total) && d.total > 0
+            ? Math.round((Number(d.accepted) / Number(d.total)) * 100)
+            : 0);
+
+        if (!ignore) setSuccessRate(Number.isFinite(rateFromApi) ? rateFromApi : 0);
+      } catch (e) {
+        if (!ignore && e.name !== "AbortError") {
+          setSuccessError(e.message || "Failed to load success rate");
+        }
+      } finally {
+        if (!ignore) setLoadingSuccess(false);
       }
     })();
 
@@ -115,17 +150,15 @@ export default function About() {
               />
               <StatCard
                 icon={<ChartIcon />}
-                value="95%"
+                value={successRate != null ? `${successRate}%` : "—"}
                 label="Success Rate"
-                loading={false}
-                error=""
+                loading={loadingSuccess}
+                error={successError}
               />
             </div>
           </div>
         </div>
       </section>
-
-      
 
       {/* ===== Values FIRST (moved up) ===== */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">

@@ -189,9 +189,6 @@ export default function JobDetails() {
                     {companyName}
                   </span>
                   <span className="inline-flex items-center gap-1.5">
-                    <Star size={14} className="text-amber-500" /> 4.8
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
                     <MapPin size={14} />
                     {locationText}
                   </span>

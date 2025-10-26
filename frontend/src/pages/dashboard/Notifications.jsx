@@ -306,10 +306,6 @@ export default function Notifications() {
                     </p>
 
                     <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
-                      <span>
-                        Job: <span className="font-medium text-gray-700">{jobTitle}</span>
-                      </span>
-
                       {applicantName && (
                         <span>
                           Applicant: <span className="font-medium text-gray-700">{applicantName}</span>

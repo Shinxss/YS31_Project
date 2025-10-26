@@ -11,7 +11,8 @@ import ApplicationsPage from "./ApplicationsPage.jsx";
 import AnalyticsPage from "./AnalyticsPage.jsx";
 import PostJobPage from "./PostJobPage.jsx";
 import Notifications from "./Notifications.jsx";
-
+import JobDetailPage from "./JobDetailPage.jsx"; // ⬅️ NEW: job detail
+import CompanyStudentProfile from "./CompanyStudentProfile.jsx"; // ⬅️ NEW: student profile (renders inside dashboard)
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
@@ -117,7 +118,8 @@ export default function CompanyDashboard() {
   }, [token, role, navigate]);
 
   return (
-    <div className="h-screen bg-[#ECF3FC] flex overflow-hidden">
+    // ⬇️ Pin the dashboard to the viewport so the window never scrolls
+    <div className="fixed inset-0 bg-[#ECF3FC] flex overflow-hidden overscroll-none">
       <Sidebar
         collapsed={collapsed}
         onLogout={() => doLogout(navigate)}
@@ -148,8 +150,12 @@ export default function CompanyDashboard() {
               <Route path="/" element={<DashboardHome />} />
               <Route path="postings" element={<JobPostingsPage token={token} />} />
               <Route path="applications" element={<ApplicationsPage token={token} />} />
+              {/* ✅ Student profile opens INSIDE dashboard at /company/students/:id */}
+              <Route path="students/:id" element={<CompanyStudentProfile token={token} />} />
               <Route path="analytics" element={<AnalyticsPage token={token} />} />
               <Route path="post-job" element={<PostJobPage token={token} />} />
+              <Route path="post-job/:id" element={<PostJobPage token={token} />} /> {/* edit mode */}
+              <Route path="job/:id" element={<JobDetailPage token={token} />} />     {/* view detail */}
               <Route path="notifications" element={<Notifications token={token} />} />
             </Routes>
           )}

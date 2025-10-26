@@ -8,7 +8,6 @@ import Sidebar from "../../components/dashboard/Sidebar.jsx";
 // Settings sub-pages (company)
 import PasswordAndSecurity from "./settings/PasswordAndSecurity.jsx";
 import CompanyDetails from "./settings/CompanyDetails.jsx";
-import ProfileDetails from "./settings/ProfileDetails.jsx";
 
 // 🔁 moved to components/
 import TermsOfService from "@/components/TermsOfService.jsx";
@@ -101,22 +100,20 @@ export default function CompanySettings() {
   })();
 
   return (
-    <div className="min-h-screen bg-[#ECF3FC] flex">
+    // Fixed to viewport ⇒ window won't scroll; only <main> does
+    <div className="fixed inset-0 bg-[#ECF3FC] flex overflow-hidden overscroll-none">
       <Sidebar collapsed={collapsed} onLogout={() => doLogout(navigate)} />
 
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         <HeaderBar
           companyName={companyName}
           person={person}
-          onToggleSidebar={() => {
-            const next = !collapsed;
-            setCollapsed(next);
-            localStorage.setItem("ic_company_sidebar", next ? "1" : "0");
-          }}
+          onToggleSidebar={toggleCollapsed}
           title={headerTitle}
         />
 
-        <main className="p-6">
+        {/* Only content scrolls */}
+        <main className="flex-1 min-h-0 overflow-y-auto p-6">
           {loading ? (
             <div className="text-gray-600">Loading...</div>
           ) : (
@@ -124,7 +121,6 @@ export default function CompanySettings() {
               <Route path="/" element={<PasswordAndSecurity />} />
               <Route path="password" element={<PasswordAndSecurity />} />
               <Route path="company" element={<CompanyDetails />} />
-              <Route path="profile" element={<ProfileDetails />} />
               <Route path="terms" element={<TermsOfService />} />
               <Route path="privacy" element={<PrivacyPolicy />} />
             </Routes>

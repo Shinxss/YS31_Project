@@ -13,6 +13,7 @@ import {
   Star,
   Pencil,
   Trash2,
+  Loader2,
 } from "lucide-react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
@@ -22,7 +23,6 @@ const USE_SERVER_STATS = true;
 
 /* ------------------------------- Helpers ------------------------------- */
 
-// Shared normalization so UI + stats agree
 const normalizeStatus = (raw = "") => {
   const s = String(raw).toLowerCase().replace(/[_-]+/g, " ").trim();
   if (/^(application\s*sent|submitted|appl(ied|ication)?)$/.test(s)) return "Application Sent";
@@ -33,7 +33,6 @@ const normalizeStatus = (raw = "") => {
   return "Application Sent";
 };
 
-// Client-side fallback only (when server stats unavailable)
 function computeDashboardStats(applications = []) {
   let sent = 0;
   let accepted = 0;
@@ -83,7 +82,7 @@ export default function StudentDashboardHome({
   recentAppsLoading = false,
   recentAppsError = "",
 
-  // reminders (default everything)
+  // reminders
   events = [],
   showModal = false,
   setShowModal = () => {},
@@ -93,19 +92,18 @@ export default function StudentDashboardHome({
   setQuickNote = () => {},
   onSaveEvent = () => {},
 
-  // infra used by "Recommended for you"
+  // infra
   API_BASE = "",
   getAuthHeaders = () => ({}),
 }) {
   const navigate = useNavigate();
 
-  // always safe arrays
   const safeEvents = Array.isArray(events) ? events : [];
   const safeRecent = Array.isArray(recentApplications) ? recentApplications : [];
 
   /* ---------- Calendar & Quick note ---------- */
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [editingIndex, setEditingIndex] = useState(null); // null=create, number=edit
+  const [editingIndex, setEditingIndex] = useState(null);
 
   const tileClassName = ({ date }) => {
     const y = date.getFullYear();
@@ -125,12 +123,12 @@ export default function StudentDashboardHome({
         time: prev.time || "00:00",
       }));
       setQuickNote("");
-      setEditingIndex(null); // create
+      setEditingIndex(null);
       setShowModal(true);
     }
   };
 
-  /* ---------- Dashboard stats (server fetch; client fallback only if needed) ---------- */
+  /* ---------- Dashboard stats ---------- */
   const [dashboardStatsLocal, setDashboardStatsLocal] = useState(
     dashboardStats || { sent: 0, accepted: 0, rejected: 0, successRate: 0 }
   );
@@ -150,7 +148,6 @@ export default function StudentDashboardHome({
         if (!res.ok || !data?.ok) return false;
 
         if (!cancelled) {
-          // Use server totals for overall application/accepted/rejected
           setDashboardStatsLocal(data.stats);
           setStatsFromServer(true);
         }
@@ -163,9 +160,7 @@ export default function StudentDashboardHome({
     (async () => {
       const ok = await fetchServerStats();
       if (!ok && !cancelled) {
-        // Fallback to local compute if server endpoint not available
-        const stats = computeDashboardStats(safeRecent);
-        setDashboardStatsLocal(stats);
+        setDashboardStatsLocal(computeDashboardStats(safeRecent));
         setStatsFromServer(false);
       }
     })();
@@ -175,7 +170,6 @@ export default function StudentDashboardHome({
     };
   }, [student?._id, API_BASE, getAuthHeaders]);
 
-  // Only recompute from client if we DON'T have server stats
   useEffect(() => {
     if (!statsFromServer) {
       setDashboardStatsLocal(computeDashboardStats(safeRecent));
@@ -242,7 +236,7 @@ export default function StudentDashboardHome({
             .map((x) => x.job);
         }
 
-        if (!cancelled) setRecommendedJobs(ranked.slice(0, 1)); // only 1 card
+        if (!cancelled) setRecommendedJobs(ranked.slice(0, 1));
       } catch (e) {
         if (!cancelled) {
           setRecError(e.message || "Failed to load recommendations");
@@ -269,6 +263,46 @@ export default function StudentDashboardHome({
     return withoutWithdrawn.filter((a) => normalizeStatus(a?.status) === statusFilter);
   }, [safeRecent, statusFilter]);
 
+  /* ---------- Delete reminder using YOUR controller ---------- */
+  const [deletingId, setDeletingId] = useState(null);
+
+  // Strictly call your controller:
+  // DELETE /api/students/:studentId/reminders/:reminderId
+  const deleteReminderOnServer = async (reminderId) => {
+  const res = await fetch(`${API_BASE}/api/students/me/reminders/${reminderId}`, {
+    method: "DELETE",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+  });
+
+  // Your controller returns: { message, reminders }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.message || "Delete failed");
+  return data; // { message, reminders }
+};
+
+  const handleDeleteReminder = async (ev, index) => {
+  const rid = ev?._id || ev?.id;
+  if (!rid) return alert("Missing reminder ID.");
+  if (!confirm("Delete this reminder?")) return;
+
+  try {
+    setDeletingId(rid);
+    const { reminders } = await deleteReminderOnServer(rid);
+
+    // Update UI only after server confirms (also hand back the fresh list)
+    onSaveEvent?.({ op: "delete", index, id: rid, serverDone: true, reminders });
+  } catch (e) {
+    console.error(e);
+    alert(e?.message || "Failed to delete the reminder. Please try again.");
+  } finally {
+    setDeletingId(null);
+  }
+};
+
   /* -------------------------------- Render -------------------------------- */
 
   return (
@@ -284,7 +318,7 @@ export default function StudentDashboardHome({
         <p className="text-gray-600 text-sm mt-1">Here's your internship journey overview</p>
       </div>
 
-      {/* STATS CARDS (server totals when available) */}
+      {/* STATS CARDS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
           { label: "Application Sent", value: dashboardStatsLocal.sent, icon: <Send size={16} className="text-gray-400" /> },
@@ -298,7 +332,6 @@ export default function StudentDashboardHome({
               {stat.icon}
             </div>
             <h2 className="text-3xl font-bold text-[#173B8A]">{stat.value}</h2>
-
             {stat.label === "Success Rate" ? (
               <div className="relative w-full h-2 rounded-full overflow-hidden bg-gray-200">
                 <div className="absolute inset-0 bg-[#F37526]" />
@@ -369,7 +402,6 @@ export default function StudentDashboardHome({
               </p>
             ) : (
               <div className="space-y-4 max-h-[340px] overflow-y-auto pr-1">
-                {/* ⛔ No limit — render all filtered items */}
                 {filteredRecentApplications.map((app, index) => (
                   <div
                     key={`${app.title}-${index}`}
@@ -517,7 +549,7 @@ export default function StudentDashboardHome({
               Reminders
               <button
                 onClick={() => {
-                  setEditingIndex(null); // create mode
+                  setEditingIndex(null);
                   setShowModal(true);
                 }}
                 className="text-sm flex items-center gap-1 bg-orange-500 text-white px-2 py-1 rounded-md hover:bg-orange-600"
@@ -539,54 +571,55 @@ export default function StudentDashboardHome({
               {safeEvents.length === 0 ? (
                 <p className="text-sm text-gray-500 italic">No reminders added yet.</p>
               ) : (
-                safeEvents.map((ev, i) => (
-                  <div
-                    key={i}
-                    className="border-l-4 border-blue-600 bg-blue-50 p-2 rounded flex items-start justify-between gap-2"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm text-gray-800">
-                        {ev.title} <span className="text-xs text-gray-500">({ev.type})</span>
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        {ev.date} • {ev.time}
-                      </p>
-                      {ev.description && (
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{ev.description}</p>
-                      )}
-                    </div>
+                safeEvents.map((ev, i) => {
+                  const localKey = ev?._id || ev?.id || `idx-${i}`;
+                  const busy = deletingId === localKey;
+                  return (
+                    <div
+                      key={localKey}
+                      className="border-l-4 border-blue-600 bg-blue-50 p-2 rounded flex items-start justify-between gap-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm text-gray-800">
+                          {ev.title} <span className="text-xs text-gray-500">({ev.type})</span>
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          {ev.date} • {ev.time}
+                        </p>
+                        {ev.description && (
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-2">{ev.description}</p>
+                        )}
+                      </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        title="Edit reminder"
-                        aria-label="Edit reminder"
-                        onClick={() => {
-                          setEditingIndex(i);
-                          setNewEvent(ev);
-                          setShowModal(true);
-                        }}
-                        className="p-1 rounded hover:bg-blue-100 text-blue-700"
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        title="Delete reminder"
-                        aria-label="Delete reminder"
-                        onClick={() => {
-                          if (confirm("Delete this reminder?")) {
-                            onSaveEvent?.({ op: "delete", index: i });
-                          }
-                        }}
-                        className="p-1 rounded hover:bg-red-100 text-red-600"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          title="Edit reminder"
+                          aria-label="Edit reminder"
+                          onClick={() => {
+                            setEditingIndex(i);
+                            setNewEvent(ev);
+                            setShowModal(true);
+                          }}
+                          className="p-1 rounded hover:bg-blue-100 text-blue-700 disabled:opacity-50"
+                          disabled={busy}
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          title="Delete reminder"
+                          aria-label="Delete reminder"
+                          onClick={() => handleDeleteReminder(ev, i)}
+                          className="p-1 rounded hover:bg-red-100 text-red-600 disabled:opacity-50"
+                          disabled={busy}
+                        >
+                          {busy ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>

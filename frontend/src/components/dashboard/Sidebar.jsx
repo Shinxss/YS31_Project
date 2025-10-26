@@ -7,16 +7,14 @@ import {
   Users,
   BarChart3,
   Plus,
-  UserCog,
   Settings as SettingsIcon,
   LogOut,
   Lock,
   Building2,
-  User,
   FileText,
   Shield,
   ArrowLeft,
-  Bell, // ⬅️ added
+  Bell,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -58,7 +56,7 @@ export default function Sidebar({ collapsed, onLogout }) {
     location.pathname.startsWith("/company/settings/");
 
   return (
-    <aside className={`${asideWidth} bg-[#173B8A] text-white hidden md:flex flex-col h-screen overflow-hidden transition-[width] duration-200`}>
+    <aside className={`${asideWidth} bg-[#173B8A] text-white hidden md:flex flex-col h-screen overflow-hidden overscroll-none transition-[width] duration-200`}>
       {/* Brand row (fixed) */}
       <div
         className={`h-16 border-b border-white/10 shrink-0 sticky top-0 z-10 bg-[#173B8A] ${
@@ -76,8 +74,8 @@ export default function Sidebar({ collapsed, onLogout }) {
         </div>
       </div>
 
-      {/* Scrollable nav content */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      {/* NO SCROLL INSIDE SIDEBAR */}
+      <div className="flex-1 min-h-0 overflow-hidden">
         {/* DASHBOARD NAV (default) */}
         {!isSettings && (
           <>
@@ -89,7 +87,6 @@ export default function Sidebar({ collapsed, onLogout }) {
               <NavItem icon={<Home className="w-4 h-4" />} label="Dashboard" to="/company" collapsed={collapsed} />
               <NavItem icon={<Briefcase className="w-4 h-4" />} label="Job Postings" to="/company/postings" collapsed={collapsed} />
               <NavItem icon={<Users className="w-4 h-4" />} label="Applications" to="/company/applications" collapsed={collapsed} />
-              {/* ⬇️ New Notifications tab */}
               <NavItem icon={<Bell className="w-4 h-4" />} label="Notifications" to="/company/notifications" collapsed={collapsed} />
               <NavItem icon={<BarChart3 className="w-4 h-4" />} label="Analytics" to="/company/analytics" collapsed={collapsed} />
             </nav>
@@ -119,11 +116,7 @@ export default function Sidebar({ collapsed, onLogout }) {
               <button
                 type="button"
                 onClick={() => navigate("/company")}
-                className={`w-full ${
-                  collapsed ? "h-10" : "h-12"
-                } rounded-xl bg-white/10 hover:bg-white/15 transition flex items-center ${
-                  collapsed ? "justify-center" : "justify-start px-3"
-                }`}
+                className={`w-full ${collapsed ? "h-10" : "h-12"} rounded-xl bg-white/10 hover:bg-white/15 transition flex items-center ${collapsed ? "justify-center" : "justify-start px-3"}`}
                 title="Back to Dashboard"
               >
                 <span className="grid place-items-center w-8 h-8 rounded-lg bg-white/10 mr-3">
@@ -143,7 +136,7 @@ export default function Sidebar({ collapsed, onLogout }) {
             <nav className="px-2 mt-2 flex flex-col gap-1">
               <NavItem icon={<Lock className="w-4 h-4" />} label="Password and Security" to="/company/settings/password" collapsed={collapsed} />
               <NavItem icon={<Building2 className="w-4 h-4" />} label="Company details" to="/company/settings/company" collapsed={collapsed} />
-              <NavItem icon={<User className="w-4 h-4" />} label="Profile details" to="/company/settings/profile" collapsed={collapsed} />
+              {/* Profile Details removed */}
             </nav>
 
             {!collapsed && (

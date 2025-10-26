@@ -20,7 +20,7 @@ import {
 import { useNavigate } from "react-router-dom";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
-const JOBS_URL = `${API_BASE}/api/jobs`; // from controllers/job.controller.js:getAllJobs
+const JOBS_URL = `${API_BASE}/api/jobs`;
 
 export default function LandingPage() {
   // ---- Stats state (from backend) ----
@@ -32,7 +32,7 @@ export default function LandingPage() {
   const [loadingStats, setLoadingStats] = useState(true);
   const [statsError, setStatsError] = useState("");
 
-  // Success rate state
+  // Success rate state (now real)
   const [acceptedCount, setAcceptedCount] = useState(null);
   const [totalCount, setTotalCount] = useState(null);
   const [successRate, setSuccessRate] = useState(null);
@@ -52,6 +52,7 @@ export default function LandingPage() {
     let ignore = false;
     const ctrl = new AbortController();
 
+    // Public counters
     (async () => {
       try {
         setLoadingStats(true);
@@ -77,106 +78,35 @@ export default function LandingPage() {
       }
     })();
 
-    // Also fetch application/hire stats to compute success rate
+    // Real success rate
     (async () => {
-      setLoadingSuccessRate(true);
-      const tryEndpoints = [
-        `${API_BASE}/api/stats/public`, // might contain more fields
-        `${API_BASE}/api/stats/applications`,
-        `${API_BASE}/api/applications/stats`,
-        `${API_BASE}/api/applications/summary`,
-        // add more server-side endpoints here if your API exposes them
-      ];
-
-      // helper to extract accepted and total from a response object
-      const extractCounts = (obj) => {
-        if (!obj || typeof obj !== "object") return null;
-        // candidates for accepted/hired
-        const acceptedKeys = [
-          "accepted",
-          "acceptedApplications",
-          "accepted_count",
-          "hires",
-          "hired",
-          "hiredCount",
-          "successes",
-        ];
-        const totalKeys = [
-          "totalApplications",
-          "applications",
-          "total",
-          "total_count",
-          "applicationCount",
-          "submitted",
-        ];
-
-        let accepted = null;
-        let total = null;
-
-        for (const k of acceptedKeys) {
-          if (k in obj && Number.isFinite(Number(obj[k]))) {
-            accepted = Number(obj[k]);
-            break;
-          }
-        }
-        for (const k of totalKeys) {
-          if (k in obj && Number.isFinite(Number(obj[k]))) {
-            total = Number(obj[k]);
-            break;
-          }
-        }
-
-        // Also handle nested shapes like { apps: { accepted: X, total: Y } }
-        if ((accepted === null || total === null)) {
-          for (const v of Object.values(obj)) {
-            if (v && typeof v === "object") {
-              const nested = extractCounts(v);
-              if (nested) {
-                if (accepted === null && Number.isFinite(nested.accepted)) accepted = nested.accepted;
-                if (total === null && Number.isFinite(nested.total)) total = nested.total;
-              }
-            }
-            if (accepted !== null && total !== null) break;
-          }
-        }
-
-        if (accepted !== null && total !== null && total > 0) {
-          return { accepted, total };
-        }
-        return null;
-      };
-
       try {
-        for (const url of tryEndpoints) {
-          try {
-            const r = await fetch(url, { credentials: "include" });
-            if (!r.ok) continue;
-            const d = await r.json();
-            // sometimes the top-level contains both stats and sub-objects
-            const found = extractCounts(d) || extractCounts(d.data) || extractCounts(d.stats);
-            if (found) {
-              if (!ignore) {
-                setAcceptedCount(found.accepted);
-                setTotalCount(found.total);
-                setSuccessRate(Math.round((found.accepted / found.total) * 100));
-              }
-              break;
-            }
-          } catch (e) {
-            // ignore endpoint-specific failures and continue trying
-            continue;
-          }
+        setLoadingSuccessRate(true);
+        setAcceptedCount(null);
+        setTotalCount(null);
+
+        const r = await fetch(`${API_BASE}/api/applications/success-rate`, {
+          signal: ctrl.signal,
+        });
+        if (!r.ok) throw new Error("Failed to load success rate");
+        const d = await r.json();
+
+        if (!ignore) {
+          const accepted = Number(d.accepted ?? d.acceptedApplications ?? d.hired ?? d.hires ?? 0);
+          const total = Number(d.total ?? d.totalApplications ?? d.applications ?? 0);
+          setAcceptedCount(accepted);
+          setTotalCount(total);
+          setSuccessRate(total > 0 ? Math.round((accepted / total) * 100) : 0);
         }
       } catch (e) {
-        // no-op, we'll fallback below
-      } finally {
-        if (!ignore) {
-          // fallback: if we couldn't compute, keep placeholder 95
-          setLoadingSuccessRate(false);
-          if (successRate === null) {
-            setSuccessRate(95);
-          }
+        if (!ignore && e.name !== "AbortError") {
+          // leave nulls so UI shows "—"
+          setAcceptedCount(null);
+          setTotalCount(null);
+          setSuccessRate(null);
         }
+      } finally {
+        if (!ignore) setLoadingSuccessRate(false);
       }
     })();
 
@@ -184,12 +114,11 @@ export default function LandingPage() {
       ignore = true;
       ctrl.abort();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // --- handlers for buttons/navigation/modal ---
   const goToInternships = () => navigate("/internships");
-  const goToPostOpportunities = () => navigate("/company"); // company page
+  const goToPostOpportunities = () => navigate("/company");
 
   const openLoginModalForJob = (jobId) => {
     setSelectedJobId(jobId || null);
@@ -300,7 +229,6 @@ export default function LandingPage() {
 
           {/* Success Rate */}
           <div className="min-w-[160px]">
-            {/* show loading spinner or rate */}
             <h3
               className="text-2xl font-bold text-blue-900"
               title={
@@ -309,14 +237,9 @@ export default function LandingPage() {
                   : undefined
               }
             >
-              {loadingSuccessRate ? "…" : `${successRate ?? 95}%`}
+              {loadingSuccessRate ? "…" : successRate != null ? `${successRate}%` : "—"}
             </h3>
             <p className="text-gray-600">Success Rate</p>
-            {!loadingSuccessRate && acceptedCount != null && totalCount != null && (
-              <p className="text-xs text-gray-500 mt-1">
-                {acceptedCount.toLocaleString()} accepted / {totalCount.toLocaleString()} total
-              </p>
-            )}
           </div>
         </div>
       </section>
@@ -456,7 +379,7 @@ export default function LandingPage() {
 
       <Footer />
 
-      {/* LOGIN REQUIRED MODAL (styled per screenshot) */}
+      {/* LOGIN REQUIRED MODAL */}
       {loginModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/40" onClick={() => setLoginModalOpen(false)} />
@@ -578,7 +501,7 @@ function timeAgo(iso) {
   return "just now";
 }
 
-/* ---------- Dynamic Featured Jobs Grid (now accepts onRequestLogin prop) ---------- */
+/* ---------- Dynamic Featured Jobs Grid ---------- */
 function FeaturedJobsGrid({ onRequestLogin }) {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -594,7 +517,6 @@ function FeaturedJobsGrid({ onRequestLogin }) {
         const res = await fetch(JOBS_URL, { signal: ac.signal });
         const data = await res.json();
         if (!res.ok) throw new Error(data?.message || "Failed to load jobs");
-        // show the latest 3 open jobs
         const list = Array.isArray(data.jobs) ? data.jobs.slice(0, 3) : [];
         if (!cancel) setJobs(list);
       } catch (e) {

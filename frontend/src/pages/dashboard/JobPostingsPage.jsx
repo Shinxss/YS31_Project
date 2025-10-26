@@ -45,6 +45,14 @@ const statusBadge = (raw) => {
 const KebabIcon = ({ className = "" }) => <span className={className} aria-hidden>⋯</span>;
 
 /* -------------------------------------------------------
+   ID + path helpers (for stable navigation)
+------------------------------------------------------- */
+const getJobId = (job) =>
+  String(job?._id?.$oid || job?._id || job?.id || job?.slug || "");
+
+const jobDetailPath = (id) => `/company/job/${encodeURIComponent(id)}`;
+
+/* -------------------------------------------------------
    Job Detail Modal (inline) - modified UI per request
    - separator line between header and content
    - right column uses floating cards (no border stroke)
@@ -459,6 +467,18 @@ export default function JobPostingsPage() {
     );
   };
 
+  /* ---------- View handler (navigate to JobDetailPage) ---------- */
+  const handleView = (jobOrId) => {
+    const id = typeof jobOrId === "string" ? jobOrId : getJobId(jobOrId);
+    if (!id) {
+      setErr("Missing job id for view.");
+      return;
+    }
+    setOpenMenuId(null);
+    setSelectedJob(null);
+    navigate(jobDetailPath(id));
+  };
+
   /* ---------- Actions: delete (soft), edit, archive/unarchive, close/reopen ---------- */
 
   // Delete -> soft-delete (status: "deleted", isArchived: true)
@@ -776,9 +796,7 @@ export default function JobPostingsPage() {
                         <div className="absolute right-0 top-9 w-48 rounded-md border bg-white shadow-md z-10">
                           <button
                             className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-                            onClick={() => {
-                              navigate(`/company/job/${j._id || j.id || j.slug}`);
-                            }}
+                            onClick={() => handleView(j)}
                           >
                             View
                           </button>

@@ -379,13 +379,13 @@ export async function updateApplicationStatus(req, res) {
         // Email body templates (exact text you provided)
         const acceptedBody =
 `Hi ${applicantName},
-your application for ${jobTitle} in ${companyName} has been accepted.
-contact us ${companyEmail || "(no-reply)"} for more details.
+your application for ${jobTitle} at ${companyName} has been accepted.
+Contact us at ${companyEmail || "(no-reply)"} for more details.
 — ${companyName}`;
 
         const rejectedBody =
 `Hi ${applicantName},
-your application for ${jobTitle} in ${companyName} has been rejected.
+your application for ${jobTitle} at ${companyName} has been rejected.
 — ${companyName}`;
 
         const bodyText = canonical === "Accepted" ? acceptedBody : rejectedBody;
@@ -432,6 +432,42 @@ your application for ${jobTitle} in ${companyName} has been rejected.
   } catch (err) {
     console.error("updateApplicationStatus error:", err);
     return res.status(500).json({ message: "Failed to update status" });
+  }
+}
+
+export async function deleteMyApplication(req, res) {
+  try {
+    const { id } = req.params;
+    if (!isObjectId(id)) {
+      return res.status(400).json({ message: "Invalid application id" });
+    }
+
+    // identify the student profile tied to this session
+    const uid = req.user?.id;
+    const email = (req.user?.email || "").toLowerCase();
+    const studentDoc =
+      (uid ? await Student.findOne({ user: uid }) : null) ||
+      (email ? await Student.findOne({ email }) : null);
+
+    if (!studentDoc?._id) {
+      return res.status(400).json({ message: "Student profile not found" });
+    }
+
+    const app = await Application.findOne({ _id: id, student: studentDoc._id });
+    if (!app) return res.status(404).json({ message: "Application not found" });
+
+    // Only allow delete if it's still "Application Sent"
+    if (app.status !== "Application Sent") {
+      return res
+        .status(409)
+        .json({ message: `Cannot cancel when status is "${app.status}".` });
+    }
+
+    await Application.deleteOne({ _id: app._id });
+    return res.json({ ok: true, deletedId: app._id });
+  } catch (err) {
+    console.error("deleteMyApplication error:", err);
+    return res.status(500).json({ message: "Server error" });
   }
 }
 
@@ -521,5 +557,23 @@ export async function getApplicationCounts(req, res) {
     return res
       .status(500)
       .json({ message: "Failed to compute application counts" });
+  }
+}
+
+//--------------NEW--------------
+
+export async function getApplicationsSuccessRate(req, res) {
+  try {
+    const [total, accepted] = await Promise.all([
+      Application.countDocuments({}),                                  // all applications
+      Application.countDocuments({ status: /^(accepted|hired)$/i }),   // success statuses
+    ]);
+
+    const successRate = total ? Math.round((accepted / total) * 100) : 0;
+
+    return res.json({ accepted, total, successRate });
+  } catch (err) {
+    console.error("success-rate error:", err);
+    return res.status(500).json({ message: "Failed to compute success rate" });
   }
 }

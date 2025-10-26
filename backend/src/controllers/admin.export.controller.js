@@ -7,13 +7,6 @@ import { Parser as Json2Csv } from "json2csv";
 import ExcelJS from "exceljs";
 import archiver from "archiver";
 
-/**
- * Sheets:
- * - students     → Student model
- * - companies    → CompanyEmployee (company profiles; no pics/cover/desc; with ownerName)
- * - jobs         → Job + lookup company_employees + count applications
- * - applications → Application + lookup student_users, jobs, company_employees  ✅
- */
 
 function getDisplayNameLike(obj) {
   if (!obj) return "";

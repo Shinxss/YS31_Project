@@ -1,10 +1,15 @@
-import React, { useMemo, useState } from "react";
+// src/pages/company/PostJobPage.jsx
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+/* ------------------------------------------------------------------ */
+/* Config                                                             */
+/* ------------------------------------------------------------------ */
+const API_BASE = (import.meta.env.VITE_API_BASE || "http://localhost:5000").replace(/\/+$/, "");
 const PESO = "₱";
 
-/** Department options (frontend). Includes "Other". */
+/** Department options shown in the UI */
 const DEPARTMENTS = [
   "Engineering",
   "IT",
@@ -16,69 +21,193 @@ const DEPARTMENTS = [
   "Other",
 ];
 
+/** Matches your Job schema enum */
+const JOB_TYPES = ["Full-time", "Intern", "Part-time", "Contract"];
+
+/** Matches your Job schema enum */
+const WORK_TYPES = ["On-site", "Hybrid", "Remote"];
+
 const EDUCATION_LEVELS = ["High School", "College", "Graduate"];
 
-// ✅ ADDED: simple date formatter for Review step
-const fmtDate = (v) => {
+/* ------------------------------------------------------------------ */
+/* Small helpers                                                      */
+/* ------------------------------------------------------------------ */
+const toYMD = (v) => {
   if (!v) return "";
   const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
 };
 
+const digits = (s) => (s ? String(s).replace(/[^\d.]/g, "") : "");
+
+const splitCSV = (s) =>
+  String(s || "")
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+const arr = (v) => (Array.isArray(v) ? v : v ? [v] : []);
+
+const fmtDatePretty = (v) => {
+  if (!v) return "";
+  const d = new Date(v);
+  return Number.isNaN(d.getTime())
+    ? ""
+    : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+};
+
+/** Best-effort GET for a job */
+async function fetchJobById(id, headers) {
+  const urls = [
+    `${API_BASE}/api/company/jobs/${encodeURIComponent(id)}`,
+    `${API_BASE}/api/company/job/${encodeURIComponent(id)}`,
+    `${API_BASE}/api/jobs/${encodeURIComponent(id)}`,
+  ];
+
+  let lastErr = "Not found";
+  for (const url of urls) {
+    try {
+      const r = await fetch(url, { credentials: "include", headers });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && (j?.job || j?._id || j?.id)) return j.job || j;
+      lastErr = j?.message || `${r.status} ${r.statusText}`;
+    } catch (e) {
+      lastErr = e.message || lastErr;
+    }
+  }
+  throw new Error(lastErr);
+}
+
+/* ------------------------------------------------------------------ */
+/* Form model                                                         */
+/* ------------------------------------------------------------------ */
 const EMPTY_FORM = {
- 
+  // step 1
   title: "",
-  department: "",        
-  otherDepartment: "",    
+  department: "", // UI choice; when 'Other', use otherDepartment for real value
+  otherDepartment: "",
   workType: "On-site",
   location: "",
   jobType: "Full-time",
   salaryMax: "",
+
+  // step 2
   description: "",
   responsibilities: [],
   offers: [],
-  skills: "",
-  requirements: [], 
-  educationLevel: [],     
-  languages: "",            
-  experienceLevel: "",      
-  screeningQuestions: [],    
 
-  // ✅ ADDED: timeline fields
-  startDateFrom: "",          // "YYYY-MM-DD"
-  startDateTo: "",            // "YYYY-MM-DD"
-  applicationDeadline: "",    // "YYYY-MM-DD"
+  // step 3
+  skills: "", // UI comma string; convert to array for payload
+  requirements: [],
+  educationLevel: [],
+  languages: "", // UI comma string; convert to array
+  experienceLevel: "", // Entry | Mid | Senior
+  screeningQuestions: [],
+
+  // timeline
+  startDateFrom: "", // YYYY-MM-DD
+  startDateTo: "", // YYYY-MM-DD
+  applicationDeadline: "", // YYYY-MM-DD
 };
 
-function shallowEqualForm(a, b) {
-  const keys = Object.keys(EMPTY_FORM);
-  for (const k of keys) {
-    const av = a[k];
-    const bv = b[k];
-    if (Array.isArray(av) && Array.isArray(bv)) {
-      if (av.length !== bv.length) return false;
-      for (let i = 0; i < av.length; i++) if (av[i] !== bv[i]) return false;
-    } else if (String(av ?? "") !== String(bv ?? "")) {
-      return false;
-    }
-  }
-  return true;
-}
+/** Normalize DB job -> UI form shape */
+const normalizeJobToForm = (job = {}) => {
+  const jt = job.jobType;
+  const mappedJobType =
+    jt === "Internship" ? "Intern" : JOB_TYPES.includes(jt) ? jt : "Full-time";
 
-export default function PostJobPage({ token, onCreated }) {
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState(null);
+  return {
+    title: job.title || "",
+    department: DEPARTMENTS.includes(job.department) ? job.department : job.department ? "Other" : "",
+    otherDepartment: DEPARTMENTS.includes(job.department) ? "" : job.department || "",
+
+    workType: WORK_TYPES.includes(job.workType) ? job.workType : "On-site",
+    location: job.location || "",
+    jobType: mappedJobType,
+
+    salaryMax: digits(job.salaryMax || job.salary || job.salaryRange || ""),
+
+    description: job.description || "",
+
+    responsibilities: Array.isArray(job.responsibilities) ? job.responsibilities : [],
+    offers: Array.isArray(job.offers) ? job.offers : [],
+
+    skills: Array.isArray(job.skills) ? job.skills.join(", ") : "",
+    requirements: Array.isArray(job.requirements) ? job.requirements : [],
+    educationLevel: Array.isArray(job.educationLevel) ? job.educationLevel : [],
+    languages:
+      Array.isArray(job.languages) && job.languages.length
+        ? job.languages.join(", ")
+        : typeof job.languages === "string"
+        ? job.languages
+        : "",
+    experienceLevel: job.experienceLevel || "",
+    screeningQuestions: Array.isArray(job.screeningQuestions) ? job.screeningQuestions : [],
+
+    startDateFrom: toYMD(job.startDateRange?.from),
+    startDateTo: toYMD(job.startDateRange?.to),
+    applicationDeadline: toYMD(job.applicationDeadline),
+  };
+};
+
+/* ------------------------------------------------------------------ */
+/* Page component                                                     */
+/* ------------------------------------------------------------------ */
+export default function PostJobPage({ token: propToken, onCreated }) {
+  const { id } = useParams(); // when editing => /company/post-job/:id
+  const isEdit = Boolean(id);
+  const navigate = useNavigate();
+  const { state } = useLocation();
+
+  const token = useMemo(
+    () =>
+      propToken ||
+      (typeof window !== "undefined" &&
+        (localStorage.getItem("ic_company_token") || localStorage.getItem("ic_token"))) ||
+      "",
+    [propToken]
+  );
+  const authHeader = () => (token ? { Authorization: `Bearer ${token}` } : {});
+
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
-  const [reqDraft, setReqDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [currentStep, setCurrentStep] = useState(1);
+
+  // list editor drafts
   const [respDraft, setRespDraft] = useState("");
   const [offerDraft, setOfferDraft] = useState("");
+  const [reqDraft, setReqDraft] = useState("");
   const [screenDraft, setScreenDraft] = useState("");
-  const [currentStep, setCurrentStep] = useState(1); // 1..4
-  const [submitToastId, setSubmitToastId] = useState(null); // ✅ ADDED: track loading toast
 
-  const set = (k, v) => {
+  // Prefill immediately from navigation state (from JobDetailPage "Edit")
+  useEffect(() => {
+    if (state?.job) setForm(normalizeJobToForm(state.job));
+  }, [state?.job]);
+
+  // If editing and no state, fetch job by id
+  useEffect(() => {
+    if (!isEdit || state?.job) return;
+    let ignore = false;
+    (async () => {
+      try {
+        const job = await fetchJobById(id, { ...authHeader() });
+        if (!ignore) setForm(normalizeJobToForm(job));
+      } catch (e) {
+        if (!ignore) setMsg(`❌ ${e.message || "Failed to load job"}`);
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit, id]);
+
+  /* -------------------------------------------------------------- */
+  /* Change helpers                                                 */
+  /* -------------------------------------------------------------- */
+  const setField = (k, v) => {
     setForm((s) => ({ ...s, [k]: v }));
     setErrors((e) => ({ ...e, [k]: undefined }));
   };
@@ -90,262 +219,210 @@ export default function PostJobPage({ token, onCreated }) {
   };
 
   const removeAt = (key, idx) => {
-    setForm((s) => ({
-      ...s,
-      [key]: s[key].filter((_, i) => i !== idx),
-    }));
+    setForm((s) => ({ ...s, [key]: s[key].filter((_, i) => i !== idx) }));
   };
 
   const toggleInArray = (key, value) => {
     setForm((s) => {
       const exists = s[key].includes(value);
-      return {
-        ...s,
-        [key]: exists ? s[key].filter((x) => x !== value) : [...s[key], value],
-      };
+      return { ...s, [key]: exists ? s[key].filter((x) => x !== value) : [...s[key], value] };
     });
   };
 
-  /* ── Per-step validation for Next/Back control ───────────────────────── */
+  /* -------------------------------------------------------------- */
+  /* Validation                                                     */
+  /* -------------------------------------------------------------- */
   const validateStep = (step) => {
     const e = {};
     if (step === 1) {
       if (!form.title.trim()) e.title = "Job title is required.";
-      if (!form.department.trim()) e.department = "Department is required.";
-      if (form.department === "Other" && !form.otherDepartment.trim()) {
-        e.otherDepartment = "Please specify the department.";
-      }
+      if (!form.department.trim()) e.department = "Job Category is required.";
+      if (form.department === "Other" && !form.otherDepartment.trim())
+        e.otherDepartment = "Please specify the Job Category.";
       if (!form.location.trim()) e.location = "Location is required.";
-      if (!form.jobType.trim()) e.jobType = "Job type is required.";
-      if (!form.workType.trim()) e.workType = "Work type is required.";
-      if (!String(form.salaryMax).trim())
-        e.salaryMax = "Salary max is required.";
+      if (!JOB_TYPES.includes(form.jobType)) e.jobType = "Choose a valid employment type.";
+      if (!WORK_TYPES.includes(form.workType)) e.workType = "Choose a valid work type.";
+      if (!String(form.salaryMax).trim()) e.salaryMax = "Salary max is required.";
       const max = Number(form.salaryMax);
       if (isNaN(max) || max < 0) e.salaryMax = "Must be a number ≥ 0.";
 
-      // ✅ ADDED: timeline required + logical checks
       if (!String(form.startDateFrom).trim()) e.startDateFrom = "Start date (from) is required.";
       if (!String(form.startDateTo).trim()) e.startDateTo = "Start date (to) is required.";
       if (!String(form.applicationDeadline).trim())
         e.applicationDeadline = "Application deadline is required.";
-      // only check order if all present
+
+      // logical check
       if (!e.startDateFrom && !e.startDateTo) {
         const from = new Date(form.startDateFrom);
         const to = new Date(form.startDateTo);
-        if (!Number.isNaN(from.getTime()) && !Number.isNaN(to.getTime())) {
-          if (from > to) e.startDateTo = "End of start range must be on/after the start.";
-        }
-      }
-      if (!e.applicationDeadline && !e.startDateTo) {
-        const dl = new Date(form.applicationDeadline);
-        const to = new Date(form.startDateTo);
-        if (!Number.isNaN(dl.getTime()) && !Number.isNaN(to.getTime())) {
-          // soft guard; comment if not desired
-          // if (dl > to) e.applicationDeadline = "Deadline should be on/before the last possible start date.";
+        if (!Number.isNaN(from.getTime()) && !Number.isNaN(to.getTime()) && from > to) {
+          e.startDateTo = "End of start range must be on/after the start.";
         }
       }
     }
     if (step === 2) {
-      if (!form.description.trim())
-        e.description = "Job description details are required.";
-      if (!form.responsibilities.length)
-        e.responsibilities = "Add at least one responsibility.";
+      if (!form.description.trim()) e.description = "Job description is required.";
+      if (!form.responsibilities.length) e.responsibilities = "Add at least one responsibility.";
       if (!form.offers.length) e.offers = "Add at least one offer.";
     }
     if (step === 3) {
-      if (!form.skills.trim())
-        e.skills = "Add required skills (comma separated).";
-      if (!form.requirements.length)
-        e.requirements = "Add at least one other requirement.";
-      // experienceLevel is optional for now (until backend supports)
+      if (!form.skills.trim()) e.skills = "Add required skills (comma separated).";
+      if (!form.requirements.length) e.requirements = "Add at least one other requirement.";
+      if (form.experienceLevel && !["Entry", "Mid", "Senior"].includes(form.experienceLevel)) {
+        e.experienceLevel = "Choose Entry, Mid, or Senior.";
+      }
     }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  /* ── Full validation as safety on final Submit ───────────────────────── */
-  function validateAll() {
-    const e = {};
-    if (!form.title.trim()) e.title = "Job title is required.";
-    if (!form.department.trim()) e.department = "Job Category is required.";
-    if (form.department === "Other" && !form.otherDepartment.trim()) {
-      e.otherDepartment = "Please specify the Job Category.";
+  const validateAll = () => {
+    const steps = [1, 2, 3];
+    for (const s of steps) {
+      if (!validateStep(s)) return false;
     }
-    if (!form.workType.trim()) e.workType = "Work type is required.";
-    if (!form.location.trim()) e.location = "Location is required.";
-    if (!form.jobType.trim()) e.jobType = "Job type is required.";
-    if (!String(form.salaryMax).trim()) e.salaryMax = "Salary max is required.";
-    const max = Number(form.salaryMax);
-    if (isNaN(max) || max < 0) e.salaryMax = "Must be a number ≥ 0.";
-    if (!form.description.trim()) e.description = "Description is required.";
-    if (!form.responsibilities.length)
-      e.responsibilities = "Add at least one responsibility.";
-    if (!form.offers.length) e.offers = "Add at least one offer.";
-    if (!form.skills.trim()) e.skills = "Skills are required.";
-    if (!form.requirements.length)
-      e.requirements = "Add at least one other requirement.";
+    return true;
+  };
 
-    // ✅ ADDED: final checks for dates
-    if (!String(form.startDateFrom).trim()) e.startDateFrom = "Start date (from) is required.";
-    if (!String(form.startDateTo).trim()) e.startDateTo = "Start date (to) is required.";
-    if (!String(form.applicationDeadline).trim())
-      e.applicationDeadline = "Application deadline is required.";
-    if (!e.startDateFrom && !e.startDateTo) {
-      const from = new Date(form.startDateFrom);
-      const to = new Date(form.startDateTo);
-      if (!Number.isNaN(from.getTime()) && !Number.isNaN(to.getTime())) {
-        if (from > to) e.startDateTo = "End of start range must be on/after the start.";
-      } else {
-        if (Number.isNaN(from.getTime())) e.startDateFrom = "Invalid date.";
-        if (Number.isNaN(to.getTime())) e.startDateTo = "Invalid date.";
-      }
-    }
-    if (!e.applicationDeadline) {
-      const dl = new Date(form.applicationDeadline);
-      if (Number.isNaN(dl.getTime())) e.applicationDeadline = "Invalid date.";
-    }
+  /* -------------------------------------------------------------- */
+  /* Build payload for schema                                       */
+  /* -------------------------------------------------------------- */
+  const buildPayload = () => {
+    const departmentValue =
+      form.department === "Other" ? form.otherDepartment.trim() : form.department.trim();
 
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  }
+    return {
+      title: form.title.trim(),
+      department: departmentValue,
+      workType: form.workType, // "On-site" | "Hybrid" | "Remote"
+      jobType: form.jobType, // "Full-time" | "Intern" | "Part-time" | "Contract"
+      location: form.location.trim(),
 
-  /* ── Submit to MVC backend (/api/jobs) ───────────────────────────────── */
-  async function submit(e) {
+      salaryMax: String(form.salaryMax).trim(), // setter in schema will pesoify
+
+      description: form.description.trim(),
+
+      responsibilities: form.responsibilities,
+      offers: form.offers,
+
+      skills: splitCSV(form.skills),
+      requirements: form.requirements,
+
+      educationLevel: form.educationLevel,
+      languages: splitCSV(form.languages),
+      experienceLevel: form.experienceLevel || undefined,
+      screeningQuestions: form.screeningQuestions,
+
+      // schema expects nested range + Date for deadline
+      startDateRange: {
+        from: form.startDateFrom, // "YYYY-MM-DD"
+        to: form.startDateTo, // "YYYY-MM-DD"
+      },
+      applicationDeadline: form.applicationDeadline, // "YYYY-MM-DD"
+    };
+  };
+
+  /* -------------------------------------------------------------- */
+  /* Submit (Create / Update)                                       */
+  /* -------------------------------------------------------------- */
+  async function handleSubmit(e) {
     e.preventDefault();
-
     setMsg(null);
+
     if (!validateAll()) {
-      const order = [1, 2, 3];
-      for (const st of order) {
+      for (const st of [1, 2, 3]) {
         if (!validateStep(st)) {
           setCurrentStep(st);
           break;
         }
       }
-      // ✅ ADDED: toast on validation fail
       toast.error("Please complete the required fields before submitting.", { autoClose: 2500 });
       return;
     }
 
+    const payload = buildPayload();
+    const tid = toast.loading(isEdit ? "Saving changes…" : "Submitting job…");
+
     try {
       setSaving(true);
 
-      // ✅ ADDED: show loading toast while submitting
-      const tid = toast.loading("Submitting job…");
-      setSubmitToastId(tid);
+      let res, data;
+      if (isEdit) {
+        // PATCH to your update route
+        res = await fetch(`${API_BASE}/api/company/jobs/${encodeURIComponent(id)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", ...authHeader() },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        });
+        data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.message || "Failed to save changes");
+      } else {
+        // Create (controller should infer companyId & companyName from user)
+        res = await fetch(`${API_BASE}/api/jobs`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeader() },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        });
+        data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.message || "Failed to post job");
+      }
 
-      const departmentValue =
-        form.department === "Other"
-          ? form.otherDepartment.trim()
-          : form.department.trim();
-
-      const payload = {
-        title: form.title.trim(),
-        department: departmentValue,                       // send the real value
-        workType: form.workType,
-        location: form.location.trim(),
-        jobType: form.jobType,
-        salaryMax: Number(form.salaryMax),
-        description: form.description.trim(),
-        responsibilities: form.responsibilities,
-        offers: form.offers,
-        skills: form.skills
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
-        requirements: form.requirements,
-        educationLevel: form.educationLevel,
-        languages: form.languages
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
-        experienceLevel: form.experienceLevel || undefined, // NEW (optional)
-        screeningQuestions: form.screeningQuestions,
-
-        // ✅ ADDED: send to backend exactly as controller expects
-        startDateFrom: form.startDateFrom,               // "YYYY-MM-DD"
-        startDateTo: form.startDateTo,                   // "YYYY-MM-DD"
-        applicationDeadline: form.applicationDeadline,   // "YYYY-MM-DD"
-      };
-
-      const res = await fetch(`${API_BASE}/api/jobs`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "Failed to post job");
-
-      setForm(EMPTY_FORM);
-      setReqDraft("");
-      setRespDraft("");
-      setOfferDraft("");
-      setScreenDraft("");
-      setErrors({});
-      setMsg("✅ Job posted successfully");
-      setCurrentStep(1);
-      onCreated?.(data.job);
-
-      // ✅ ADDED: success toast update
       toast.update(tid, {
-        render: "Job posted successfully!",
+        render: isEdit ? "Changes saved." : "Job posted successfully!",
         type: "success",
         isLoading: false,
         autoClose: 2200,
         closeOnClick: true,
       });
+
+      if (!isEdit) {
+        setForm(EMPTY_FORM);
+        setRespDraft("");
+        setOfferDraft("");
+        setReqDraft("");
+        setScreenDraft("");
+        setErrors({});
+        onCreated?.(data?.job || data);
+      }
+
+      const saved = data?.job || data;
+      const targetId = isEdit ? id : saved?._id || saved?.id;
+      if (targetId) navigate(`/company/job/${encodeURIComponent(targetId)}`, { replace: true });
     } catch (err) {
       setMsg(`❌ ${err.message}`);
-
-      // ✅ ADDED: error toast update
-      if (submitToastId) {
-        toast.update(submitToastId, {
-          render: err.message || "Failed to post job",
-          type: "error",
-          isLoading: false,
-          autoClose: 3500,
-          closeOnClick: true,
-        });
-      } else {
-        toast.error(err.message || "Failed to post job");
-      }
+      toast.update(tid, {
+        render: err.message || (isEdit ? "Failed to save changes" : "Failed to post job"),
+        type: "error",
+        isLoading: false,
+        autoClose: 3500,
+        closeOnClick: true,
+      });
     } finally {
       setSaving(false);
     }
   }
+
+  /* -------------------------------------------------------------- */
+  /* Derived UI bits                                                */
+  /* -------------------------------------------------------------- */
+  const skillsPreview = useMemo(() => splitCSV(form.skills), [form.skills]);
+  const languagesPreview = useMemo(() => splitCSV(form.languages), [form.languages]);
 
   const inputCls = (hasErr) =>
     `w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 ${
       hasErr ? "border-red-400" : "border-gray-200"
     }`;
 
-  const skillsPreview = useMemo(
-    () =>
-      form.skills
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-    [form.skills]
-  );
-
-  const languagesPreview = useMemo(
-    () =>
-      form.languages
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-    [form.languages]
-  );
-
-  /* ───────────────────────── UI (InternConnect theme) ─────────────────── */
-
+  /* -------------------------------------------------------------- */
+  /* Render                                                         */
+  /* -------------------------------------------------------------- */
   return (
     <div className="p-6 max-w-5xl mx-auto">
-      <h2 className="text-2xl font-semibold mb-4">Create New Job Posting</h2>
+      <h2 className="text-2xl font-semibold mb-4">
+        {isEdit ? "Edit Job Posting" : "Create New Job Posting"}
+      </h2>
 
       {/* Stepper */}
       <div className="bg-white border border-gray-200 rounded-xl p-3 mb-6 shadow-sm">
@@ -354,7 +431,7 @@ export default function PostJobPage({ token, onCreated }) {
             { id: 1, label: "Basic Info" },
             { id: 2, label: "Description" },
             { id: 3, label: "Requirements" },
-            { id: 4, label: "Review" },
+            { id: 4, label: isEdit ? "Review & Save" : "Review" },
           ].map((s, idx, arr) => (
             <div key={s.id} className="flex-1 flex items-center">
               <div className="flex items-center gap-2">
@@ -369,45 +446,39 @@ export default function PostJobPage({ token, onCreated }) {
                 </div>
                 <span
                   className={`${
-                    currentStep === s.id
-                      ? "text-[#173B8A] font-medium"
-                      : "text-gray-600"
+                    currentStep === s.id ? "text-[#173B8A] font-medium" : "text-gray-600"
                   }`}
                 >
                   {s.label}
                 </span>
               </div>
-              {idx < arr.length - 1 && (
-                <div className="flex-1 mx-3 h-px bg-gray-200" />
-              )}
+              {idx < arr.length - 1 && <div className="flex-1 mx-3 h-px bg-gray-200" />}
             </div>
           ))}
         </div>
       </div>
 
-      {/* STEP CONTENT (1–3 non-form, 4 = form) */}
+      {/* Steps 1–3 */}
       {currentStep < 4 && (
         <div className="bg-white p-6 rounded-xl shadow border border-gray-200">
           {currentStep === 1 && (
             <>
               <SectionTitle>Basic Info</SectionTitle>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Job Title" error={errors.title} required>
                   <input
                     className={inputCls(!!errors.title)}
                     value={form.title}
-                    onChange={(e) => set("title", e.target.value)}
+                    onChange={(e) => setField("title", e.target.value)}
                     placeholder="e.g., Junior Frontend Engineer"
                   />
                 </Field>
 
-                {/* Department select + 'Other' input */}
                 <Field label="Job Category" error={errors.department} required>
                   <select
                     className={inputCls(!!errors.department)}
                     value={form.department}
-                    onChange={(e) => set("department", e.target.value)}
+                    onChange={(e) => setField("department", e.target.value)}
                   >
                     <option value="">Select Job Category</option>
                     {DEPARTMENTS.map((d) => (
@@ -422,13 +493,11 @@ export default function PostJobPage({ token, onCreated }) {
                         className={inputCls(!!errors.otherDepartment)}
                         placeholder="Type your department"
                         value={form.otherDepartment}
-                        onChange={(e) => set("otherDepartment", e.target.value)}
+                        onChange={(e) => setField("otherDepartment", e.target.value)}
                         autoFocus
                       />
                       {errors.otherDepartment && (
-                        <div className="mt-1 text-xs text-red-600">
-                          {errors.otherDepartment}
-                        </div>
+                        <div className="mt-1 text-xs text-red-600">{errors.otherDepartment}</div>
                       )}
                     </div>
                   )}
@@ -438,33 +507,26 @@ export default function PostJobPage({ token, onCreated }) {
                   <input
                     className={inputCls(!!errors.location)}
                     value={form.location}
-                    onChange={(e) => set("location", e.target.value)}
+                    onChange={(e) => setField("location", e.target.value)}
                     placeholder="e.g., Makati, PH or Remote"
                   />
                 </Field>
 
                 <Field label="Employment Type" error={errors.jobType} required>
                   <div className="flex flex-wrap gap-4">
-                    {["Full-time", "Part-time", "Contract", "Internship"].map(
-                      (opt) => (
-                        <Radio
-                          key={opt}
-                          name="jobType"
-                          label={opt}
-                          checked={form.jobType === opt}
-                          onChange={() => set("jobType", opt)}
-                        />
-                      )
-                    )}
+                    {JOB_TYPES.map((opt) => (
+                      <Radio
+                        key={opt}
+                        name="jobType"
+                        label={opt}
+                        checked={form.jobType === opt}
+                        onChange={() => setField("jobType", opt)}
+                      />
+                    ))}
                   </div>
                 </Field>
 
-                {/* Salary Max with peso prefix */}
-                <Field
-                  label="Salary Range (Max)"
-                  error={errors.salaryMax}
-                  required
-                >
+                <Field label="Salary Range (Max)" error={errors.salaryMax} required>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
                       {PESO}
@@ -474,7 +536,7 @@ export default function PostJobPage({ token, onCreated }) {
                       type="number"
                       min="0"
                       value={form.salaryMax}
-                      onChange={(e) => set("salaryMax", e.target.value)}
+                      onChange={(e) => setField("salaryMax", e.target.value)}
                       placeholder="e.g., 12000"
                     />
                   </div>
@@ -482,25 +544,24 @@ export default function PostJobPage({ token, onCreated }) {
 
                 <Field label="Work Type" error={errors.workType} required>
                   <div className="flex flex-wrap gap-4">
-                    {["On-site", "Hybrid", "Remote"].map((opt) => (
+                    {WORK_TYPES.map((opt) => (
                       <Radio
                         key={opt}
                         name="workType"
                         label={opt}
                         checked={form.workType === opt}
-                        onChange={() => set("workType", opt)}
+                        onChange={() => setField("workType", opt)}
                       />
                     ))}
                   </div>
                 </Field>
 
-                {/* ✅ ADDED: Start date range */}
                 <Field label="Start Date (From)" error={errors.startDateFrom} required>
                   <input
                     type="date"
                     className={inputCls(!!errors.startDateFrom)}
                     value={form.startDateFrom}
-                    onChange={(e) => set("startDateFrom", e.target.value)}
+                    onChange={(e) => setField("startDateFrom", e.target.value)}
                   />
                 </Field>
 
@@ -509,19 +570,17 @@ export default function PostJobPage({ token, onCreated }) {
                     type="date"
                     className={inputCls(!!errors.startDateTo)}
                     value={form.startDateTo}
-                    onChange={(e) => set("startDateTo", e.target.value)}
+                    onChange={(e) => setField("startDateTo", e.target.value)}
                     min={form.startDateFrom || undefined}
                   />
                 </Field>
 
-                {/* ✅ ADDED: Application deadline */}
                 <Field label="Application Deadline" error={errors.applicationDeadline} required>
                   <input
                     type="date"
                     className={inputCls(!!errors.applicationDeadline)}
                     value={form.applicationDeadline}
-                    onChange={(e) => set("applicationDeadline", e.target.value)}
-                    // max={form.startDateTo || undefined} // optional soft limit
+                    onChange={(e) => setField("applicationDeadline", e.target.value)}
                   />
                 </Field>
               </div>
@@ -533,24 +592,16 @@ export default function PostJobPage({ token, onCreated }) {
               <SectionTitle>Description</SectionTitle>
 
               <div className="space-y-6">
-                <Field
-                  label="Job Description Details"
-                  error={errors.description}
-                  required
-                >
+                <Field label="Job Description Details" error={errors.description} required>
                   <textarea
                     className={`${inputCls(!!errors.description)} min-h-[160px]`}
                     value={form.description}
-                    onChange={(e) => set("description", e.target.value)}
+                    onChange={(e) => setField("description", e.target.value)}
                     placeholder="Describe the role, impact, team, and tools…"
                   />
                 </Field>
 
-                <Field
-                  label="Responsibilities (list)"
-                  error={errors.responsibilities}
-                  required
-                >
+                <Field label="Responsibilities (list)" error={errors.responsibilities} required>
                   <ListEditor
                     draft={respDraft}
                     setDraft={setRespDraft}
@@ -559,16 +610,12 @@ export default function PostJobPage({ token, onCreated }) {
                       setRespDraft("");
                     }}
                     items={form.responsibilities}
-                    onRemove={(idx) => removeAt("responsibilities", idx)}
+                    onRemove={(i) => removeAt("responsibilities", i)}
                     placeholder="e.g., Build UI, write tests"
                   />
                 </Field>
 
-                <Field
-                  label="What we offer (list)"
-                  error={errors.offers}
-                  required
-                >
+                <Field label="What we offer (list)" error={errors.offers} required>
                   <ListEditor
                     draft={offerDraft}
                     setDraft={setOfferDraft}
@@ -577,7 +624,7 @@ export default function PostJobPage({ token, onCreated }) {
                       setOfferDraft("");
                     }}
                     items={form.offers}
-                    onRemove={(idx) => removeAt("offers", idx)}
+                    onRemove={(i) => removeAt("offers", i)}
                     placeholder="e.g., allowance, mentorship, certificate"
                   />
                 </Field>
@@ -596,7 +643,7 @@ export default function PostJobPage({ token, onCreated }) {
                       className={inputCls(!!errors.skills)}
                       placeholder="e.g., React, Node.js, TypeScript"
                       value={form.skills}
-                      onChange={(e) => set("skills", e.target.value)}
+                      onChange={(e) => setField("skills", e.target.value)}
                     />
                     {!!skillsPreview.length && (
                       <div className="flex flex-wrap gap-2">
@@ -610,22 +657,14 @@ export default function PostJobPage({ token, onCreated }) {
                         ))}
                       </div>
                     )}
-                    <p className="text-xs text-gray-500">
-                      Tip: separate skills with commas.
-                    </p>
+                    <p className="text-xs text-gray-500">Tip: separate skills with commas.</p>
                   </div>
                 </Field>
 
-                <Field
-                  label="Education Level (select all that apply)"
-                  error={errors.educationLevel}
-                >
+                <Field label="Education Level (select all that apply)">
                   <div className="flex flex-wrap gap-4">
                     {EDUCATION_LEVELS.map((lvl) => (
-                      <label
-                        key={lvl}
-                        className="inline-flex items-center gap-2 cursor-pointer"
-                      >
+                      <label key={lvl} className="inline-flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={form.educationLevel.includes(lvl)}
@@ -644,7 +683,7 @@ export default function PostJobPage({ token, onCreated }) {
                       className={inputCls(false)}
                       placeholder="e.g., English, Filipino"
                       value={form.languages}
-                      onChange={(e) => set("languages", e.target.value)}
+                      onChange={(e) => setField("languages", e.target.value)}
                     />
                     {!!languagesPreview.length && (
                       <div className="flex flex-wrap gap-2">
@@ -665,27 +704,24 @@ export default function PostJobPage({ token, onCreated }) {
                   <div className="flex flex-wrap gap-4">
                     <Radio
                       name="expLvl"
-                      label="Entry-level (0–2 yrs)"
+                      label="Entry (0–2 yrs)"
                       checked={form.experienceLevel === "Entry"}
-                      onChange={() => set("experienceLevel", "Entry")}
+                      onChange={() => setField("experienceLevel", "Entry")}
                     />
                     <Radio
                       name="expLvl"
-                      label="Mid-level (3–5 yrs)"
+                      label="Mid (3–5 yrs)"
                       checked={form.experienceLevel === "Mid"}
-                      onChange={() => set("experienceLevel", "Mid")}
+                      onChange={() => setField("experienceLevel", "Mid")}
                     />
                     <Radio
                       name="expLvl"
-                      label="Senior-level (6+ yrs)"
+                      label="Senior (6+ yrs)"
                       checked={form.experienceLevel === "Senior"}
-                      onChange={() => set("experienceLevel", "Senior")}
+                      onChange={() => setField("experienceLevel", "Senior")}
                     />
                   </div>
-                  {/* Optional: hint */}
-                  <p className="text-xs text-gray-500 mt-1">
-                    You can leave this empty if not required.
-                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Optional.</p>
                 </Field>
 
                 <Field label="Screening Questions">
@@ -697,16 +733,12 @@ export default function PostJobPage({ token, onCreated }) {
                       setScreenDraft("");
                     }}
                     items={form.screeningQuestions}
-                    onRemove={(idx) => removeAt("screeningQuestions", idx)}
+                    onRemove={(i) => removeAt("screeningQuestions", i)}
                     placeholder="e.g., Why this role? Paste your portfolio link."
                   />
                 </Field>
 
-                <Field
-                  label="Other requirements (list)"
-                  error={errors.requirements}
-                  required
-                >
+                <Field label="Other requirements (list)" error={errors.requirements} required>
                   <ListEditor
                     draft={reqDraft}
                     setDraft={setReqDraft}
@@ -715,7 +747,7 @@ export default function PostJobPage({ token, onCreated }) {
                       setReqDraft("");
                     }}
                     items={form.requirements}
-                    onRemove={(idx) => removeAt("requirements", idx)}
+                    onRemove={(i) => removeAt("requirements", i)}
                     placeholder="e.g., 3rd year BSCS, basic Git"
                   />
                 </Field>
@@ -727,23 +759,15 @@ export default function PostJobPage({ token, onCreated }) {
         </div>
       )}
 
+      {/* Review & Submit */}
       {currentStep === 4 && (
-        <form
-          onSubmit={submit}
-          className="bg-white p-6 rounded-xl shadow border border-gray-200"
-        >
-          {/* TITLE-LIKE SECTION HEADERS */}
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">
-            Job Description
-          </h3>
-
+        <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow border border-gray-200">
+          <h3 className="text-xl font-semibold text-gray-900 mb-4">Job Description</h3>
           <p className="text-sm leading-6 text-gray-800 mb-6 whitespace-pre-line">
             {form.description || "—"}
           </p>
 
-          <h4 className="text-base font-semibold text-gray-900 mb-2">
-            Key Responsibilities
-          </h4>
+          <h4 className="text-base font-semibold text-gray-900 mb-2">Key Responsibilities</h4>
           {form.responsibilities.length ? (
             <ul className="list-disc pl-6 space-y-1 mb-8 text-sm text-gray-800">
               {form.responsibilities.map((x, i) => (
@@ -756,13 +780,9 @@ export default function PostJobPage({ token, onCreated }) {
 
           <hr className="my-6 border-gray-200" />
 
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">
-            Qualifications & Requirements
-          </h3>
+          <h3 className="text-xl font-semibold text-gray-900 mb-4">Qualifications & Requirements</h3>
 
-          <h5 className="text-sm font-semibold text-gray-900 mb-2">
-            Required Skills:
-          </h5>
+          <h5 className="text-sm font-semibold text-gray-900 mb-2">Required Skills:</h5>
           {skillsPreview.length ? (
             <div className="flex flex-wrap gap-2 mb-4">
               {skillsPreview.map((s, i) => (
@@ -778,39 +798,24 @@ export default function PostJobPage({ token, onCreated }) {
             <p className="text-sm text-gray-500 mb-4">—</p>
           )}
 
-          {/* Education & Languages & Experience Level */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Meta
-              label="Education Level"
-              value={
-                form.educationLevel.length
-                  ? form.educationLevel.join(", ")
-                  : "—"
-              }
-            />
-            <Meta
-              label="Languages"
-              value={
-                languagesPreview.length ? languagesPreview.join(", ") : "—"
-              }
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-800">
+            <Meta label="Education Level" value={form.educationLevel.length ? form.educationLevel.join(", ") : "—"} />
+            <Meta label="Languages" value={languagesPreview.length ? languagesPreview.join(", ") : "—"} />
             <Meta
               label="Experience Level"
               value={
                 form.experienceLevel === "Entry"
-                  ? "Entry-level (0–2 yrs)"
+                  ? "Entry (0–2 yrs)"
                   : form.experienceLevel === "Mid"
-                  ? "Mid-level (3–5 yrs)"
+                  ? "Mid (3–5 yrs)"
                   : form.experienceLevel === "Senior"
-                  ? "Senior-level (6+ yrs)"
+                  ? "Senior (6+ yrs)"
                   : "—"
               }
             />
           </div>
 
-          <h5 className="text-sm font-semibold text-gray-900 mt-4 mb-2">
-            Other Requirements:
-          </h5>
+          <h5 className="text-sm font-semibold text-gray-900 mt-4 mb-2">Other Requirements:</h5>
           {form.requirements.length ? (
             <ul className="list-disc pl-6 space-y-1 mb-6 text-sm text-gray-800">
               {form.requirements.map((x, i) => (
@@ -821,10 +826,7 @@ export default function PostJobPage({ token, onCreated }) {
             <p className="text-sm text-gray-500 mb-6">—</p>
           )}
 
-          {/* Screening Questions */}
-          <h5 className="text-sm font-semibold text-gray-900 mb-2">
-            Screening Questions:
-          </h5>
+          <h5 className="text-sm font-semibold text-gray-900 mb-2">Screening Questions:</h5>
           {form.screeningQuestions.length ? (
             <ul className="list-disc pl-6 space-y-1 mb-6 text-sm text-gray-800">
               {form.screeningQuestions.map((x, i) => (
@@ -837,41 +839,31 @@ export default function PostJobPage({ token, onCreated }) {
 
           <hr className="my-6 border-gray-200" />
 
-          {/* Basic info summary line (meta) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-800">
             <Meta label="Job Title" value={form.title} />
             <Meta
               label="Department"
-              value={
-                form.department === "Other"
-                  ? form.otherDepartment || "—"
-                  : form.department || "—"
-              }
+              value={form.department === "Other" ? form.otherDepartment || "—" : form.department || "—"}
             />
             <Meta label="Location" value={form.location} />
             <Meta label="Employment Type" value={form.jobType} />
-            <Meta
-              label="Salary (Max)"
-              value={form.salaryMax ? `${PESO}${form.salaryMax}` : "—"}
-            />
+            <Meta label="Salary (Max)" value={form.salaryMax ? `${PESO}${form.salaryMax}` : "—"} />
             <Meta label="Work Type" value={form.workType} />
           </div>
 
-          {/* ✅ ADDED: Timeline summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-800 mt-4">
-            <Meta label="Start Date (From)" value={fmtDate(form.startDateFrom) || "—"} />
-            <Meta label="Start Date (To)" value={fmtDate(form.startDateTo) || "—"} />
-            <Meta label="Application Deadline" value={fmtDate(form.applicationDeadline) || "—"} />
+            <Meta label="Start Date (From)" value={fmtDatePretty(form.startDateFrom) || "—"} />
+            <Meta label="Start Date (To)" value={fmtDatePretty(form.startDateTo) || "—"} />
+            <Meta label="Application Deadline" value={fmtDatePretty(form.applicationDeadline) || "—"} />
           </div>
 
-          {/* Submit only — navigation outside below */}
           <div className="mt-8 flex justify-end">
             <button
               type="submit"
               disabled={saving}
               className="px-4 py-2 rounded-md bg-[#F37526] text-white disabled:opacity-60"
             >
-              {saving ? "Submitting…" : "Submit Job"}
+              {saving ? (isEdit ? "Saving…" : "Submitting…") : isEdit ? "Save Changes" : "Submit Job"}
             </button>
           </div>
 
@@ -879,7 +871,7 @@ export default function PostJobPage({ token, onCreated }) {
         </form>
       )}
 
-      {/* ── Global footer (outside any form) with navigation & Next ───────── */}
+      {/* Footer nav */}
       <div className="mt-6 flex justify-between">
         <button
           type="button"
@@ -894,12 +886,8 @@ export default function PostJobPage({ token, onCreated }) {
           <button
             type="button"
             onClick={() => {
-              if (validateStep(currentStep)) {
-                setCurrentStep((s) => Math.min(4, s + 1));
-              } else {
-                // ✅ ADDED: gentle toast when trying to go next with invalid fields
-                toast.warn("Please finish the required fields in this step.", { autoClose: 2000 });
-              }
+              if (validateStep(currentStep)) setCurrentStep((s) => Math.min(4, s + 1));
+              else toast.warn("Please finish the required fields in this step.", { autoClose: 2000 });
             }}
             className="px-4 py-2 rounded-md bg-[#173B8A] text-white hover:opacity-95 disabled:opacity-60"
             disabled={saving}
@@ -908,7 +896,7 @@ export default function PostJobPage({ token, onCreated }) {
           </button>
         ) : (
           <span className="text-sm text-gray-500">
-            Ready? Click <span className="font-medium text-gray-700">Submit Job</span>.
+            Ready? Click <span className="font-medium text-gray-700">{isEdit ? "Save Changes" : "Submit Job"}</span>.
           </span>
         )}
       </div>
@@ -916,12 +904,11 @@ export default function PostJobPage({ token, onCreated }) {
   );
 }
 
-/* ── Small UI helpers ──────────────────────────────────────────────────── */
-
+/* ------------------------------------------------------------------ */
+/* Small presentational bits                                          */
+/* ------------------------------------------------------------------ */
 function SectionTitle({ children }) {
-  return (
-    <h3 className="text-lg font-semibold text-gray-800 mb-4">{children}</h3>
-  );
+  return <h3 className="text-lg font-semibold text-gray-800 mb-4">{children}</h3>;
 }
 
 function Field({ label, error, required, children }) {
@@ -990,8 +977,6 @@ function ListEditor({ draft, setDraft, onAdd, items, onRemove, placeholder }) {
     </>
   );
 }
-
-/* ── Review document primitives ────────────────────────────────────────── */
 
 function Meta({ label, value }) {
   return (
