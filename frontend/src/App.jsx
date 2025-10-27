@@ -34,7 +34,6 @@ import DashboardHome from "./pages/admin/DashboardHome.jsx";
 import UserManagement from "./pages/admin/UserManagement.jsx";
 import CompanyApplications from "./pages/admin/CompanyApplications.jsx";
 import JobListingReview from "./pages/admin/JobListingReview.jsx";
-import Notification from "./pages/admin/Notification.jsx";
 import DataExport from "./pages/admin/DataExport.jsx";
 
 
@@ -110,7 +109,6 @@ export default function App() {
           <Route path="users" element={<UserManagement />} />
           <Route path="company-applications" element={<CompanyApplications />} />
           <Route path="job-listings" element={<JobListingReview />} />
-          <Route path="notifications" element={<Notification />} />
           <Route path="data-export" element={<DataExport />} />
         </Route>
         

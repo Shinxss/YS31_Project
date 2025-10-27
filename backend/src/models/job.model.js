@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const pesoify = (v) => {
   if (v === null || v === undefined || v === "") return v;
@@ -122,7 +122,7 @@ const JobSchema = new mongoose.Schema(
 
     status: {
       type: String,
-       enum: ["open", "pending", "closed","archived", "deleted", "suspended"],
+      enum: ["open", "pending", "closed", "archived", "deleted", "suspended"],
       default: "open",
       index: true,
     },
@@ -135,6 +135,14 @@ const JobSchema = new mongoose.Schema(
 
     // ✅ Application deadline
     applicationDeadline: { type: Date, required: true, index: true },
+
+    /** ✅ Add companyEmployeeId field */
+    companyEmployeeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CompanyEmployee", // Reference to the CompanyEmployee model
+      required: true, // This assumes every job is posted by an employee
+      index: true,
+    },
   },
   { timestamps: true }
 );
@@ -161,5 +169,7 @@ JobSchema.pre("validate", function (next) {
   }
   next();
 });
+
+
 
 export default mongoose.model("Job", JobSchema);

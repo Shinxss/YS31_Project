@@ -4,6 +4,7 @@ import CompanyEmployees from "../models/companyEmployees.model.js";
 import path from "path";
 import fs from "fs";
 import resolveCompanyId from "../utils/resolveCompanyId.js";
+import Application from "../models/Application.model.js";
 
 // =======================================================
 // 🧩 1️⃣ Helper: Save base64 or file buffer uploads like Profile page
@@ -354,3 +355,26 @@ export const deleteJob = async (req, res) => {
     return res.status(500).json({ message: err.message || "Failed to delete job" });
   }
 };
+
+// fetching applicant in that specific job
+async function getApplicantsByJobId(req, res) {
+  const { jobId } = req.params;  // Get jobId from the route parameters
+
+  try {
+    // Find all applications for the given jobId
+    const applications = await Application.find({ job: jobId })
+      .populate("student", "name email"); // Assuming you're populating student details
+
+    if (!applications.length) {
+      return res.status(404).json({ message: "No applicants found for this job" });
+    }
+
+    // Return the applications (list of applicants)
+    return res.json(applications);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Error fetching applicants", error });
+  }
+}
+
+export { getApplicantsByJobId };

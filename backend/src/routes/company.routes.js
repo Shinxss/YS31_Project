@@ -8,7 +8,8 @@ import {
   saveCompanyDetails,
   getCompanyDetails,
   updateJob, 
-  deleteJob
+  deleteJob,
+  getApplicantsByJobId
 } from "../controllers/company.controller.js";
 
 
@@ -29,6 +30,8 @@ router.get("/jobs", auth, listMyCompanyJobs);
 
 router.patch("/jobs/:id", auth, updateJob);
 router.delete("/jobs/:id", auth, deleteJob);
+
+router.get("/jobs/:jobId/applicants", auth, getApplicantsByJobId); // fetching applicant in jobdetailpage
 
 
 export default router; // ✅ essential export

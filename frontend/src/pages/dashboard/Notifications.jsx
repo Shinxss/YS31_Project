@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Bell,
   CheckCircle2,
-  Mail,
   Trash2,
   RefreshCw,
   Loader2,
@@ -13,9 +12,9 @@ import { toast } from "react-toastify";
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 const PAGE_SIZE = 20;
 
-/** permanent constraints */
-const PERM_TYPE = "application";
-const PERM_STATUS = "Applied";
+/* ----------- hard filters ----------- */
+const PERM_TYPE = "application"; // Filter notifications for applications
+const ALLOWED_STATUS = "Applied"; // Only fetch "Applied" status
 
 function timeAgo(iso) {
   if (!iso) return "";
@@ -45,32 +44,38 @@ function Chip({ children, intent = "default" }) {
   );
 }
 
-export default function Notifications() {
+// Function to generate initials from a name
+function initialsOf(name = "") {
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "U";
+  return (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase();
+}
+
+export default function CompanyNotifications() {
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
-  // Only two views now because everything is already filtered to "Applied" applications
   const [filter, setFilter] = useState("all"); // all | unread
 
-  const token = localStorage.getItem("ic_token");
+  const token = typeof window !== "undefined" ? localStorage.getItem("ic_token") : null;
 
-  // client-side hard filter (defensive in case backend ignores query params)
-  const baseAppliedOnly = useMemo(() => {
+  // Always enforce only "Applied" status notifications
+  const baseFiltered = useMemo(() => {
     return (items || []).filter(
       (n) =>
-        (n?.type?.toLowerCase?.() === PERM_TYPE) &&
-        ((n?.status === PERM_STATUS) || (n?.data?.status === PERM_STATUS))
+        String(n?.type || "").toLowerCase() === PERM_TYPE &&
+        (n?.status === ALLOWED_STATUS || n?.data?.status === ALLOWED_STATUS)
     );
   }, [items]);
 
   const filtered = useMemo(() => {
-    let data = baseAppliedOnly;
+    let data = baseFiltered;
     if (filter === "unread") data = data.filter((n) => !n.isRead);
     return data;
-  }, [baseAppliedOnly, filter]);
+  }, [baseFiltered, filter]);
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -83,10 +88,10 @@ export default function Notifications() {
       showSpinner ? setLoading(true) : setRefreshing(true);
       setError("");
 
-      // Add permanent query filters to only fetch "Applied" application notifications
+      // Add permanent query filters to fetch only "Applied" application notifications
       const url = `${API_BASE}/api/company/notifications?limit=${PAGE_SIZE}&page=${page}&type=${encodeURIComponent(
         PERM_TYPE
-      )}&status=${encodeURIComponent(PERM_STATUS)}`;
+      )}&status=${encodeURIComponent(ALLOWED_STATUS)}`;
 
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
@@ -96,16 +101,13 @@ export default function Notifications() {
 
       const list = Array.isArray(data) ? data : data.notifications || [];
 
-      // Defensive: enforce the same hard filter client-side
       const appliedOnly = list.filter(
         (n) =>
-          (n?.type?.toLowerCase?.() === PERM_TYPE) &&
-          ((n?.status === PERM_STATUS) || (n?.data?.status === PERM_STATUS))
+          String(n?.type || "").toLowerCase() === PERM_TYPE &&
+          (n?.status === ALLOWED_STATUS || n?.data?.status === ALLOWED_STATUS)
       );
 
       setItems(appliedOnly);
-
-      // total from API if provided, else fallback
       setTotal(
         typeof data.total === "number"
           ? data.total
@@ -200,7 +202,7 @@ export default function Notifications() {
           <div>
             <h1 className="text-xl font-semibold text-gray-900">Notifications</h1>
             <p className="text-sm text-gray-500">
-              Showing only <span className="font-medium">Applied</span> application alerts
+              Showing only <span className="font-medium">Applied</span> updates
             </p>
           </div>
         </div>
@@ -225,28 +227,27 @@ export default function Notifications() {
         </div>
       </div>
 
-      {/* Filters (limited to All / Unread since we hard-filter to Applied applications) */}
+      {/* Filters */}
       <div className="flex items-center gap-2 mb-4">
         <div className="flex items-center gap-2 px-2 py-1 text-gray-600">
           <Filter size={16} />
           <span className="text-sm">View:</span>
         </div>
-        {[
-          { key: "all", label: "All (Applied)" },
-          { key: "unread", label: "Unread (Applied)" },
-        ].map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setFilter(f.key)}
-            className={`px-3 py-1.5 rounded-md text-sm border ${
-              filter === f.key
-                ? "bg-gray-900 text-white border-gray-900"
-                : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
+        {[{ key: "all", label: "All Notifications" }, { key: "unread", label: "Unread Notifications" }].map(
+          (f) => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`px-3 py-1.5 rounded-md text-sm border ${
+                filter === f.key
+                  ? "bg-gray-900 text-white border-gray-900"
+                  : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              {f.label}
+            </button>
+          )
+        )}
       </div>
 
       {/* Content */}
@@ -257,87 +258,78 @@ export default function Notifications() {
           ))}
         </div>
       ) : error ? (
-        <div className="p-6 bg-red-50 text-red-700 rounded-xl border border-red-100">
-          {error}
-        </div>
+        <div className="p-6 bg-red-50 text-red-700 rounded-xl border border-red-100">{error}</div>
       ) : filtered.length === 0 ? (
         <div className="p-10 border border-dashed border-gray-300 rounded-xl text-center bg-gray-50">
           <Bell className="mx-auto mb-2" />
-          <p className="font-medium text-gray-800">No “Applied” application notifications</p>
-          <p className="text-sm text-gray-500">You’ll see new applicant submissions here.</p>
+          <p className="font-medium text-gray-800">No applied application updates</p>
+          <p className="text-sm text-gray-500">You’ll see new applicants here.</p>
         </div>
       ) : (
         <div className="grid gap-3">
           {filtered.map((n) => {
-            const tagIntent = "info"; // all are "Applied"
+            const isUnread = !n.isRead;
             const jobTitle = n?.data?.jobTitle || "—";
+            const companyName = n?.data?.companyName || "—";
+            const status = n?.status || n?.data?.status || "Update";
+            const statusIntent = status === "Accepted" ? "success" : status === "Rejected" ? "warn" : "info";
 
-            // Prefer the stored name; fallback to parsing from title pattern.
-            let applicantName = n?.data?.applicantName || null;
-            if (!applicantName && typeof n?.title === "string") {
-              const m = n.title.match(/New applicant\s+—\s+(.*?)\s+for\s+/i);
-              if (m && m[1]) applicantName = m[1].trim();
-            }
-            const displayTitle =
-              n?.title || `New applicant — ${applicantName || "Applicant"} for ${jobTitle}`;
-
-            const applicantEmail = n?.data?.applicantEmail || null;
+            const title = n?.title || `Application ${status}`;
+            const body =
+              n?.body ||
+              (status === "Accepted"
+                ? `Hi, your application for ${jobTitle} at ${companyName} has been accepted.`
+                : status === "Rejected"
+                ? `Hi, your application for ${jobTitle} at ${companyName} has been rejected.`
+                : `Update on your application for ${jobTitle} at ${companyName}.`);
 
             return (
               <div
                 key={n._id}
-                className={`p-4 bg-white rounded-xl shadow-sm border ${
-                  n.isRead ? "border-gray-100" : "border-blue-200"
+                className={`relative p-4 rounded-xl border shadow-sm transition ${
+                  isUnread ? "bg-amber-50 border-amber-200" : "bg-gray-100 border-gray-100"
                 }`}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
+                {isUnread && <span className="absolute left-0 top-0 h-full w-1 bg-amber-500 rounded-l-xl" />}
+
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 w-8 h-8 rounded-full bg-gray-200 text-gray-700 font-medium grid place-items-center shrink-0">
+                    {initialsOf(companyName || jobTitle)}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-sm sm:text-base font-semibold text-gray-900 truncate">
-                        {displayTitle}
+                      <h3 className={`text-sm sm:text-base font-semibold text-gray-900 truncate ${isUnread ? "font-bold" : ""}`}>
+                        {title}
                       </h3>
-                      <Chip intent={tagIntent}>{PERM_STATUS}</Chip>
-                      <Chip>application</Chip>
-                      {!n.isRead && <Chip intent="info">New</Chip>}
+                      {isUnread && <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />}
+                      <Chip intent={statusIntent}>{status}</Chip>
+                      {n.type && <Chip>{n.type}</Chip>}
                     </div>
 
-                    <p className="text-sm text-gray-700 mt-1">
-                      {n?.body || `Heads up, ${applicantName || "the applicant"} applied for ${jobTitle}.`}
-                    </p>
+                    <p className={`text-sm text-gray-700 mt-1 ${isUnread ? "font-bold" : ""}`}>{body}</p>
 
-                    <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
-                      {applicantName && (
-                        <span>
-                          Applicant: <span className="font-medium text-gray-700">{applicantName}</span>
-                        </span>
-                      )}
-
-                      {applicantEmail && (
-                        <span className="inline-flex items-center gap-1">
-                          <Mail size={14} />
-                          <a href={`mailto:${applicantEmail}`} className="hover:underline">
-                            {applicantEmail}
-                          </a>
-                        </span>
-                      )}
-
+                    <div className="mt-1 text-xs text-gray-500 flex gap-3 flex-wrap">
                       <span>{timeAgo(n.createdAt)}</span>
                     </div>
 
-                    {n?.data?.jobId && (
-                      <div className="mt-3">
-                        <a
-                          href={`/company/applications?job=${n.data.jobId}`}
-                          className="text-sm text-blue-700 hover:underline"
-                        >
-                          View applicants for this job →
-                        </a>
+                    {(n?.data?.jobId || n?.data?.status) && (
+                      <div className="mt-2 flex items-center gap-3 text-sm">
+                        {n?.data?.jobId && (
+                          <a
+                            href={`/company/applications?job=${n.data.jobId}`}
+                            className="inline-flex items-center justify-center px-4 py-2 text-[10px] font-medium rounded-md shadow-md bg-orange-500 text-white hover:bg-orange-600"
+                            title="View applicant"
+                          >
+                            View applicant
+                          </a>
+                        )}
                       </div>
                     )}
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    {!n.isRead && (
+                    {isUnread && (
                       <button
                         onClick={() => markRead(n._id)}
                         className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-gray-200 hover:bg-gray-50 text-sm"

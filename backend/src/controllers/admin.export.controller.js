@@ -7,7 +7,9 @@ import { Parser as Json2Csv } from "json2csv";
 import ExcelJS from "exceljs";
 import archiver from "archiver";
 
-
+/**
+ * Utility to format display names for students and owners.
+ */
 function getDisplayNameLike(obj) {
   if (!obj) return "";
   return (
@@ -30,36 +32,43 @@ const MAP = {
         firstName: s.firstName || "",
         lastName: s.lastName || "",
         email: s.email || "",
-        school: s.school || "",
         course: s.course || "",
-        major: s.major || "",
+        age: s.age || "",
+        gender: s.gender || "",
         location: s.location || "",
         status: s.status || "active",
+        skillsCount: (s.skills || []).length,
+        experienceCount: (s.experience || []).length,
+        educationCount: (s.education || []).length,
+        certificationCount: (s.certification || []).length,
+        remindersCount: (s.reminders || []).length,
         createdAt: s.createdAt,
         updatedAt: s.updatedAt,
       })),
   },
 
   companies: {
-    label: "Companies (Profiles)",
-    fetch: async () =>
-      (await CompanyEmployee.find().lean()).map((c) => ({
-        id: String(c._id),
-        companyName: c.companyName || c.name || "",
-        ownerName: getDisplayNameLike(c.owner),
-        email: c.email || c.contactEmail || c.owner?.email || c.owner?.email1 || "",
-        address: c.address || "",
-        city: c.city || "",
-        province: c.province || "",
-        zipCode: c.zipCode || c.zipcode || "",
-        website: c.website || "",
-        industry: c.industry || "",
-        companySize: c.companysize || c.companySize || "",
-        employeesCount: Array.isArray(c.employees) ? c.employees.length : 0,
-        createdAt: c.createdAt,
-        updatedAt: c.updatedAt,
-      })),
-  },
+  label: "Companies (Profiles)",
+  fetch: async () =>
+    (await CompanyEmployee.find().lean()).map((c) => ({
+      id: String(c._id),
+      companyName: c.companyName || c.name || "",
+      ownerName: getDisplayNameLike(c.owner),
+      email: c.email || c.contactEmail || c.owner?.email || c.owner?.email1 || "",
+      // Combining the address, city, province, and zipCode into one location field
+      location: [
+        c.address || "",
+        c.city || "",
+        c.province || "",
+        c.zipCode || c.zipcode || "",
+      ].filter(Boolean).join(", "),  // Filters out any empty fields and joins them with commas
+      industry: c.industry || "",
+      companySize: c.companysize || c.companySize || "",
+      employeesCount: Array.isArray(c.employees) ? c.employees.length : 0,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+    })),
+},
 
   jobs: {
     label: "Job Listings",
@@ -107,6 +116,7 @@ const MAP = {
             jobType: 1,
             department: 1,
             location: 1,
+            salaryMax: 1, // add the salaryMax field
             status: 1,
             applicationsCount: 1,
             createdAt: 1,
@@ -123,6 +133,7 @@ const MAP = {
         jobType: j.jobType || "",
         department: j.department || "",
         location: j.location || "",
+        salaryMax: j.salaryMax || "",
         status: j.status || "",
         applicationsCount: Number(j.applicationsCount || 0),
         createdAt: j.createdAt,
@@ -134,10 +145,9 @@ const MAP = {
   applications: {
     label: "Applications",
     fetch: async () => {
-      // ✅ Use company profile collection (company_employees) — not company users
       const rows = await Application.aggregate([
         { $lookup: { from: "student_users", localField: "student", foreignField: "_id", as: "stu" } },
-        { $lookup: { from: "jobs",           localField: "job",     foreignField: "_id", as: "jobDoc" } },
+        { $lookup: { from: "jobs", localField: "job", foreignField: "_id", as: "jobDoc" } },
         {
           $lookup: {
             from: "company_employees",
@@ -152,9 +162,9 @@ const MAP = {
         {
           $addFields: {
             studentDoc: { $arrayElemAt: ["$stu", 0] },
-            jobDoc:     { $arrayElemAt: ["$jobDoc", 0] },
-            compDoc:    { $arrayElemAt: ["$compDoc", 0] },
-            firstAns:   { $arrayElemAt: ["$answers", 0] },
+            jobDoc: { $arrayElemAt: ["$jobDoc", 0] },
+            compDoc: { $arrayElemAt: ["$compDoc", 0] },
+            firstAns: { $arrayElemAt: ["$answers", 0] },
           },
         },
         {
@@ -246,6 +256,9 @@ export const exportData = async (req, res) => {
       `${t.getFullYear()}${String(t.getMonth() + 1).padStart(2, "0")}${String(t.getDate()).padStart(2, "0")}_` +
       `${String(t.getHours()).padStart(2, "0")}${String(t.getMinutes()).padStart(2, "0")}`;
 
+    // Set the ZIP file name with the correct convention
+    const zipFileName = `InternConnect-Data-${stamp}.zip`;
+
     if (format === "xlsx") {
       const wb = new ExcelJS.Workbook();
       datasets.forEach(({ label, rows }) => {
@@ -259,7 +272,7 @@ export const exportData = async (req, res) => {
         }
       });
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      res.setHeader("Content-Disposition", `attachment; filename="internconnect_export_${stamp}.xlsx"`);
+      res.setHeader("Content-Disposition", `attachment; filename="${zipFileName}"`);
       await wb.xlsx.write(res);
       return res.end();
     }
@@ -268,21 +281,25 @@ export const exportData = async (req, res) => {
     if (datasets.length === 1) {
       const { key, rows } = datasets[0];
       const csv = rows.length ? new Json2Csv({}).parse(rows) : "";
+      const csvFileName = `${key}-${stamp}.csv`;
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
-      res.setHeader("Content-Disposition", `attachment; filename="internconnect_${key}_${stamp}.csv"`);
+      res.setHeader("Content-Disposition", `attachment; filename="${csvFileName}"`);
       return res.status(200).send(csv);
     }
 
     // ZIP of multiple CSVs
     res.setHeader("Content-Type", "application/zip");
-    res.setHeader("Content-Disposition", `attachment; filename="internconnect_export_${stamp}.zip"`);
+    res.setHeader("Content-Disposition", `attachment; filename="${zipFileName}"`);
     const archive = archiver("zip", { zlib: { level: 9 } });
     archive.on("error", (err) => { throw err; });
     archive.pipe(res);
+
     for (const { key, rows } of datasets) {
       const csv = rows.length ? new Json2Csv({}).parse(rows) : "";
-      archive.append(csv, { name: `internconnect_${key}.csv` });
+      const datasetFileName = `${key}-${stamp}.csv`;
+      archive.append(csv, { name: datasetFileName });
     }
+
     await archive.finalize();
   } catch (err) {
     console.error("exportData error:", err);

@@ -526,7 +526,7 @@ export default function PostJobPage({ token: propToken, onCreated }) {
                   </div>
                 </Field>
 
-                <Field label="Salary Range (Max)" error={errors.salaryMax} required>
+                <Field label="Monthly salary" error={errors.salaryMax} required>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
                       {PESO}

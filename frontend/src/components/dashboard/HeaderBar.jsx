@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, PanelLeft, Loader2 } from "lucide-react";
+import { Bell, PanelLeft, Loader2, Trash2 } from "lucide-react";
 
 /* ---------------- constants ---------------- */
 const PERM_TYPE = "application";
@@ -194,7 +194,7 @@ function NotificationPopover({ open, onClose, API_BASE, getAuthHeaders }) {
               const applicantName =
                 n?.data?.applicantName ||
                 (typeof n?.title === "string" &&
-                  (n.title.match(/New applicant\\s+—\\s+(.*?)\\s+for\\s+/i)?.[1] || null)) ||
+                  (n.title.match(/New applicant\s+—\s+(.*?)\s+for\s+/i)?.[1] || null)) ||
                 "Applicant";
 
               return (
@@ -222,7 +222,7 @@ function NotificationPopover({ open, onClose, API_BASE, getAuthHeaders }) {
                         <button
                           type="button"
                           onClick={() => goReview(n)}
-                          className="px-3 py-1.5 rounded-md text-white text-xs bg-[#6D4AFE] hover:opacity-95"
+                          className="px-3 py-1.5 rounded-md text-white text-xs bg-orange-500 hover:opacity-95"
                           title="Review application"
                         >
                           Review Application
@@ -261,13 +261,12 @@ function NotificationPopover({ open, onClose, API_BASE, getAuthHeaders }) {
           className="text-xs text-blue-700 hover:underline"
           onClick={onClose}
         >
-          View all notifications →
+          View all notifications → 
         </a>
       </div>
     </div>
   );
 }
-
 /* ---------------- HeaderBar ---------------- */
 export default function HeaderBar({
   companyName = "Company",

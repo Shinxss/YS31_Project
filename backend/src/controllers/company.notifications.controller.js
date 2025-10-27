@@ -1,5 +1,6 @@
 import Notification from "../models/Notification.js";
 import { sendPlainEmail } from "../utils/mailer.js";
+import mongoose from 'mongoose';
 
 /**
  * POST /api/company/notifications

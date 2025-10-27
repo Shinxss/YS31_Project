@@ -115,24 +115,25 @@ export const createJob = async (req, res) => {
     if (!deadline) throw new Error("applicationDeadline is required");
 
     const jobDoc = {
-      companyId: company._id,
-      companyName: company.companyName,
-      title: String(title).trim(),
-      department: String(department).trim(),
-      workType,
-      jobType,
-      location: String(location).trim(),
-      salaryMax: salaryMaxStored,
-      salaryMaxNumber,
-      description: String(description).trim(),
-      skills: skillsArr,
-      requirements: reqArr,
-      responsibilities: respArr,
-      offers: offersArr,
-      startDateRange: { from, to },
-      applicationDeadline: deadline,
-      status: "open",
-    };
+    companyId: company._id,
+    companyName: company.companyName,
+    title: String(title).trim(),
+    department: String(department).trim(),
+    workType,
+    jobType,
+    location: String(location).trim(),
+    salaryMax: salaryMaxStored,
+    salaryMaxNumber,
+    description: String(description).trim(),
+    skills: skillsArr,
+    requirements: reqArr,
+    responsibilities: respArr,
+    offers: offersArr,
+    startDateRange: { from, to },
+    applicationDeadline: deadline,
+    status: "open",
+    companyEmployeeId: req.user.id,  // Add this field to associate the employee
+  };  
 
     // ✅ only set if provided (keeps schema flexible) (added)
     if (screeningArr.length) {
@@ -151,16 +152,26 @@ export const createJob = async (req, res) => {
 // GET /api/jobs/mine
 export const myJobs = async (req, res) => {
   try {
-    const company = await getCompanyForUser(req.user.id);
+    const company = await getCompanyForUser(req.user.id); // Get the company for the logged-in user
+
     const jobs = await Job.find({ companyId: company._id })
       .sort({ createdAt: -1 })
+      .populate({
+        path: "companyId",  // Populate company information
+        select: "companyName profileImage city rating",  // Select fields to return
+      })
+      .populate({
+        path: "companyEmployees",  // Populate company employees information
+        select: "firstName lastName role email",  // Add fields as needed
+      })
       .lean();
+
     res.json({ jobs });
   } catch (err) {
     console.error("myJobs error:", err);
     res.status(400).json({ message: err.message || "Server error" });
   }
-};
+}
 
 // GET /api/jobs  (public list for students)
 export const getAllJobs = async (req, res) => {
@@ -261,8 +272,12 @@ export async function listJobs(req, res) {
     const jobs = await Job.find({})
       .sort({ createdAt: -1 })
       .populate({
-        path: "companyId",
-        select: "companyName profileImage city rating", // add any other fields you want
+        path: "companyId",  // Populate company information
+        select: "companyName profileImage city rating", // Add more fields as needed
+      })
+      .populate({
+        path: "companyEmployees", // Populate company employees information
+        select: "firstName lastName role email", // Add more fields as needed
       })
       .lean();
 
@@ -273,14 +288,23 @@ export async function listJobs(req, res) {
         companyName: c.companyName,
         city: c.city || "",
         rating: c.rating ?? 4.8,
-        // give the FE a ready-to-use absolute URL
         profileImageUrl: toCompanyImageUrl(c.profileImage || c.profilePhoto || ""),
-        // keep filename in case you need it
         profileImage: c.profileImage || "",
       };
+
+      // If you want to include employee data for each job post
+      const companyEmployees = j.companyEmployees || [];
+      const employeeData = companyEmployees.map(emp => ({
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+        role: emp.role,
+        email: emp.email,
+      }));
+
       return {
         ...j,
         companySnapshot,
+        employees: employeeData,  // Add populated employee data
       };
     });
 

@@ -1,25 +1,18 @@
-// src/pages/admin/UserManagementPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import { Search, Loader2 } from "lucide-react";
 
-/* -------------------------------------------------------
-   API base resolver (Vite env first; dev fallback)
-------------------------------------------------------- */
-/* ---------- API base (robust) ---------- */
+// API base resolver
 function resolveApiBase() {
   let raw = (import.meta.env?.VITE_API_BASE || "").trim();
 
-  // strip trailing slash
   raw = raw.replace(/\/+$/, "");
 
-  // If someone set ":5000" or "localhost:5000", fix it.
   if (/^:/.test(raw)) {
     raw = `${window.location.protocol}//localhost${raw}`; // -> http://localhost:5000
   } else if (/^localhost(?::\d+)?$/.test(raw)) {
     raw = `${window.location.protocol}//${raw}`; // -> http://localhost:5000
   }
 
-  // Dev fallback when empty
   if (!raw && typeof window !== "undefined" && /:5173|:5174/.test(window.location.origin)) {
     raw = "http://localhost:5000";
   }
@@ -36,13 +29,9 @@ const API = {
   toggleCompanyStatus: (id) => api(`/api/admin/users/companies/${id}/status`),
 };
 
-/* -------------------------------------------------------
-   Small helpers
-------------------------------------------------------- */
 const cls = (...xs) => xs.filter(Boolean).join(" ");
 const normalize = (v = "") => String(v).trim().toLowerCase().replace(/\s+/g, " ");
 
-/** statusBadge - maps status to label + tailwind classes */
 const statusBadge = (raw) => {
   const s = normalize(raw);
   if (s.includes("active") || s === "enabled")
@@ -50,13 +39,11 @@ const statusBadge = (raw) => {
   if (s.includes("disabled") || s.includes("blocked"))
     return { label: "Disabled", className: "bg-rose-100 text-rose-700" };
   return { label: raw || "Unknown", className: "bg-gray-100 text-gray-600" };
+
 };
 
-/* -------------------------------------------------------
-   Main Page
-------------------------------------------------------- */
 export default function UserManagementPage() {
-  const [tab, setTab] = useState("students"); // "students" | "companies"
+  const [tab, setTab] = useState("students");
   const [students, setStudents] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -203,25 +190,49 @@ export default function UserManagementPage() {
         </div>
 
         {/* Divider */}
-        <div className="h-px bg-gray-200" />
+        <div className="h-px bg-gray-100 " />
 
         {/* Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-w-[1200px]">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-gray-500">
-                <th className="py-3 px-4">Name</th>
-                <th className="py-3 px-4">{tab === "students" ? "School" : "Location"}</th>
-                <th className="py-3 px-4">Email</th>
+                <th className="py-3 px-4">ID</th>
+                {tab === "students" ? (
+                  <>
+                    <th className="py-3 px-4">First Name</th>
+                    <th className="py-3 px-4">Last Name</th>
+                    <th className="py-3 px-4">Email</th>
+                    <th className="py-3 px-4">Course</th>
+                    <th className="py-3 px-4">Age</th>
+                    <th className="py-3 px-4">Gender</th>
+                    <th className="py-3 px-4">Location</th>
+                    <th className="py-3 px-4">Application Count</th>
+                    <th className="py-3 px-4">Skills Count</th>
+                    <th className="py-3 px-4">Experience Count</th>
+                    <th className="py-3 px-4">Education Count</th>
+                    <th className="py-3 px-4">Certification Count</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="py-3 px-4">Company Name</th>
+                    <th className="py-3 px-4">Email</th>
+                    <th className="py-3 px-4">First Name</th>
+                    <th className="py-3 px-4">Role</th>
+                    <th className="py-3 px-4">Industry</th>
+                    <th className="py-3 px-4">Location</th>
+                    <th className="py-3 px-4">Job Posts Count</th>
+                    <th className="py-3 px-4">Account Created At</th>
+                  </>
+                )}
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4">Action</th>
               </tr>
             </thead>
-
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={5} className="py-10 text-center text-gray-500">
+                  <td colSpan={tab === "students" ? 13 : 11} className="py-10 text-center text-gray-500">
                     <Loader2 className="inline-block mr-2 h-4 w-4 animate-spin" />
                     Loading {tab}…
                   </td>
@@ -230,7 +241,7 @@ export default function UserManagementPage() {
 
               {!loading && error && (
                 <tr>
-                  <td colSpan={5} className="py-6 px-4">
+                  <td colSpan={tab === "students" ? 13 : 11} className="py-6 px-4">
                     <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg">
                       {error}
                     </div>
@@ -240,7 +251,7 @@ export default function UserManagementPage() {
 
               {!loading && !error && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-gray-500">
+                  <td colSpan={tab === "students" ? 13 : 11} className="py-8 text-center text-gray-500">
                     No {tab} found.
                   </td>
                 </tr>
@@ -250,27 +261,44 @@ export default function UserManagementPage() {
                 !error &&
                 filtered.map((row, idx) => {
                   const isLast = idx === filtered.length - 1;
-                  const badge = statusBadge(row.status);
-                  const name =
-                    row.name || row.fullName || row.companyName || "—";
-                  const schoolOrLoc =
-                    tab === "students" ? row.school || "—" : row.location || "—";
-                  const email = row.email || row.contactEmail || "—";
-                  const isDisabled = normalize(row.status).includes("disabled") || normalize(row.status)==="blocked";
-
                   return (
-                    <tr key={row._id || idx} className={cls(!isLast && "border-b border-gray-100")}>
-                      <td className="py-4 px-4">{name}</td>
-                      <td className="py-4 px-4">{schoolOrLoc}</td>
-                      <td className="py-4 px-4">{email}</td>
+                    <tr key={row._id || idx} className={cls(!isLast && "border-b border-gray-100 max-w-[1200px]")}>
+                      <td className="py-4 px-4">{row._id}</td>
+                      {tab === "students" ? (
+                        <>
+                          <td className="py-4 px-4">{row.firstName}</td>
+                          <td className="py-4 px-4">{row.lastName}</td>
+                          <td className="py-4 px-4">{row.email}</td>
+                          <td className="py-4 px-4">{row.course}</td>
+                          <td className="py-4 px-4">{row.age}</td>
+                          <td className="py-4 px-4">{row.gender}</td>
+                          <td className="py-4 px-4">{row.location}</td>
+                          <td className="py-4 px-4">{row.applicationCount}</td>
+                          <td className="py-4 px-4">{row.skillsCount}</td>
+                          <td className="py-4 px-4">{row.experienceCount}</td>
+                          <td className="py-4 px-4">{row.educationCount}</td>
+                          <td className="py-4 px-4">{row.certificationCount}</td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="py-4 px-4">{row.companyName}</td>
+                          <td className="py-4 px-4">{row.email}</td>
+                          <td className="py-4 px-4">{row.firstName}</td>
+                          <td className="py-4 px-4">{row.role}</td>
+                          <td className="py-4 px-4">{row.industry}</td>
+                          <td className="py-4 px-4">{row.location}</td>
+                          <td className="py-4 px-4">{row.jobPostCount}</td>
+                          <td className="py-4 px-4">{new Date(row.createdAt).toLocaleDateString()}</td>
+                        </>
+                      )}
                       <td className="py-4 px-4">
                         <span
                           className={cls(
                             "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
-                            badge.className
+                            statusBadge(row.status).className
                           )}
                         >
-                          {badge.label}
+                          {statusBadge(row.status).label}
                         </span>
                       </td>
                       <td className="py-4 px-4">
@@ -281,18 +309,18 @@ export default function UserManagementPage() {
                             "px-3 py-1.5 rounded-md text-xs font-medium border transition",
                             togglingId === row._id
                               ? "opacity-60 cursor-not-allowed"
-                              : isDisabled
+                              : row.status === "disabled"
                               ? "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
                               : "border-gray-200 text-gray-700 hover:bg-gray-50"
                           )}
-                          title={isDisabled ? "Enable" : "Disable"}
+                          title={row.status === "disabled" ? "Enable" : "Disable"}
                         >
                           {togglingId === row._id ? (
                             <span className="inline-flex items-center">
                               <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
                               Saving…
                             </span>
-                          ) : isDisabled ? (
+                          ) : row.status === "disabled" ? (
                             "Enable"
                           ) : (
                             "Disable"
