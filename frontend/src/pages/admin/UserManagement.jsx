@@ -19,6 +19,7 @@ function resolveApiBase() {
 
   return raw;
 }
+
 const RAW_API_BASE = resolveApiBase();
 const api = (p) => (RAW_API_BASE ? `${RAW_API_BASE}${p}` : p);
 
@@ -27,11 +28,14 @@ const API = {
   companies: api("/api/admin/users/companies"),
   toggleStudentStatus: (id) => api(`/api/admin/users/students/${id}/status`),
   toggleCompanyStatus: (id) => api(`/api/admin/users/companies/${id}/status`),
+  toggleCompanyVerification: (id) => api(`/api/admin/users/companies/${id}/verify`),
 };
 
+// Helper function for classNames
 const cls = (...xs) => xs.filter(Boolean).join(" ");
 const normalize = (v = "") => String(v).trim().toLowerCase().replace(/\s+/g, " ");
 
+// statusBadge function to handle different status styles
 const statusBadge = (raw) => {
   const s = normalize(raw);
   if (s.includes("active") || s === "enabled")
@@ -39,7 +43,12 @@ const statusBadge = (raw) => {
   if (s.includes("disabled") || s.includes("blocked"))
     return { label: "Disabled", className: "bg-rose-100 text-rose-700" };
   return { label: raw || "Unknown", className: "bg-gray-100 text-gray-600" };
+};
 
+// Formatting the date properly
+const formatDate = (dateString) => {
+  const date = new Date(dateString);
+  return !isNaN(Date.parse(dateString)) ? date.toLocaleDateString() : "Invalid Date";
 };
 
 export default function UserManagementPage() {
@@ -51,7 +60,7 @@ export default function UserManagementPage() {
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
 
-  // Fetch lists
+  // Fetch lists of students and companies
   useEffect(() => {
     let abort = new AbortController();
     (async () => {
@@ -78,7 +87,7 @@ export default function UserManagementPage() {
     return () => abort.abort();
   }, [tab]);
 
-  // Client-side search
+  // Client-side search filter
   const filtered = useMemo(() => {
     const q = normalize(query);
     const list = tab === "students" ? students : companies;
@@ -99,7 +108,7 @@ export default function UserManagementPage() {
     });
   }, [query, students, companies, tab]);
 
-  // Toggle Enable/Disable (optimistic)
+  // Toggle Enable/Disable status (optimistic UI update)
   const handleToggle = async (row) => {
     try {
       setTogglingId(row._id);
@@ -109,7 +118,7 @@ export default function UserManagementPage() {
           ? "active"
           : "disabled";
 
-      // optimistic update
+      // Optimistic update for UI
       if (isStudent) {
         setStudents((prev) =>
           prev.map((x) => (x._id === row._id ? { ...x, status: nextStatus } : x))
@@ -150,12 +159,43 @@ export default function UserManagementPage() {
     }
   };
 
+  const handleVerify = async (row) => {
+    if (!row._id || tab !== "companies") return;
+    setError("");
+    setTogglingId(row._id);
+
+    try {
+      // Optimistic update for UI
+      setCompanies((prev) =>
+        prev.map((x) => (x._id === row._id ? { ...x, isVerified: !row.isVerified } : x))
+      );
+
+      const res = await fetch(API.toggleCompanyVerification(row._id), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ isVerified: !row.isVerified }),
+      });
+
+      if (!res.ok) {
+        // revert on failure
+        setCompanies((prev) =>
+          prev.map((x) => (x._id === row._id ? { ...x, isVerified: row.isVerified } : x))
+        );
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.message || "Failed to update verification status");
+      }
+    } catch (e) {
+      setError(e.message || "Failed to update verification status");
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-semibold text-gray-900">User Management</h1>
-      <p className="text-sm text-gray-500">
-        Manage students and companies accounts
-      </p>
+      <p className="text-sm text-gray-500">Manage students and companies accounts</p>
 
       {/* Tabs */}
       <div className="mt-4 bg-white border border-gray-200 rounded-xl">
@@ -200,39 +240,30 @@ export default function UserManagementPage() {
                 <th className="py-3 px-4">ID</th>
                 {tab === "students" ? (
                   <>
-                    <th className="py-3 px-4">First Name</th>
-                    <th className="py-3 px-4">Last Name</th>
+                    <th className="py-3 px-4">Name</th>
                     <th className="py-3 px-4">Email</th>
+                    <th className="py-3 px-4">School</th>
                     <th className="py-3 px-4">Course</th>
-                    <th className="py-3 px-4">Age</th>
-                    <th className="py-3 px-4">Gender</th>
-                    <th className="py-3 px-4">Location</th>
-                    <th className="py-3 px-4">Application Count</th>
-                    <th className="py-3 px-4">Skills Count</th>
-                    <th className="py-3 px-4">Experience Count</th>
-                    <th className="py-3 px-4">Education Count</th>
-                    <th className="py-3 px-4">Certification Count</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Account Created</th>
                   </>
                 ) : (
                   <>
-                    <th className="py-3 px-4">Company Name</th>
+                    <th className="py-3 px-4">Name</th>
                     <th className="py-3 px-4">Email</th>
-                    <th className="py-3 px-4">First Name</th>
-                    <th className="py-3 px-4">Role</th>
-                    <th className="py-3 px-4">Industry</th>
                     <th className="py-3 px-4">Location</th>
-                    <th className="py-3 px-4">Job Posts Count</th>
-                    <th className="py-3 px-4">Account Created At</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Verified</th>
+                    <th className="py-3 px-4">Account Created</th>
                   </>
                 )}
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4">Action</th>
+                <th className="py-3 px-4">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={tab === "students" ? 13 : 11} className="py-10 text-center text-gray-500">
+                  <td colSpan={tab === "students" ? 7 : 6} className="py-10 text-center text-gray-500">
                     <Loader2 className="inline-block mr-2 h-4 w-4 animate-spin" />
                     Loading {tab}…
                   </td>
@@ -241,7 +272,7 @@ export default function UserManagementPage() {
 
               {!loading && error && (
                 <tr>
-                  <td colSpan={tab === "students" ? 13 : 11} className="py-6 px-4">
+                  <td colSpan={tab === "students" ? 7 : 6} className="py-6 px-4">
                     <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg">
                       {error}
                     </div>
@@ -251,7 +282,7 @@ export default function UserManagementPage() {
 
               {!loading && !error && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={tab === "students" ? 13 : 11} className="py-8 text-center text-gray-500">
+                  <td colSpan={tab === "students" ? 7 : 6} className="py-8 text-center text-gray-500">
                     No {tab} found.
                   </td>
                 </tr>
@@ -266,66 +297,97 @@ export default function UserManagementPage() {
                       <td className="py-4 px-4">{row._id}</td>
                       {tab === "students" ? (
                         <>
-                          <td className="py-4 px-4">{row.firstName}</td>
-                          <td className="py-4 px-4">{row.lastName}</td>
+                          <td className="py-4 px-4">{row.firstName} {row.lastName}</td>
                           <td className="py-4 px-4">{row.email}</td>
+                          <td className="py-4 px-4">{row.school}</td>
                           <td className="py-4 px-4">{row.course}</td>
-                          <td className="py-4 px-4">{row.age}</td>
-                          <td className="py-4 px-4">{row.gender}</td>
-                          <td className="py-4 px-4">{row.location}</td>
-                          <td className="py-4 px-4">{row.applicationCount}</td>
-                          <td className="py-4 px-4">{row.skillsCount}</td>
-                          <td className="py-4 px-4">{row.experienceCount}</td>
-                          <td className="py-4 px-4">{row.educationCount}</td>
-                          <td className="py-4 px-4">{row.certificationCount}</td>
+                          <td className="py-4 px-4">
+                            <span
+                              className={cls(
+                                "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
+                                statusBadge(row.status).className
+                              )}
+                            >
+                              {statusBadge(row.status).label}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4">{formatDate(row.accountCreatedAt)}</td>
                         </>
                       ) : (
                         <>
                           <td className="py-4 px-4">{row.companyName}</td>
                           <td className="py-4 px-4">{row.email}</td>
-                          <td className="py-4 px-4">{row.firstName}</td>
-                          <td className="py-4 px-4">{row.role}</td>
-                          <td className="py-4 px-4">{row.industry}</td>
                           <td className="py-4 px-4">{row.location}</td>
-                          <td className="py-4 px-4">{row.jobPostCount}</td>
-                          <td className="py-4 px-4">{new Date(row.createdAt).toLocaleDateString()}</td>
+                          <td className="py-4 px-4">
+                            <span
+                              className={cls(
+                                "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
+                                statusBadge(row.status).className
+                              )}
+                            >
+                              {statusBadge(row.status).label}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4">
+                            <span
+                              className={cls(
+                                "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
+                                row.isVerified
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-yellow-100 text-yellow-700"
+                              )}
+                            >
+                              {row.isVerified ? "Verified" : "Pending"}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4">{formatDate(row.accountCreatedAt)}</td>
                         </>
                       )}
                       <td className="py-4 px-4">
-                        <span
-                          className={cls(
-                            "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
-                            statusBadge(row.status).className
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleToggle(row)}
+                            disabled={togglingId === row._id}
+                            className={cls(
+                              "px-3 py-1.5 rounded-md text-xs font-medium border transition",
+                              togglingId === row._id
+                                ? "opacity-60 cursor-not-allowed"
+                                : row.status === "disabled"
+                                ? "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                                : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                            )}
+                            title={row.status === "disabled" ? "Enable" : "Disable"}
+                          >
+                            {togglingId === row._id ? (
+                              <span className="inline-flex items-center">
+                                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                                Saving…
+                              </span>
+                            ) : row.status === "disabled" ? (
+                              "Enable"
+                            ) : (
+                              "Disable"
+                            )}
+                          </button>
+                          
+                          {tab === "companies" && (
+                            <button
+                              onClick={() => handleVerify(row)}
+                              disabled={togglingId === row._id}
+                              className={cls(
+                                "px-3 py-1.5 rounded-md text-xs font-medium border transition",
+                                togglingId === row._id
+                                  ? "opacity-60 cursor-not-allowed"
+                                  : row.isVerified
+                                  ? "border-yellow-200 text-yellow-700 hover:bg-yellow-50"
+                                  : "border-blue-200 text-blue-700 hover:bg-blue-50"
+                              )}
+                              title={row.isVerified ? "Remove Verification" : "Verify Company"}
+                            >
+                              {row.isVerified ? "Unverify" : "Verify"}
+                            </button>
                           )}
-                        >
-                          {statusBadge(row.status).label}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4">
-                        <button
-                          onClick={() => handleToggle(row)}
-                          disabled={togglingId === row._id}
-                          className={cls(
-                            "px-3 py-1.5 rounded-md text-xs font-medium border transition",
-                            togglingId === row._id
-                              ? "opacity-60 cursor-not-allowed"
-                              : row.status === "disabled"
-                              ? "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                              : "border-gray-200 text-gray-700 hover:bg-gray-50"
-                          )}
-                          title={row.status === "disabled" ? "Enable" : "Disable"}
-                        >
-                          {togglingId === row._id ? (
-                            <span className="inline-flex items-center">
-                              <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-                              Saving…
-                            </span>
-                          ) : row.status === "disabled" ? (
-                            "Enable"
-                          ) : (
-                            "Disable"
-                          )}
-                        </button>
+                        </div>
                       </td>
                     </tr>
                   );

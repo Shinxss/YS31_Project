@@ -57,7 +57,13 @@ export default function Signup() {
     industryOther: "",
     password: "",
     confirmPassword: "",
+    legalRegistrationDocs: [],
+    taxIdentityDocs: [],
   });
+
+  // File upload state
+  const [legalFiles, setLegalFiles] = useState([]);
+  const [taxFiles, setTaxFiles] = useState([]);
 
   // 👁️ password visibility states
   const [showPassword, setShowPassword] = useState(false);
@@ -201,6 +207,16 @@ export default function Signup() {
         if (company.password !== company.confirmPassword)
           throw new Error("Passwords do not match");
 
+        // Validate file uploads for company owners
+        if (company.companyRole === "Owner") {
+          if (legalFiles.length === 0) {
+            throw new Error("Please upload at least one legal registration document");
+          }
+          if (taxFiles.length === 0) {
+            throw new Error("Please upload at least one tax identity document");
+          }
+        }
+
         const finalRole =
           company.companyRole === "Others"
             ? company.companyRoleOther.trim()
@@ -230,6 +246,25 @@ export default function Signup() {
           companyRole: finalRole,
           ...(company.companyRole === "Owner" && { industry: finalIndustry }),
         };
+
+        // Upload files if owner
+        if (company.companyRole === "Owner") {
+          const formData = new FormData();
+          legalFiles.forEach((file) => formData.append("legalDocs", file));
+          taxFiles.forEach((file) => formData.append("taxDocs", file));
+
+          const uploadRes = await fetch(`${API_BASE}/api/auth/upload-company-docs`, {
+            method: "POST",
+            body: formData,
+          });
+
+          const uploadData = await uploadRes.json();
+          if (!uploadRes.ok) throw new Error(uploadData?.message || "Failed to upload documents");
+
+          body.legalDocs = uploadData.legalDocs || [];
+          body.taxDocs = uploadData.taxDocs || [];
+        }
+
         emailToUse = company.email;
       }
 
@@ -582,6 +617,73 @@ export default function Signup() {
                 setShow={setShowCompanyConfirm}
                 error={companyErrors.confirmPassword}
               />
+
+              {/* File Uploads - Only for Owners */}
+              {company.companyRole === "Owner" && (
+                <>
+                  {/* Legal Registration Documents */}
+                  <div>
+                    <label className="block mb-1 font-semibold text-gray-900 text-[0.95rem]">
+                      Legal Registration Documents *
+                    </label>
+                    <input
+                      type="file"
+                      multiple
+                      accept=".pdf,.doc,.docx"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files);
+                        setLegalFiles(files);
+                        if (files.length === 0) {
+                          const err = "At least one legal registration document is required";
+                          setCompanyErrors((e) => ({ ...e, legalDocs: err }));
+                        } else {
+                          setCompanyErrors((e) => ({ ...e, legalDocs: "" }));
+                        }
+                      }}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                    />
+                    {companyErrors.legalDocs && (
+                      <p className="text-xs text-red-600 mt-1">{companyErrors.legalDocs}</p>
+                    )}
+                    {legalFiles.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {legalFiles.length} file(s) selected
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Tax Identity Documents */}
+                  <div>
+                    <label className="block mb-1 font-semibold text-gray-900 text-[0.95rem]">
+                      Tax Identity Documents *
+                    </label>
+                    <input
+                      type="file"
+                      multiple
+                      accept=".pdf,.doc,.docx"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files);
+                        setTaxFiles(files);
+                        if (files.length === 0) {
+                          const err = "At least one tax identity document is required";
+                          setCompanyErrors((e) => ({ ...e, taxDocs: err }));
+                        } else {
+                          setCompanyErrors((e) => ({ ...e, taxDocs: "" }));
+                        }
+                      }}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                    />
+                    {companyErrors.taxDocs && (
+                      <p className="text-xs text-red-600 mt-1">{companyErrors.taxDocs}</p>
+                    )}
+                    {taxFiles.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {taxFiles.length} file(s) selected
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
 
               {/* Terms */}
               <div className="flex items-start gap-2 text-sm mt-3">

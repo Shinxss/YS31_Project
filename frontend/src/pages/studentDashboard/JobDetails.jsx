@@ -26,12 +26,15 @@ export default function JobDetails() {
   const [isApplying, setIsApplying] = useState(false);
   const [showApplyModal, setShowApplyModal] = useState(false);
 
+  const [companyProfile, setCompanyProfile] = useState(null);
+
   useEffect(() => {
     const fetchJob = async () => {
       try {
         const res = await fetch(`${API_BASE}/api/jobs/${jobId}`);
         const data = await res.json();
         setJob(data.job || data);
+        setCompanyProfile(data.company);
       } catch {
         toast.error("Failed to load job details");
       } finally {
@@ -152,6 +155,14 @@ export default function JobDetails() {
   const applicationDeadline = job.applicationDeadline;
 
   // ---------------- UI ----------------
+  // Build company logo URL
+  const buildCompanyLogoUrl = () => {
+    if (companyProfile?.profileImage) {
+      return `${API_BASE}/uploads/company/${companyProfile.profileImage}`;
+    }
+    return companyLogo;
+  };
+
   return (
     <div className="min-h-screen bg-[#F4F7FB] py-8 px-4">
       <div className="max-w-6xl mx-auto">
@@ -162,13 +173,57 @@ export default function JobDetails() {
           <ArrowLeft size={16} /> Back to Jobs
         </button>
 
+        {/* ===== COMPANY PROFILE SECTION ===== */}
+        {companyProfile && (
+          <div className="mt-4 bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">About the Company</h3>
+            <div className="flex items-start gap-4">
+              {companyProfile.profileImage ? (
+                <img
+                  src={`${API_BASE}/uploads/company/${companyProfile.profileImage}`}
+                  alt={`${companyName}`}
+                  className="h-16 w-16 rounded-lg object-cover border border-gray-200"
+                />
+              ) : (
+                <div className="h-16 w-16 rounded-lg bg-blue-100 flex items-center justify-center border border-blue-200">
+                  <Building2 size={24} className="text-blue-600" />
+                </div>
+              )}
+              <div className="flex-1">
+                <h4 className="font-semibold text-gray-900">{companyName}</h4>
+                {companyProfile.industry && (
+                  <p className="text-sm text-gray-600 mt-1">{companyProfile.industry}</p>
+                )}
+                {companyProfile.city && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    <MapPin size={14} className="inline mr-1" /> {companyProfile.city}
+                  </p>
+                )}
+                {companyProfile.description && (
+                  <p className="text-sm text-gray-700 mt-2">{companyProfile.description}</p>
+                )}
+                {companyProfile.website && (
+                  <a
+                    href={companyProfile.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:underline mt-2 inline-flex items-center"
+                  >
+                    <Globe size={14} className="mr-1" /> Visit Website
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ===== TITLE CARD (no duration) ===== */}
         <div className="mt-4 bg-white rounded-xl shadow-sm border border-blue-200 p-4 sm:p-5">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
-              {companyLogo ? (
+              {buildCompanyLogoUrl() ? (
                 <img
-                  src={companyLogo}
+                  src={buildCompanyLogoUrl()}
                   alt={`${companyName} logo`}
                   className="h-9 w-9 rounded-md object-cover border border-gray-200"
                 />

@@ -90,7 +90,7 @@ export const sendSignupOtp = async (req, res) => {
       reqd(course, "course");
       payload = { ...payload, firstName, lastName, course };
     } else {
-      const { companyName, firstName, lastName, companyRole, industry } =
+      const { companyName, firstName, lastName, companyRole, industry, legalDocs, taxDocs } =
         req.body;
       reqd(companyName, "companyName");
       reqd(firstName, "firstName");
@@ -125,6 +125,8 @@ export const sendSignupOtp = async (req, res) => {
         lastName,
         companyRole,
         ...(companyRole === "Owner" && { industry }),
+        ...(companyRole === "Owner" && legalDocs && { legalDocs: Array.isArray(legalDocs) ? legalDocs : [legalDocs] }),
+        ...(companyRole === "Owner" && taxDocs && { taxDocs: Array.isArray(taxDocs) ? taxDocs : [taxDocs] }),
       };
     }
 
@@ -240,18 +242,28 @@ export const verifySignupOtp = async (req, res) => {
       companyIdForJwt = companyDoc?._id || null;
 
       if (payload.companyRole === "Owner") {
-        await CompanyEmployees.updateOne(
-          { companyName: payload.companyName },
-          {
-            $setOnInsert: { companyName: payload.companyName, employees: [] },
-            $set: {
-              owner: {
-                email,
-                firstName: payload.firstName,
-                lastName: payload.lastName,
-              },
+        const updateData = {
+          $setOnInsert: { companyName: payload.companyName, employees: [] },
+          $set: {
+            owner: {
+              email,
+              firstName: payload.firstName,
+              lastName: payload.lastName,
             },
           },
+        };
+
+        // Add documents if they exist
+        if (payload.legalDocs && payload.legalDocs.length > 0) {
+          updateData.$set.legalRegistrationDocs = payload.legalDocs;
+        }
+        if (payload.taxDocs && payload.taxDocs.length > 0) {
+          updateData.$set.taxIdentityDocs = payload.taxDocs;
+        }
+
+        await CompanyEmployees.updateOne(
+          { companyName: payload.companyName },
+          updateData,
           { upsert: true, collation: { locale: "en", strength: 2 } }
         );
       } else {
@@ -406,6 +418,18 @@ export const login = async (req, res) => {
 
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) return res.status(401).json({ message: "Invalid credentials" });
+
+    // Check if company is verified (only for company role)
+    if (user.role === "company") {
+      const CompanyEmployees = (await import("../models/companyEmployees.model.js")).default;
+      const company = await CompanyEmployees.findOne({ "owner.email": user.email }).lean();
+      
+      if (company && !company.isVerified) {
+        return res.status(403).json({ 
+          message: "Please wait for admin approval. Your account is pending verification." 
+        });
+      }
+    }
 
     // Compute companyId for company users (owner or employee)
     const companyId =

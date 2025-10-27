@@ -5,6 +5,7 @@ import {
   listCompanies,
   setStudentStatus,
   setCompanyStatus,
+  setCompanyVerification,
 } from "../controllers/admin.users.controller.js";
 
 // If you have admin auth middleware, import it here:
@@ -18,5 +19,6 @@ router.get("/companies", /* requireAdmin, */ listCompanies);
 
 router.patch("/students/:id/status", /* requireAdmin, */ setStudentStatus);
 router.patch("/companies/:id/status", /* requireAdmin, */ setCompanyStatus);
+router.patch("/companies/:id/verify", /* requireAdmin, */ setCompanyVerification);
 
 export default router;

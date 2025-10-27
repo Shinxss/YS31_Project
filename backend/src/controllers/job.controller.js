@@ -176,12 +176,72 @@ export const myJobs = async (req, res) => {
 // GET /api/jobs  (public list for students)
 export const getAllJobs = async (req, res) => {
   try {
-    const jobs = await Job.find({ status: "open" })
-      .sort({ createdAt: -1 })
-      .select(
-        "_id title companyName department location salaryMax workType jobType description skills startDateRange applicationDeadline createdAt"
-      )
-      .lean();
+    // Use aggregation to populate company information
+    const jobs = await Job.aggregate([
+      {
+        $match: { status: "open" }
+      },
+      {
+        $lookup: {
+          from: "company_employees",
+          let: { companyName: "$companyName" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: [
+                    { $toLower: "$companyName" },
+                    { $toLower: "$$companyName" }
+                  ]
+                }
+              }
+            }
+          ],
+          as: "companyInfo"
+        }
+      },
+      {
+        $addFields: {
+          company: {
+            $cond: {
+              if: { $gt: [{ $size: "$companyInfo" }, 0] },
+              then: { $arrayElemAt: ["$companyInfo", 0] },
+              else: null
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          title: 1,
+          companyName: 1,
+          companyId: 1,
+          department: 1,
+          location: 1,
+          salaryMax: 1,
+          workType: 1,
+          jobType: 1,
+          description: 1,
+          skills: 1,
+          startDateRange: 1,
+          applicationDeadline: 1,
+          createdAt: 1,
+          "companyProfile": {
+            industry: "$company.industry",
+            description: "$company.description",
+            city: "$company.city",
+            profileImage: "$company.profileImage",
+            website: "$company.website",
+            companySize: "$company.companySize",
+            rating: { $ifNull: ["$company.rating", 4.5] }
+          }
+        }
+      },
+      {
+        $sort: { createdAt: -1 }
+      }
+    ]);
 
     res.json({ jobs });
   } catch (err) {
@@ -204,18 +264,41 @@ export const getJobById = async (req, res) => {
 
     if (!job) return res.status(404).json({ message: "Job not found" });
 
-    // Optionally include a bit of company info (safe fields only)
+    // Get company profile information
     let company = null;
-    if (job.companyId) {
-      company = await Company.findById(job.companyId)
-        .select("_id companyName size industry")
-        .lean();
+    if (job.companyName) {
+      const CompanyEmployees = (await import("../models/companyEmployees.model.js")).default;
+      company = await CompanyEmployees.findOne({ companyName: job.companyName }).lean();
     }
 
     res.json({ job, company });
   } catch (err) {
     console.error("getJobById error:", err);
     res.status(500).json({ message: "Failed to fetch job details" });
+  }
+};
+
+// GET /api/jobs/:id/applications - Get applications for a job
+export const getJobApplications = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!isObjectId(id)) return res.status(404).json({ message: "Job not found" });
+
+    const Application = (await import("../models/Application.model.js")).default;
+    const Student = (await import("../models/student.model.js")).default;
+
+    const applications = await Application.find({ job: id })
+      .populate({
+        path: "student",
+        select: "firstName lastName email profilePicture course school",
+        model: "Student"
+      })
+      .lean();
+
+    res.json({ applications });
+  } catch (err) {
+    console.error("getJobApplications error:", err);
+    res.status(500).json({ message: "Failed to fetch applications" });
   }
 };
 

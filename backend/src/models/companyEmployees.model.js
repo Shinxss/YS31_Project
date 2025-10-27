@@ -35,6 +35,13 @@ const CompanyEmployeesSchema = new mongoose.Schema(
     // 🆕 image fields
     coverPhoto: { type: String, trim: true, default: "" },
     profileImage: { type: String, trim: true, default: "" },
+
+    // ✅ Verification status
+    isVerified: { type: Boolean, default: false },
+
+    // ✅ Company verification documents
+    legalRegistrationDocs: [{ type: String, trim: true }], // Array of file paths
+    taxIdentityDocs: [{ type: String, trim: true }], // Array of file paths
   },
   { timestamps: true }
 );

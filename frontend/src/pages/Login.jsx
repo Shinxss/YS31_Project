@@ -71,11 +71,18 @@ export default function Login() {
           throw new Error("Invalid email or password");
         }
         if (res.status === 403) {
-          setErrors((prev) => ({
-            ...prev,
-            email: "Wrong role selected for this account",
-          }));
-          throw new Error("Invalid role selected");
+          // Check if this is a verification error
+          if (data?.message?.includes("admin approval") || data?.message?.includes("verification")) {
+            setMsg(data.message);
+            setErrors({ email: "", password: "" });
+          } else {
+            setErrors((prev) => ({
+              ...prev,
+              email: "Wrong role selected for this account",
+            }));
+            throw new Error("Invalid role selected");
+          }
+          return; // Don't proceed with login
         }
         throw new Error(data?.message || "Login failed");
       }
