@@ -173,49 +173,7 @@ export default function JobDetails() {
           <ArrowLeft size={16} /> Back to Jobs
         </button>
 
-        {/* ===== COMPANY PROFILE SECTION ===== */}
-        {companyProfile && (
-          <div className="mt-4 bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">About the Company</h3>
-            <div className="flex items-start gap-4">
-              {companyProfile.profileImage ? (
-                <img
-                  src={`${API_BASE}/uploads/company/${companyProfile.profileImage}`}
-                  alt={`${companyName}`}
-                  className="h-16 w-16 rounded-lg object-cover border border-gray-200"
-                />
-              ) : (
-                <div className="h-16 w-16 rounded-lg bg-blue-100 flex items-center justify-center border border-blue-200">
-                  <Building2 size={24} className="text-blue-600" />
-                </div>
-              )}
-              <div className="flex-1">
-                <h4 className="font-semibold text-gray-900">{companyName}</h4>
-                {companyProfile.industry && (
-                  <p className="text-sm text-gray-600 mt-1">{companyProfile.industry}</p>
-                )}
-                {companyProfile.city && (
-                  <p className="text-sm text-gray-500 mt-1">
-                    <MapPin size={14} className="inline mr-1" /> {companyProfile.city}
-                  </p>
-                )}
-                {companyProfile.description && (
-                  <p className="text-sm text-gray-700 mt-2">{companyProfile.description}</p>
-                )}
-                {companyProfile.website && (
-                  <a
-                    href={companyProfile.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:underline mt-2 inline-flex items-center"
-                  >
-                    <Globe size={14} className="mr-1" /> Visit Website
-                  </a>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {/* ===== TITLE CARD (no duration) ===== */}
         <div className="mt-4 bg-white rounded-xl shadow-sm border border-blue-200 p-4 sm:p-5">
@@ -424,31 +382,31 @@ export default function JobDetails() {
                   <Users size={16} className="text-gray-500 mt-0.5" />
                   <div className="flex-1">
                     <div className="text-[12px] text-gray-500">Company Size</div>
-                    <div>{job.companySize || "Not specified"}</div>
+                    <div>{companyProfile?.companySize || "Not specified"}</div>
                   </div>
                 </div>
 
-                {job.contactEmail && (
+                {companyProfile?.email && (
                   <div className="py-3 flex items-start gap-3">
                     <Mail size={16} className="text-gray-500 mt-0.5" />
                     <div className="flex-1">
-                      <div className="text-[12px] text-gray-500">Contact</div>
-                      <div>{job.contactEmail}</div>
+                      <div className="text-[12px] text-gray-500">Email</div>
+                      <div>{companyProfile.email}</div>
                     </div>
                   </div>
                 )}
 
-                {job.website && (
+                {companyProfile?.website && (
                   <div className="py-3 flex items-start gap-3">
                     <Globe size={16} className="text-gray-500 mt-0.5" />
                     <div className="flex-1">
                       <div className="text-[12px] text-gray-500">Website</div>
                       <a
-                        href={job.website}
+                        href={companyProfile.website}
                         target="_blank"
                         className="text-[#F37526] hover:underline"
                       >
-                        {job.website}
+                        {companyProfile.website}
                       </a>
                     </div>
                   </div>

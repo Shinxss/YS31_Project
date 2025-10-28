@@ -162,7 +162,11 @@ export default function AdminNotifications() {
                       <span className="inline-block w-2 h-2 bg-blue-500 rounded-full"></span>
                     )}
                   </div>
-                  <p className="text-gray-700 mb-2">{notification.message}</p>
+                  <p className="text-gray-700 mb-2">
+                    {notification.type === "company_registration"
+                      ? notification.data?.companyName || notification.message
+                      : notification.message}
+                  </p>
                   <p className="text-xs text-gray-500">
                     {new Date(notification.createdAt).toLocaleString()}
                   </p>

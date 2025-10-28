@@ -44,6 +44,7 @@ export default function AdminDashboard() {
             userName={admin?.name || "System Admin"}
             userRole={admin?.role || "Administrator"}
             onToggleSidebar={toggleCollapsed}
+            onNotificationsClick={() => navigate("/admin/dashboard/notifications")}
           />
         </div>
 

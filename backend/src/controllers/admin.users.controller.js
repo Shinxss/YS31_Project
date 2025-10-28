@@ -96,30 +96,53 @@ export const setCompanyVerification = async (req, res) => {
   try {
     const { id } = req.params;
     const { isVerified } = req.body || {};
-    
+
     if (typeof isVerified !== "boolean") {
       return res.status(400).json({ message: "Invalid isVerified value" });
     }
-    
+
     // Update verification status in Company collection
     const company = await Company.findByIdAndUpdate(
       id,
       { $set: { isVerified } },
       { new: true }
     ).lean();
-    
+
     if (!company) return res.status(404).json({ message: "Company not found" });
-    
+
     // Return updated company data
     const companyData = await shapeCompany(company);
     const user = await User.findOne({ email: company.owner?.email }).lean();
     companyData.status = user?.status || "active";
     companyData.accountCreatedAt = user?.createdAt || company.createdAt;
-    
+
     return res.json(companyData);
   } catch (err) {
     console.error("setCompanyVerification error:", err);
     return res.status(500).json({ message: "Failed to update verification status" });
+  }
+};
+
+/** GET /api/admin/users/companies/:id */
+export const getCompanyDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const company = await Company.findById(id).lean();
+    if (!company) return res.status(404).json({ message: "Company not found" });
+
+    // Shape the company data
+    const companyData = await shapeCompany(company);
+
+    // Get status and createdAt from the users collection based on the company owner email
+    const user = await User.findOne({ email: company.owner?.email }).lean();
+    companyData.status = user?.status || "active";
+    companyData.accountCreatedAt = user?.createdAt || company.createdAt;
+
+    return res.json(companyData);
+  } catch (err) {
+    console.error("getCompanyDetails error:", err);
+    return res.status(500).json({ message: "Failed to load company details" });
   }
 };
 
