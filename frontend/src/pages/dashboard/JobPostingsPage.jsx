@@ -1,6 +1,7 @@
 // src/pages/dashboard/JobPostingsPage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { confirmAction } from "@/utils/confirm";
 
 /* -------------------------------------------------------
    API base resolver
@@ -484,7 +485,7 @@ export default function JobPostingsPage() {
   // Delete -> soft-delete (status: "deleted", isArchived: true)
   const handleDelete = async (jobOrId) => {
     const id = String(jobOrId._id || jobOrId.id || jobOrId);
-    const ok = window.confirm("Delete this job? This will mark it as deleted and archive it.");
+    const ok = await confirmAction({ title: 'Delete this job?', text: 'This will mark it as deleted and archive it.', confirmText: 'Delete' });
     if (!ok) {
       setOpenMenuId(null);
       return;
@@ -574,12 +575,14 @@ export default function JobPostingsPage() {
   // Close / Reopen -> closed <-> open, do NOT archive here
   const handleCloseOrReopen = async (jobOrId) => {
     const id = String(jobOrId._id || jobOrId.id || jobOrId);
+    const job = jobs.find((j) => String(j._id || j.id || j.slug || "") === id);
+    const isCurrentlyClosed = normalize((job?.status || (job?.isActive ? "open" : "closed"))).includes("closed");
+    const ok = await confirmAction({ title: isCurrentlyClosed ? 'Reopen job?' : 'Close job?', text: isCurrentlyClosed ? 'Reopen this job listing?' : 'Close this job listing?', confirmText: isCurrentlyClosed ? 'Reopen' : 'Close' });
+    if (!ok) return;
     setActionLoadingId(id);
     setErr("");
 
-    const job = jobs.find((j) => String(j._id || j.id || j.slug || "") === id);
     const currentStatus = job?.status || (job?.isActive ? "open" : "closed");
-    const isCurrentlyClosed = normalize(currentStatus).includes("closed");
 
     const newStatus = isCurrentlyClosed ? "open" : "closed";
     const payload = { status: newStatus, isArchived: false };

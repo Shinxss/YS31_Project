@@ -318,7 +318,7 @@ export default function StudentHeaderBar({
   }, []);
 
   return (
-    <header className="relative h-16 bg-[#173B8A] text-white flex items-center justify-between px-4 md:px-6 ml-1">
+    <header className="relative h-16 bg-[#173B8A] text-white flex items-center justify-between px-4 md:px-6">
       <div className="flex items-center gap-3">
         <button
           onClick={onToggleSidebar}

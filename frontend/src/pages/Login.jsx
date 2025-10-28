@@ -174,6 +174,12 @@ export default function Login() {
             label="Password"
           />
 
+          <div className="text-right text-sm -mt-2">
+            <a href="/forgot-password" className="text-blue-700 hover:underline">
+              Forgot Password?
+            </a>
+          </div>
+
           <button
             disabled={loading}
             className="w-full bg-[#F37526] text-white py-3 rounded-md font-medium hover:bg-orange-600 transition disabled:opacity-60"

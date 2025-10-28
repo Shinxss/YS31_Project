@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { confirmAction } from "@/utils/confirm";
 import { toast } from "react-toastify";
 import { MapPin, Clock, Building2, Eye, XCircle } from "lucide-react";
 
@@ -147,7 +148,10 @@ export default function MyApplications() {
   const can = canonicalStatus(appObj?.status) === "application sent";
   if (!can) return;
 
-  if (!window.confirm("Are you sure you want to cancel this application?")) return;
+  {
+    const ok = await confirmAction({ title: 'Cancel application?', text: 'Are you sure you want to cancel this application?', confirmText: 'Cancel Application' });
+    if (!ok) return;
+  }
 
   try {
     setWithdrawingId(id);

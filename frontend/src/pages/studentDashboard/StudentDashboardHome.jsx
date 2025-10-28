@@ -319,39 +319,69 @@ export default function StudentDashboardHome({
       </div>
 
       {/* STATS CARDS */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: "Application Sent", value: dashboardStatsLocal.sent, icon: <Send size={16} className="text-gray-400" /> },
-          { label: "Application Accepted", value: dashboardStatsLocal.accepted, icon: <CheckCircle2 size={16} className="text-gray-400" /> },
-          { label: "Application Rejected", value: dashboardStatsLocal.rejected, icon: <XCircle size={16} className="text-gray-400" /> },
-          { label: "Success Rate", value: `${dashboardStatsLocal.successRate}%`, icon: <BarChart3 size={16} className="text-gray-400" /> },
-        ].map((stat, i) => (
-          <div key={i} className="bg-white rounded-xl shadow-sm p-5 h-36 flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <p className="text-gray-500 text-sm">{stat.label}</p>
-              {stat.icon}
-            </div>
-            <h2 className="text-3xl font-bold text-[#173B8A]">{stat.value}</h2>
-            {stat.label === "Success Rate" ? (
-              <div className="relative w-full h-2 rounded-full overflow-hidden bg-gray-200">
-                <div className="absolute inset-0 bg-[#F37526]" />
-                {Number(dashboardStatsLocal.successRate) > 0 && (
-                  <div
-                    className="absolute left-0 top-0 h-2"
-                    style={{
-                      width: `${dashboardStatsLocal.successRate}%`,
-                      background:
-                        "linear-gradient(to right, #173B8A 0%, rgba(23,59,138,0.85) 65%, rgba(23,59,138,0) 100%)",
-                    }}
-                  />
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-gray-400 mt-1"></p>
-            )}
-          </div>
-        ))}
+      {/* STATS CARDS */}
+<div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+  {[
+    {
+      label: "Application Sent",
+      value: dashboardStatsLocal.sent,
+      icon: <Send size={20} className="text-yellow-500" />,
+      change: "+4 from last week",
+      borderClass: "border-yellow-500",
+    },
+    {
+      label: "Application Accepted",
+      value: dashboardStatsLocal.accepted,
+      icon: <CheckCircle2 size={20} className="text-green-500" />,
+      change: "+2 from last week",
+      borderClass: "border-green-500",
+    },
+    {
+      label: "Application Rejected",
+      value: dashboardStatsLocal.rejected,
+      icon: <XCircle size={20} className="text-red-500" />,
+      change: "+1 from last week",
+      borderClass: "border-red-500",
+    },
+    {
+      label: "Success Rate",
+      value: `${dashboardStatsLocal.successRate}%`,
+      icon: <BarChart3 size={20} className="text-blue-600" />,
+      change: null,
+      borderClass: "border-blue-600",
+    },
+  ].map((stat, i) => (
+    <div
+      key={i}
+      className={`relative bg-white rounded-xl shadow-sm p-5 h-36 flex flex-col justify-between border-l-4 ${stat.borderClass} hover:shadow-md transition`}
+    >
+      <div className="flex items-center justify-between">
+        <p className="text-gray-500 text-sm">{stat.label}</p>
+        {stat.icon}
       </div>
+
+      <h2 className="text-3xl font-bold text-[#173B8A]">{stat.value}</h2>
+
+      {stat.label === "Success Rate" ? (
+        <div className="relative w-full h-2 rounded-full overflow-hidden bg-gray-200">
+          <div className="absolute inset-0 bg-[#F37526]" />
+          {Number(dashboardStatsLocal.successRate) > 0 && (
+            <div
+              className="absolute left-0 top-0 h-2"
+              style={{
+                width: `${dashboardStatsLocal.successRate}%`,
+                background:
+                  "linear-gradient(to right, #173B8A 0%, rgba(23,59,138,0.85) 65%, rgba(23,59,138,0) 100%)",
+              }}
+            />
+          )}
+        </div>
+      ) : (
+        <p className="text-xs text-gray-400 mt-1">{stat.change || "— from last week"}</p>
+      )}
+    </div>
+  ))}
+</div>
 
       {/* GRID WRAPPER */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

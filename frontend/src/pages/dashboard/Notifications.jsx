@@ -8,6 +8,7 @@ import {
   Filter,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { confirmAction } from "@/utils/confirm";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 const PAGE_SIZE = 20;
@@ -34,7 +35,7 @@ function Chip({ children, intent = "default" }) {
   const map = {
     default: "bg-gray-100 text-gray-700",
     success: "bg-green-100 text-green-700",
-    warn: "bg-amber-100 text-amber-700",
+    warn: "bg-red-100 text-red-700",
     info: "bg-blue-100 text-blue-700",
   };
   return (
@@ -165,6 +166,8 @@ export default function CompanyNotifications() {
   }
 
   async function removeOne(id) {
+    const ok = await confirmAction({ title: 'Delete notification?', text: 'This action cannot be undone.', confirmText: 'Delete' });
+    if (!ok) return;
     try {
       setItems((p) => p.filter((n) => n._id !== id));
       const res = await fetch(`${API_BASE}/api/company/notifications/${id}`, {

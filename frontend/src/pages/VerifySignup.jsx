@@ -31,19 +31,12 @@ export default function VerifySignup() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.message || "Verification failed");
 
-      // success — clear pending and optionally store token/role
+      // success — clear pending and redirect to login
       localStorage.removeItem("ic_pending_email");
-      if (data.token && data.role) {
-        localStorage.setItem("ic_token", data.token);
-        localStorage.setItem("ic_role", data.role);
-        // redirect based on role
-        if (data.role === "student") location.replace("/student");
-        else location.replace("/company");
-      } else {
-        setMsg("✅ Verified! Please log in.");
-        setEmail("");
-        setCode("");
-      }
+      setMsg("✅ Verified! Redirecting to login...");
+      setTimeout(() => {
+        location.replace("/login");
+      }, 2000);
     } catch (err) {
       setMsg(`❌ ${err.message}`);
     } finally {

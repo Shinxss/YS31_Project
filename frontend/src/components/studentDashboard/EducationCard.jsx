@@ -1,4 +1,5 @@
 import React from "react";
+import { confirmAction } from "@/utils/confirm";
 import { GraduationCap, Pencil, Trash2 } from "lucide-react";
 
 export default function EducationCard({ education, onEdit, onDelete }) {
@@ -32,7 +33,10 @@ export default function EducationCard({ education, onEdit, onDelete }) {
           <Pencil className="w-5 h-5" />
         </button>
         <button
-          onClick={() => onDelete(education._id)}
+          onClick={async () => {
+            const ok = await confirmAction({ title: 'Delete education?', text: 'This action cannot be undone.', confirmText: 'Delete' });
+            if (ok) onDelete(education._id)
+          }}
           className="text-orange-500 hover:text-orange-700 transition"
           title="Delete"
         >

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Bell, RefreshCw, CheckCircle, XCircle, Clock } from "lucide-react";
+import { confirmAction } from "@/utils/confirm";
 import { toast } from "react-toastify";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
@@ -12,7 +13,10 @@ export default function AdminNotifications() {
   const token = localStorage.getItem("ic_token");
 
   async function fetchNotifications({ showSpinner = true } = {}) {
-    if (!token) return;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
     try {
       if (showSpinner) setLoading(true);
@@ -49,6 +53,8 @@ export default function AdminNotifications() {
   }
 
   async function deleteNotification(id) {
+    const ok = await confirmAction({ title: 'Delete notification?', text: 'This action cannot be undone.', confirmText: 'Delete' });
+    if (!ok) return;
     try {
       const res = await fetch(`${API_BASE}/api/admin/users/notifications/${id}`, {
         method: "DELETE",

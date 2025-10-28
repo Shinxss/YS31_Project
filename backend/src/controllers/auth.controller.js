@@ -6,6 +6,7 @@ import Student from "../models/student.model.js";
 import Company from "../models/company.model.js";
 import CompanyEmployees from "../models/companyEmployees.model.js";
 import OtpToken from "../models/otpToken.model.js";
+import PasswordResetToken from "../models/passwordResetToken.model.js";
 import Notification from "../models/Notification.js";
 import { sendOtpEmail } from "../utils/mailer.js";
 
@@ -376,6 +377,77 @@ export const resendSignupOtp = async (req, res) => {
   }
 };
 
+/* ------------------ Password Reset: Send OTP ------------------ */
+export const sendPasswordResetOtp = async (req, res) => {
+  try {
+    const email = String(req.body.email || "").toLowerCase().trim();
+    reqd(email, "email");
+
+    const user = await User.findOne({ email });
+    if (!user) return res.json({ message: "If that email exists, an OTP has been sent" });
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const codeHash = await bcrypt.hash(code, 10);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await PasswordResetToken.deleteMany({ email });
+    await PasswordResetToken.create({ email, codeHash, expiresAt, attempts: 0 });
+
+    await sendOtpEmail({ to: email, otp: code, expiryTime: 10 });
+
+    return res.json({ message: "OTP sent" });
+  } catch (err) {
+    console.error("sendPasswordResetOtp error:", err);
+    return res.status(400).json({ message: err.message || "Failed to send OTP" });
+  }
+};
+
+/* ------------------ Password Reset: Verify + Set New Password ------------------ */
+export const resetPasswordWithOtp = async (req, res) => {
+  try {
+    const email = String(req.body.email || "").toLowerCase().trim();
+    const code = String(req.body.code || "").trim();
+    const newPassword = String(req.body.newPassword || "");
+    reqd(email, "email");
+    reqd(code, "code");
+    reqd(newPassword, "newPassword");
+
+    const tokenDoc = await PasswordResetToken.findOne({ email });
+    if (!tokenDoc) return res.status(400).json({ message: "No pending reset" });
+    if (tokenDoc.expiresAt < new Date()) {
+      await PasswordResetToken.deleteOne({ _id: tokenDoc._id });
+      return res.status(400).json({ message: "Code expired" });
+    }
+    if (tokenDoc.attempts >= 5) {
+      await PasswordResetToken.deleteOne({ _id: tokenDoc._id });
+      return res.status(429).json({ message: "Too many attempts" });
+    }
+
+    const ok = await bcrypt.compare(code, tokenDoc.codeHash);
+    if (!ok) {
+      tokenDoc.attempts += 1;
+      await tokenDoc.save();
+      return res.status(401).json({ message: "Invalid code" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      await PasswordResetToken.deleteOne({ _id: tokenDoc._id });
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    await PasswordResetToken.deleteOne({ _id: tokenDoc._id });
+
+    return res.json({ message: "Password updated" });
+  } catch (err) {
+    console.error("resetPasswordWithOtp error:", err);
+    return res.status(400).json({ message: err.message || "Failed to reset password" });
+  }
+};
+
 /* ------------------ Login ------------------ */
 export const login = async (req, res) => {
   try {
@@ -431,5 +503,31 @@ export const login = async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Login failed" });
+  }
+};
+
+/* ------------------ Change Password (Authenticated) ------------------ */
+export const changePassword = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { currentPassword = "", newPassword = "" } = req.body || {};
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "currentPassword and newPassword are required" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const ok = await bcrypt.compare(currentPassword, user.password);
+    if (!ok) return res.status(401).json({ message: "Current password is incorrect" });
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    return res.json({ message: "Password updated" });
+  } catch (err) {
+    console.error("changePassword error:", err);
+    return res.status(400).json({ message: err.message || "Failed to change password" });
   }
 };

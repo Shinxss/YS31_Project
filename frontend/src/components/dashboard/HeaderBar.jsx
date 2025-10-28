@@ -356,7 +356,7 @@ export default function HeaderBar({
   }, []); // eslint-disable-line
 
   return (
-    <header className="relative h-16 bg-[#173B8A] text-white flex items-center justify-between px-4 md:px-6 ml-[2px]">
+    <header className="relative h-16 bg-[#173B8A] text-white flex items-center justify-between px-4 md:px-6">
       <div className="flex items-center gap-3">
         <button
           onClick={onToggleSidebar}

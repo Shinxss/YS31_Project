@@ -1,4 +1,5 @@
 import React from "react";
+import { confirmAction } from "@/utils/confirm";
 import { Briefcase, Pencil, Trash2 } from "lucide-react";
 
 export default function ExperienceCard({ experience, onEdit, onDelete }) {
@@ -34,7 +35,10 @@ export default function ExperienceCard({ experience, onEdit, onDelete }) {
           <Pencil className="w-5 h-5" />
         </button>
         <button
-          onClick={() => onDelete(experience._id)}
+          onClick={async () => {
+            const ok = await confirmAction({ title: 'Delete experience?', text: 'This action cannot be undone.', confirmText: 'Delete' });
+            if (ok) onDelete(experience._id)
+          }}
           className="text-orange-500 hover:text-orange-700 transition"
           title="Delete"
         >

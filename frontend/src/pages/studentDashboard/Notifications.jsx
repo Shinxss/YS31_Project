@@ -8,6 +8,7 @@ import {
   Filter,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { confirmAction } from "@/utils/confirm";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 const PAGE_SIZE = 20;
@@ -34,7 +35,7 @@ function Chip({ children, intent = "default" }) {
   const map = {
     default: "bg-gray-100 text-gray-700",
     success: "bg-green-100 text-green-700",
-    warn: "bg-amber-100 text-amber-700",
+    warn: "bg-red-100 text-red-700",
     info: "bg-blue-100 text-blue-700",
   };
   return (
@@ -165,6 +166,8 @@ export default function StudentNotifications() {
   }
 
   async function removeOne(id) {
+    const ok = await confirmAction({ title: 'Delete notification?', text: 'This action cannot be undone.', confirmText: 'Delete' });
+    if (!ok) return;
     try {
       setItems((p) => p.filter((n) => n._id !== id));
       const res = await fetch(`${API_BASE}/api/student/notifications/${id}`, {
@@ -196,7 +199,7 @@ export default function StudentNotifications() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-50 rounded-lg">
+          <div className="p-2 bg-white rounded-lg">
             <Bell className="text-blue-700" size={20} />
           </div>
           <div>
@@ -219,7 +222,7 @@ export default function StudentNotifications() {
           </button>
           <button
             onClick={markAllRead}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-[#173B8A] text-white hover:bg-blue-700"
           >
             <CheckCircle2 size={16} />
             <span className="text-sm">Mark all read</span>
@@ -242,7 +245,7 @@ export default function StudentNotifications() {
             onClick={() => setFilter(f.key)}
             className={`px-3 py-1.5 rounded-md text-sm border ${
               filter === f.key
-                ? "bg-gray-900 text-white border-gray-900"
+                ? "bg-[#173B8A] text-white border-gray-900"
                 : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
             }`}
           >
@@ -288,10 +291,10 @@ export default function StudentNotifications() {
               <div
                 key={n._id}
                 className={`relative p-4 rounded-xl border shadow-sm transition ${
-                  isUnread ? "bg-amber-50 border-amber-200" : "bg-gray-100 border-gray-100"
+                  isUnread ? "bg-blue-100 border-blue-200" : "bg-gray-100 border-gray-100"
                 }`}
               >
-                {isUnread && <span className="absolute left-0 top-0 h-full w-1 bg-amber-500 rounded-l-xl" />}
+                {isUnread && <span className="absolute left-0 top-0 h-full w-1 bg-[#173B8A] rounded-l-xl" />}
 
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 w-8 h-8 rounded-full bg-gray-200 text-gray-700 font-medium grid place-items-center shrink-0">
@@ -303,7 +306,7 @@ export default function StudentNotifications() {
                       <h3 className={`text-sm sm:text-base font-semibold text-gray-900 truncate ${isUnread ? "font-bold" : ""}`}>
                         {title}
                       </h3>
-                      {isUnread && <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />}
+                      {isUnread && <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />}
                       <Chip intent={statusIntent}>{status}</Chip>
                       {n.type && <Chip>{n.type}</Chip>}
                     </div>

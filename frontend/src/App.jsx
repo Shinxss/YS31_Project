@@ -6,6 +6,8 @@ import "react-toastify/dist/ReactToastify.css";
 /* ---------- Public Pages ---------- */
 import LandingPage from "./pages/LandingPage";
 import UserLogin from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
+import ResetPassword from "./pages/ResetPassword.jsx";
 import UserRegis from "./pages/Signup";
 import VerifySignup from "./pages/VerifySignup";
 import Internships from "./pages/Internships";
@@ -59,6 +61,8 @@ export default function App() {
         <Route element={<GuestRoute />}>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<UserLogin />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/signup" element={<UserRegis />} />
           <Route path="/verify" element={<VerifySignup />} />
         </Route>
