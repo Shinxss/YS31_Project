@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Bell, PanelLeft } from "lucide-react";
 
 /** Initials avatar */
@@ -20,7 +20,37 @@ export default function Header({
   userName = "",
   userRole = "Admin",
   onToggleSidebar,
+  onNotificationsClick,
 }) {
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    // Fetch unread notifications count
+    const fetchUnreadCount = async () => {
+      try {
+        const token = localStorage.getItem("ic_token");
+        if (!token) return;
+
+        const res = await fetch(`${import.meta.env.VITE_API_BASE || "http://localhost:5000"}/api/admin/users/notifications`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const unread = data.notifications.filter(n => !n.isRead).length;
+          setUnreadCount(unread);
+        }
+      } catch (error) {
+        console.error("Failed to fetch unread notifications:", error);
+      }
+    };
+
+    fetchUnreadCount();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <header className="sticky top-0 z-30 h-16 bg-[#173B8A] text-white border-b border-white/10">
       <div className="h-full flex items-center justify-between px-4 md:px-6">
@@ -41,10 +71,16 @@ export default function Header({
         <div className="flex items-center gap-4">
           <button
             type="button"
-            className="w-10 h-10 grid place-items-center rounded-full bg-white/10 hover:bg-white/15 transition"
+            onClick={onNotificationsClick}
+            className="relative w-10 h-10 grid place-items-center rounded-full bg-white/10 hover:bg-white/15 transition"
             title="Notifications"
           >
             <Bell className="w-5 h-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </button>
 
           <div className="flex items-center gap-3">

@@ -6,7 +6,7 @@ const NotificationSchema = new mongoose.Schema(
     // Required (matches your earlier validation error)
     title: { type: String, required: true, trim: true },
     body: { type: String, required: true, trim: true },
-    type: { type: String, required: true, enum: ["application", "status", "system"], default: "application" },
+    type: { type: String, required: true, enum: ["application", "status", "system", "company_registration"], default: "application" },
 
     // Status for workflow (you asked to save it)
     status: {

@@ -32,6 +32,7 @@ import AdminLogin from "./pages/admin/AdminLogin.jsx";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import DashboardHome from "./pages/admin/DashboardHome.jsx";
 import UserManagement from "./pages/admin/UserManagement.jsx";
+import Notification from "./pages/admin/Notification.jsx";
 import CompanyApplications from "./pages/admin/CompanyApplications.jsx";
 import JobListingReview from "./pages/admin/JobListingReview.jsx";
 import DataExport from "./pages/admin/DataExport.jsx";
@@ -107,6 +108,7 @@ export default function App() {
         >
           <Route index element={<DashboardHome />} />
           <Route path="users" element={<UserManagement />} />
+          <Route path="notifications" element={<Notification />} />
           <Route path="company-applications" element={<CompanyApplications />} />
           <Route path="job-listings" element={<JobListingReview />} />
           <Route path="data-export" element={<DataExport />} />

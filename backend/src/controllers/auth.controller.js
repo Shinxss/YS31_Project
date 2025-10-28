@@ -6,7 +6,8 @@ import Student from "../models/student.model.js";
 import Company from "../models/company.model.js";
 import CompanyEmployees from "../models/companyEmployees.model.js";
 import OtpToken from "../models/otpToken.model.js";
-import { sendMail } from "../utils/mailer.js";
+import Notification from "../models/Notification.js";
+import { sendOtpEmail } from "../utils/mailer.js";
 
 /* ------------------ helpers ------------------ */
 const reqd = (v, name) => {
@@ -146,18 +147,10 @@ export const sendSignupOtp = async (req, res) => {
     });
 
     // Send email
-    await sendMail({
+    await sendOtpEmail({
       to: email,
-      subject: "Your InternConnect verification code",
-      text: `Your verification code is ${code}. It expires in 10 minutes.`,
-      html: `
-        <div style="font-family:Arial,sans-serif;font-size:14px;color:#111">
-          <h2>InternConnect</h2>
-          <p>Use this verification code to complete your sign up:</p>
-          <div style="font-size:24px;font-weight:bold;letter-spacing:4px;">${code}</div>
-          <p style="color:#666">This code expires in 10 minutes.</p>
-        </div>
-      `,
+      otp: code,
+      expiryTime: 10,
     });
 
     return res.json({ message: "OTP sent" });
@@ -293,6 +286,23 @@ export const verifySignupOtp = async (req, res) => {
       }
     }
 
+    // Notify admin if company account created
+    if (payload.role === "company") {
+      await Notification.create({
+        title: "New Company Registration",
+        body: `A new company account has been created: ${payload.companyName} (${payload.firstName} ${payload.lastName})`,
+        type: "company_registration",
+        recipientEmail: process.env.ADMIN_EMAIL || "admin@internconnect.com",
+        data: {
+          companyName: payload.companyName,
+          ownerName: `${payload.firstName} ${payload.lastName}`,
+          ownerEmail: email,
+          industry: payload.industry,
+          createdAt: new Date(),
+        },
+      });
+    }
+
     // Cleanup OTP
     await OtpToken.deleteOne({ _id: record._id });
 
@@ -353,45 +363,10 @@ export const resendSignupOtp = async (req, res) => {
     tokenDoc.attempts = 0;
     await tokenDoc.save();
 
-    await sendMail({
+    await sendOtpEmail({
       to: email,
-      subject: "Your new InternConnect verification code",
-      text: `
-        Dear User,
-        
-        You recently requested a verification code to securely verify your identity for creating a new account.
-        
-        Your new verification code is: ${code}
-        This code expires in 10 minutes.
-
-        Security Notice: Do Not Share This Code:
-        For your security, it is absolutely critical that you do not share this verification code with anyone, including friends, family, or any supposed staff member of InternConnect. We will never ask you for this code. If anyone contacts you requesting this OTP, they are likely attempting a scam.
-
-        If You Did Not Request This Code:
-        If you did not initiate this request, please ignore this email immediately. No action is needed on your part, and your account remains secure.
-        
-        Sincerely,
-        The InternConnect Security Team
-      `,
-      html: `
-        <div style="font-family:Arial,sans-serif;font-size:14px;color:#111">
-          <h2>InternConnect</h2>
-          <p>Dear User,</p>
-          <p>You recently requested a verification code to securely verify your identity for creating a new account.</p>
-          <p>Use this verification code to complete your sign up:</p>
-          <div style="font-size:24px;font-weight:bold;letter-spacing:4px; color:#F37526;">${code}</div>
-          <p style="color:#666">This code expires in 10 minutes.</p>
-
-          <p><strong>Security Notice: Do Not Share This Code:</strong><br>
-            For your security, it is absolutely critical that you do not share this verification code with anyone, including friends, family, or any supposed staff member of InternConnect. We will never ask you for this code. If anyone contacts you requesting this OTP, they are likely attempting a scam.</p>
-
-          <p><strong>If You Did Not Request This Code:</strong><br>
-            If you did not initiate this request, please ignore this email immediately. No action is needed on your part, and your account remains secure.</p>
-
-          <p>Sincerely,<br>The InternConnect Security Team</p>
-          <p>This email was sent from an automated system. Do not reply to this.</p>
-        </div>
-      `,
+      otp: code,
+      expiryTime: 10,
     });
 
     res.json({ message: "OTP resent" });

@@ -94,7 +94,7 @@ export async function sendOtpEmail({ to, otp, expiryTime }) {
     <p>Dear User,</p>
     <p>You recently requested a One-Time Password (OTP) to securely verify your identity for creating a new account.</p>
     <p>Please use the following code to complete your process:</p>
-    <h2 style="font-size: 24px; font-weight: bold; color: #F37526;">${otp}</h2>
+    <h2 style="font-size: 24px; font-weight: normal; color: #DEE4FF;">${otp}</h2>
     <p>This code is valid for <strong>${expiryTime}</strong> minutes and will expire after that time for security reasons.</p>
     <p><strong>Security Notice: Do Not Share This Code:</strong><br>
     For your security, it is absolutely critical that you do not share this One-Time Password with anyone, including friends, family, or any supposed staff member of InternConnect.<br>

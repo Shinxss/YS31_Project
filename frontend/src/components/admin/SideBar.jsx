@@ -85,6 +85,7 @@ export default function AdminSidebar({ collapsed, onLogout }) {
             <nav className="px-2 flex flex-col gap-1">
               <NavItem icon={<Home className="w-4 h-4" />} label="Dashboard" to={`${base}`} collapsed={collapsed} />
               <NavItem icon={<Users className="w-4 h-4" />} label="User Management" to={`${base}/users`} collapsed={collapsed} />
+              <NavItem icon={<Bell className="w-4 h-4" />} label="Notifications" to={`${base}/notifications`} collapsed={collapsed} />
               <NavItem icon={<Briefcase className="w-4 h-4" />} label="Company Applications" to={`${base}/company-applications`} collapsed={collapsed} />
               <NavItem icon={<FileText className="w-4 h-4" />} label="Job Listings Review" to={`${base}/job-listings`} collapsed={collapsed} />
               <NavItem icon={<Database className="w-4 h-4" />} label="Data Export" to={`${base}/data-export`} collapsed={collapsed} />
