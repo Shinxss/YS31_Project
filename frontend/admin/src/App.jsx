@@ -7,6 +7,8 @@ import UserManagement from "./pages/UserManagement";
 import CompanyApplications from "./pages/CompanyApplications";
 import JobListingReview from "./pages/JobListingReview";
 import DataExport from "./pages/DataExport";
+import AdminLogin from "./pages/AdminLogin";
+
 
 
 export default function App() {
@@ -16,8 +18,10 @@ export default function App() {
         <Sidebar />
         <Topbar />
         <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="/login" element={<AdminLogin />} />
           <Route path="/dashboard" element={<Dashboard />} />
+
           <Route path="/usermanagement" element={<UserManagement />} />
 
           {/* ✅ Keep only this real component route */}

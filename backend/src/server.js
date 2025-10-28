@@ -22,6 +22,11 @@ import adminAuthRoutes from "./routes/adminAuth.routes.js";
 import adminUsersRoutes from "./routes/admin.users.routes.js";
 import adminExportRoutes from "./routes/admin.export.routes.js";
 
+import Admin from "./models/Admin.js";
+import adminCompanyApplicationsRoutes from "./routes/admin.companyApplications.routes.js";
+import adminJobListingsRoutes from "./routes/admin.jobListings.routes.js";
+
+
 // ---------- App ----------
 const app = express();
 
@@ -109,6 +114,10 @@ app.use("/api/admin", adminAuthRoutes);
 app.use("/api/admin/users", adminUsersRoutes);
 app.use("/api/admin/export", adminExportRoutes);
 
+app.use("/api/admin/company-applications", adminCompanyApplicationsRoutes);
+app.use("/api/admin/job-listings", adminJobListingsRoutes);
+
+
 // Health check
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, app: process.env.APP_NAME || "InternConnect Backend" });
@@ -125,7 +134,33 @@ app.use((req, res) => {
 
 
 // ---------- Start ----------
-connectDB(MONGO_URI).then(() => {
+async function ensureAdminAccount() {
+  const { ADMIN_NAME, ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_ROLE } = process.env;
+
+  if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+    console.warn("⚠️  ADMIN_EMAIL or ADMIN_PASSWORD missing in .env — skipping auto admin setup.");
+    return;
+  }
+
+  const existing = await Admin.findOne({ email: ADMIN_EMAIL });
+  if (existing) {
+    console.log(`👤 Admin account already exists: ${ADMIN_EMAIL}`);
+    return;
+  }
+
+  const admin = await Admin.create({
+    name: ADMIN_NAME || "System Admin",
+    email: ADMIN_EMAIL,
+    password: ADMIN_PASSWORD,
+    role: ADMIN_ROLE || "admin",
+  });
+
+  console.log(`✅ Created default admin: ${admin.email}`);
+}
+
+connectDB(MONGO_URI).then(async () => {
+  await ensureAdminAccount(); // ✅ auto-create if missing
+
   app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
     console.log(`🌐 CORS origin: ${CLIENT_ORIGIN}`);

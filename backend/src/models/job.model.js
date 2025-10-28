@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const pesoify = (v) => {
   if (v === null || v === undefined || v === "") return v;
@@ -122,7 +122,7 @@ const JobSchema = new mongoose.Schema(
 
     status: {
       type: String,
-       enum: ["open", "pending", "closed","archived", "deleted", "suspended"],
+      enum: ["open", "pending", "closed", "archived", "deleted", "suspended"],
       default: "open",
       index: true,
     },
@@ -161,5 +161,7 @@ JobSchema.pre("validate", function (next) {
   }
   next();
 });
+
+
 
 export default mongoose.model("Job", JobSchema);
