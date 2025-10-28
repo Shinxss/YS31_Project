@@ -18,7 +18,7 @@ export default function AddReminderModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-[#ecf3fc]/70 backdrop-blur-xs flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-[#ecf3fc]/70 backdrop-blur-lg flex items-center justify-center z-50">
       <div className="bg-white w-full max-w-md rounded-lg shadow-lg p-6 relative">
         <button
           type="button"

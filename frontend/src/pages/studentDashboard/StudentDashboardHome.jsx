@@ -558,14 +558,7 @@ export default function StudentDashboardHome({
               </button>
             </h3>
 
-            <input
-              type="text"
-              placeholder="Add a note or reminder..."
-              className="w-full border rounded-md px-3 py-2 mb-3 text-sm"
-              value={quickNote}
-              onChange={(e) => setQuickNote(e.target.value)}
-              onKeyDown={handleQuickNoteKeyDown}
-            />
+            {/* ✅ Removed the quick note input field */}
 
             <div className="space-y-2 max-h-56 overflow-y-auto">
               {safeEvents.length === 0 ? (
