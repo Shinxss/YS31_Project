@@ -508,7 +508,7 @@ export default function PostJobPage({ token: propToken, onCreated }) {
                     className={inputCls(!!errors.location)}
                     value={form.location}
                     onChange={(e) => setField("location", e.target.value)}
-                    placeholder="e.g., Makati, PH or Remote"
+                    placeholder="e.g., San Fabian, Dagupan, Mangaldan"
                   />
                 </Field>
 
@@ -762,24 +762,60 @@ export default function PostJobPage({ token: propToken, onCreated }) {
       {/* Review & Submit */}
       {currentStep === 4 && (
         <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow border border-gray-200">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">Job Description</h3>
+          {/* ===== Basic info FIRST (Job Title at the very top) ===== */}
+          <div className="mb-6 rounded-xl border border-gray-200 p-5 bg-gray-50">
+            <h2 className="text-2xl font-semibold text-gray-900">{form.title || "—"}</h2>
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-800">
+              <Meta
+                label="Department"
+                value={form.department === "Other" ? form.otherDepartment || "—" : form.department || "—"}
+              />
+              <Meta label="Location" value={form.location} />
+              <Meta label="Employment Type" value={form.jobType} />
+              <Meta label="Salary (Max)" value={form.salaryMax ? `${PESO}${form.salaryMax}` : "—"} />
+              <Meta label="Work Type" value={form.workType} />
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-800">
+              <Meta label="Start Date (From)" value={fmtDatePretty(form.startDateFrom) || "—"} />
+              <Meta label="Start Date (To)" value={fmtDatePretty(form.startDateTo) || "—"} />
+              <Meta label="Application Deadline" value={fmtDatePretty(form.applicationDeadline) || "—"} />
+            </div>
+          </div>
+
+          {/* ===== Description ===== */}
+          <h3 className="text-xl font-semibold text-gray-900 mb-3">Job Description</h3>
           <p className="text-sm leading-6 text-gray-800 mb-6 whitespace-pre-line">
             {form.description || "—"}
           </p>
 
+          {/* ===== Key Responsibilities ===== */}
           <h4 className="text-base font-semibold text-gray-900 mb-2">Key Responsibilities</h4>
           {form.responsibilities.length ? (
-            <ul className="list-disc pl-6 space-y-1 mb-8 text-sm text-gray-800">
+            <ul className="list-disc pl-6 space-y-1 mb-6 text-sm text-gray-800">
               {form.responsibilities.map((x, i) => (
                 <li key={`resp-r-${i}`}>{x}</li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-gray-500 mb-8">—</p>
+            <p className="text-sm text-gray-500 mb-6">—</p>
+          )}
+
+          {/* ===== What We Offer (now included in review) ===== */}
+          <h4 className="text-base font-semibold text-gray-900 mb-2">What We Offer</h4>
+          {form.offers.length ? (
+            <ul className="list-disc pl-6 space-y-1 mb-6 text-sm text-gray-800">
+              {form.offers.map((x, i) => (
+                <li key={`offer-r-${i}`}>{x}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-gray-500 mb-6">—</p>
           )}
 
           <hr className="my-6 border-gray-200" />
 
+          {/* ===== Qualifications & Requirements ===== */}
           <h3 className="text-xl font-semibold text-gray-900 mb-4">Qualifications & Requirements</h3>
 
           <h5 className="text-sm font-semibold text-gray-900 mb-2">Required Skills:</h5>
@@ -836,26 +872,6 @@ export default function PostJobPage({ token: propToken, onCreated }) {
           ) : (
             <p className="text-sm text-gray-500 mb-6">—</p>
           )}
-
-          <hr className="my-6 border-gray-200" />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-800">
-            <Meta label="Job Title" value={form.title} />
-            <Meta
-              label="Department"
-              value={form.department === "Other" ? form.otherDepartment || "—" : form.department || "—"}
-            />
-            <Meta label="Location" value={form.location} />
-            <Meta label="Employment Type" value={form.jobType} />
-            <Meta label="Salary (Max)" value={form.salaryMax ? `${PESO}${form.salaryMax}` : "—"} />
-            <Meta label="Work Type" value={form.workType} />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-800 mt-4">
-            <Meta label="Start Date (From)" value={fmtDatePretty(form.startDateFrom) || "—"} />
-            <Meta label="Start Date (To)" value={fmtDatePretty(form.startDateTo) || "—"} />
-            <Meta label="Application Deadline" value={fmtDatePretty(form.applicationDeadline) || "—"} />
-          </div>
 
           <div className="mt-8 flex justify-end">
             <button

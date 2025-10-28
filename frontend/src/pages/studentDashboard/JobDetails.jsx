@@ -176,7 +176,7 @@ export default function JobDetails() {
 
 
         {/* ===== TITLE CARD (no duration) ===== */}
-        <div className="mt-4 bg-white rounded-xl shadow-sm border border-blue-200 p-4 sm:p-5">
+        <div className="mt-4 bg-white rounded-xl shadow-sm border border-blue-200 p-4 h-[130px] sm:p-5">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
               {buildCompanyLogoUrl() ? (
@@ -192,7 +192,7 @@ export default function JobDetails() {
               )}
 
               <div>
-                <div className="text-[15px] sm:text-base font-semibold text-blue-900">
+                <div className="text-[10px] sm:text-base font-semibold text-blue-900">
                   {job.title || "Job Title"}
                 </div>
 
@@ -288,7 +288,7 @@ export default function JobDetails() {
           {/* RIGHT SIDE */}
           <div className="space-y-4">
             {/* Apply */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sticky top-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-7 sticky top-6">
               <button
                 onClick={handleApply}
                 disabled={isApplying}
@@ -362,7 +362,7 @@ export default function JobDetails() {
                   {job.skills.map((s, i) => (
                     <span
                       key={i}
-                      className="px-2.5 py-1 text-[11px] bg-[#FFF3E9] text-[#F37526] rounded-full border border-[#F37526]/30"
+                      className="px-2.5 py-1 text-[11px] bg-[#F37526] text-white font-bold rounded-full border border-[#F37526]/30"
                     >
                       {s}
                     </span>

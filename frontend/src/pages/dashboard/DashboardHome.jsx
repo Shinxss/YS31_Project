@@ -701,19 +701,34 @@ export default function DashboardHome() {
    Tiny components
 ------------------------------------------------------- */
 function KPICard({ title, value, sub, Icon = Briefcase }) {
+  // Define colors per title
+  const config = {
+    "Active Job Posts": { border: "border-yellow-500", icon: "text-yellow-500", change: "+2 from last week" },
+    "Total Applications": { border: "border-blue-500", icon: "text-blue-500", change: "+2 from last week" },
+    "Hire Rate": { border: "border-green-500", icon: "text-green-500", change: "+2 from last week" },
+  };
+
+  const style = config[title] || { border: "border-gray-300", icon: "text-gray-400", change: "— from last week" };
+
   return (
-    <Card className="p-4">
-      <div className="flex items-start justify-between">
+    <div
+      className={`bg-white rounded-xl shadow-sm p-5 h-32 flex flex-col justify-between border-l-4 ${style.border} hover:shadow-md transition`}
+    >
+      <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600">{title}</p>
-        <Icon className="h-4 w-4  text-gray-600" />
+        <Icon className={`h-5 w-5 ${style.icon}`} />
       </div>
-      <div className="mt-2 flex items-baseline gap-2">
+
+      <div>
         <p className="text-2xl font-bold text-[#0B63F8]">{value}</p>
         {sub ? <span className="text-xs text-gray-500">{sub}</span> : null}
       </div>
-    </Card>
+
+      <p className="text-xs text-gray-400">{style.change}</p>
+    </div>
   );
 }
+
 
 function TrendBadge({ dir }) {
   const base =

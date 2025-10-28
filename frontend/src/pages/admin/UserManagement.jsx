@@ -1,10 +1,12 @@
+// src/pages/admin/UserManagementPage.jsx
 import { useEffect, useMemo, useState } from "react";
-import { Search, Loader2 } from "lucide-react";
+import { Search as SearchIcon, Loader2, Users, User, Building2 } from "lucide-react";
 
-// API base resolver
+/* -------------------------------------------------------
+   API base resolver
+------------------------------------------------------- */
 function resolveApiBase() {
   let raw = (import.meta.env?.VITE_API_BASE || "").trim();
-
   raw = raw.replace(/\/+$/, "");
 
   if (/^:/.test(raw)) {
@@ -31,11 +33,12 @@ const API = {
   toggleCompanyVerification: (id) => api(`/api/admin/users/companies/${id}/verify`),
 };
 
-// Helper function for classNames
+/* -------------------------------------------------------
+   Helpers
+------------------------------------------------------- */
 const cls = (...xs) => xs.filter(Boolean).join(" ");
 const normalize = (v = "") => String(v).trim().toLowerCase().replace(/\s+/g, " ");
 
-// statusBadge function to handle different status styles
 const statusBadge = (raw) => {
   const s = normalize(raw);
   if (s.includes("active") || s === "enabled")
@@ -45,14 +48,20 @@ const statusBadge = (raw) => {
   return { label: raw || "Unknown", className: "bg-gray-100 text-gray-600" };
 };
 
-// Formatting the date properly
-const formatDate = (dateString) => {
-  const date = new Date(dateString);
-  return !isNaN(Date.parse(dateString)) ? date.toLocaleDateString() : "Invalid Date";
+const formatDate = (value) => {
+  const d = value ? new Date(value) : null;
+  return d && !isNaN(d.getTime()) ? d.toLocaleDateString() : "—";
 };
 
+// tolerate different schema field names
+const getStatus = (row) => row?.status ?? (row?.isDisabled ? "disabled" : "active");
+const getCreatedAt = (row) => row?.accountCreatedAt || row?.createdAt || row?.dateJoined || row?.registeredAt;
+
+/* -------------------------------------------------------
+   Component
+------------------------------------------------------- */
 export default function UserManagementPage() {
-  const [tab, setTab] = useState("students");
+  const [tab, setTab] = useState("all"); // all | students | companies
   const [students, setStudents] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -60,23 +69,36 @@ export default function UserManagementPage() {
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
 
-  // Fetch lists of students and companies
+  // fetch both when "all", otherwise only the active tab
   useEffect(() => {
-    let abort = new AbortController();
+    const abort = new AbortController();
+
+    const loadStudents = async () => {
+      const res = await fetch(API.students, { signal: abort.signal, credentials: "include" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "Failed to load students");
+      return Array.isArray(data) ? data : data?.items || [];
+    };
+
+    const loadCompanies = async () => {
+      const res = await fetch(API.companies, { signal: abort.signal, credentials: "include" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "Failed to load companies");
+      return Array.isArray(data) ? data : data?.items || [];
+    };
+
     (async () => {
       try {
         setError("");
         setLoading(true);
         if (tab === "students") {
-          const res = await fetch(API.students, { signal: abort.signal, credentials: "include" });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data?.message || "Failed to load students");
-          setStudents(Array.isArray(data) ? data : data?.items || []);
+          setStudents(await loadStudents());
+        } else if (tab === "companies") {
+          setCompanies(await loadCompanies());
         } else {
-          const res = await fetch(API.companies, { signal: abort.signal, credentials: "include" });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data?.message || "Failed to load companies");
-          setCompanies(Array.isArray(data) ? data : data?.items || []);
+          const [s, c] = await Promise.all([loadStudents(), loadCompanies()]);
+          setStudents(s);
+          setCompanies(c);
         }
       } catch (e) {
         if (e.name !== "AbortError") setError(e.message || "Something went wrong");
@@ -84,70 +106,78 @@ export default function UserManagementPage() {
         setLoading(false);
       }
     })();
+
     return () => abort.abort();
   }, [tab]);
 
-  // Client-side search filter
+  const allRows = useMemo(
+    () => [
+      ...students.map((s) => ({ ...s, __role: "student" })),
+      ...companies.map((c) => ({ ...c, __role: "company" })),
+    ],
+    [students, companies]
+  );
+
   const filtered = useMemo(() => {
     const q = normalize(query);
-    const list = tab === "students" ? students : companies;
+    const list = tab === "students" ? students : tab === "companies" ? companies : allRows;
     if (!q) return list;
+
     return list.filter((x) => {
-      const name = normalize(x.name || x.fullName || x.companyName || "");
-      const school = normalize(x.school || "");
+      const isCompany = tab === "companies" || (tab === "all" && x.__role === "company");
+      const name = normalize(
+        isCompany ? x.companyName || x.name || "" : `${x.firstName || ""} ${x.lastName || ""}`.trim()
+      );
       const email = normalize(x.email || x.contactEmail || "");
-      const major = normalize(x.major || "");
-      const location = normalize(x.location || "");
+      const school = normalize(isCompany ? "" : x.school || "");
+      const course = normalize(isCompany ? "" : x.course || "");
+      const location = normalize(isCompany ? x.location || "" : "");
+      const role = normalize(isCompany ? "company" : "student");
+
       return (
         name.includes(q) ||
-        school.includes(q) ||
         email.includes(q) ||
-        major.includes(q) ||
-        location.includes(q)
+        school.includes(q) ||
+        course.includes(q) ||
+        location.includes(q) ||
+        role.includes(q)
       );
     });
-  }, [query, students, companies, tab]);
+  }, [query, tab, students, companies, allRows]);
 
-  // Toggle Enable/Disable status (optimistic UI update)
+  const COLSPAN = tab === "all" ? 6 : 7;
+
+  /* ----------------- Actions ----------------- */
   const handleToggle = async (row) => {
     try {
       setTogglingId(row._id);
-      const isStudent = tab === "students";
+      const isStudent = tab === "students" || (tab === "all" && row.__role === "student");
+      const currentStatus = getStatus(row);
       const nextStatus =
-        normalize(row.status).includes("disabled") || normalize(row.status) === "blocked"
+        normalize(currentStatus).includes("disabled") || normalize(currentStatus) === "blocked"
           ? "active"
           : "disabled";
 
-      // Optimistic update for UI
+      // optimistic update
       if (isStudent) {
-        setStudents((prev) =>
-          prev.map((x) => (x._id === row._id ? { ...x, status: nextStatus } : x))
-        );
+        setStudents((prev) => prev.map((x) => (x._id === row._id ? { ...x, status: nextStatus } : x)));
       } else {
-        setCompanies((prev) =>
-          prev.map((x) => (x._id === row._id ? { ...x, status: nextStatus } : x))
-        );
+        setCompanies((prev) => prev.map((x) => (x._id === row._id ? { ...x, status: nextStatus } : x)));
       }
 
-      const res = await fetch(
-        isStudent ? API.toggleStudentStatus(row._id) : API.toggleCompanyStatus(row._id),
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ status: nextStatus }),
-        }
-      );
+      const res = await fetch(isStudent ? API.toggleStudentStatus(row._id) : API.toggleCompanyStatus(row._id), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: nextStatus }),
+      });
+
       if (!res.ok) {
-        // revert on failure
+        // revert
         if (isStudent) {
-          setStudents((prev) =>
-            prev.map((x) => (x._id === row._id ? { ...x, status: row.status } : x))
-          );
+          setStudents((prev) => prev.map((x) => (x._id === row._id ? { ...x, status: currentStatus } : x)));
         } else {
-          setCompanies((prev) =>
-            prev.map((x) => (x._id === row._id ? { ...x, status: row.status } : x))
-          );
+          setCompanies((prev) => prev.map((x) => (x._id === row._id ? { ...x, status: currentStatus } : x)));
         }
         const data = await res.json().catch(() => ({}));
         throw new Error(data?.message || "Failed to update status");
@@ -160,15 +190,15 @@ export default function UserManagementPage() {
   };
 
   const handleVerify = async (row) => {
-    if (!row._id || tab !== "companies") return;
+    const isCompany = tab === "companies" || (tab === "all" && row.__role === "company");
+    if (!isCompany || !row._id) return;
+
     setError("");
     setTogglingId(row._id);
 
     try {
-      // Optimistic update for UI
-      setCompanies((prev) =>
-        prev.map((x) => (x._id === row._id ? { ...x, isVerified: !row.isVerified } : x))
-      );
+      // optimistic
+      setCompanies((prev) => prev.map((x) => (x._id === row._id ? { ...x, isVerified: !row.isVerified } : x)));
 
       const res = await fetch(API.toggleCompanyVerification(row._id), {
         method: "PATCH",
@@ -178,10 +208,7 @@ export default function UserManagementPage() {
       });
 
       if (!res.ok) {
-        // revert on failure
-        setCompanies((prev) =>
-          prev.map((x) => (x._id === row._id ? { ...x, isVerified: row.isVerified } : x))
-        );
+        setCompanies((prev) => prev.map((x) => (x._id === row._id ? { ...x, isVerified: row.isVerified } : x)));
         const data = await res.json().catch(() => ({}));
         throw new Error(data?.message || "Failed to update verification status");
       }
@@ -192,60 +219,75 @@ export default function UserManagementPage() {
     }
   };
 
+  /* ----------------- UI ----------------- */
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-semibold text-gray-900">User Management</h1>
-      <p className="text-sm text-gray-500">Manage students and companies accounts</p>
-
-      {/* Tabs */}
-      <div className="mt-4 bg-white border border-gray-200 rounded-xl">
-        <div className="flex gap-2 p-2">
-          {["students", "companies"].map((t) => (
-            <button
-              key={t}
-              className={cls(
-                "px-4 py-2 rounded-lg text-sm font-medium transition",
-                tab === t
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              )}
-              onClick={() => setTab(t)}
-            >
-              {t === "students" ? "Students" : "Companies"}
-            </button>
-          ))}
+      {/* Header row: title + right-aligned search (aligned baseline) */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">User Management</h1>
+          <p className="text-sm text-gray-500">Manage students and companies</p>
         </div>
 
-        {/* Search */}
-        <div className="px-3 pb-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <div className="w-full sm:w-auto">
+          <div className="relative sm:min-w-[360px]">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={tab === "students" ? "Search students..." : "Search companies..."}
-              className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-900/10"
+              placeholder="Search…"
+              className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-900/10 bg-white"
             />
           </div>
         </div>
+      </div>
 
-        {/* Divider */}
-        <div className="h-px bg-gray-100 " />
+      {/* Tabs like your screenshot */}
+      <div className="mt-4 flex gap-3">
+        {[
+          { key: "all", label: "All", Icon: Users },
+          { key: "students", label: "Students", Icon: User },
+          { key: "companies", label: "Companies", Icon: Building2 },
+        ].map(({ key, label, Icon }) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={cls(
+              "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition",
+              tab === key
+                ? "bg-blue-600 text-white shadow-sm"
+                : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+            )}
+            aria-pressed={tab === key}
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+          </button>
+        ))}
+      </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto max-w-[1200px]">
+      {/* Table card */}
+      <div className="mt-4 bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-gray-500">
-                <th className="py-3 px-4">ID</th>
-                {tab === "students" ? (
+                {tab === "all" ? (
+                  <>
+                    <th className="py-3 px-4">Name</th>
+                    <th className="py-3 px-4">Email</th>
+                    <th className="py-3 px-4">Role</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Date Joined</th>
+                  </>
+                ) : tab === "students" ? (
                   <>
                     <th className="py-3 px-4">Name</th>
                     <th className="py-3 px-4">Email</th>
                     <th className="py-3 px-4">School</th>
                     <th className="py-3 px-4">Course</th>
                     <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4">Account Created</th>
+                    <th className="py-3 px-4">Date Joined</th>
                   </>
                 ) : (
                   <>
@@ -254,16 +296,17 @@ export default function UserManagementPage() {
                     <th className="py-3 px-4">Location</th>
                     <th className="py-3 px-4">Status</th>
                     <th className="py-3 px-4">Verified</th>
-                    <th className="py-3 px-4">Account Created</th>
+                    <th className="py-3 px-4">Date Joined</th>
                   </>
                 )}
                 <th className="py-3 px-4">Actions</th>
               </tr>
             </thead>
+
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={tab === "students" ? 7 : 6} className="py-10 text-center text-gray-500">
+                  <td colSpan={COLSPAN} className="py-10 text-center text-gray-500">
                     <Loader2 className="inline-block mr-2 h-4 w-4 animate-spin" />
                     Loading {tab}…
                   </td>
@@ -272,7 +315,7 @@ export default function UserManagementPage() {
 
               {!loading && error && (
                 <tr>
-                  <td colSpan={tab === "students" ? 7 : 6} className="py-6 px-4">
+                  <td colSpan={COLSPAN} className="py-6 px-4">
                     <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg">
                       {error}
                     </div>
@@ -282,8 +325,8 @@ export default function UserManagementPage() {
 
               {!loading && !error && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={tab === "students" ? 7 : 6} className="py-8 text-center text-gray-500">
-                    No {tab} found.
+                  <td colSpan={COLSPAN} className="py-8 text-center text-gray-500">
+                    No {tab === "all" ? "users" : tab} found.
                   </td>
                 </tr>
               )}
@@ -291,58 +334,68 @@ export default function UserManagementPage() {
               {!loading &&
                 !error &&
                 filtered.map((row, idx) => {
-                  const isLast = idx === filtered.length - 1;
+                  const isCompany = tab === "companies" || (tab === "all" && row.__role === "company");
+                  const isStudent = !isCompany;
+
+                  const displayName = isCompany
+                    ? row.companyName || row.name || "—"
+                    : `${row.firstName || ""} ${row.lastName || ""}`.trim() || row.name || "—";
+
+                  const statusVal = getStatus(row);
+                  const created = formatDate(getCreatedAt(row));
+
                   return (
-                    <tr key={row._id || idx} className={cls(!isLast && "border-b border-gray-100 max-w-[1200px]")}>
-                      <td className="py-4 px-4">{row._id}</td>
-                      {tab === "students" ? (
+                    <tr key={row._id || idx} className="border-b border-gray-100">
+                      {tab === "all" ? (
                         <>
-                          <td className="py-4 px-4">{row.firstName} {row.lastName}</td>
-                          <td className="py-4 px-4">{row.email}</td>
-                          <td className="py-4 px-4">{row.school}</td>
-                          <td className="py-4 px-4">{row.course}</td>
+                          <td className="py-4 px-4">{displayName}</td>
+                          <td className="py-4 px-4">{row.email || row.contactEmail || "—"}</td>
+                          <td className="py-4 px-4 capitalize">{isCompany ? "Company" : "Student"}</td>
                           <td className="py-4 px-4">
-                            <span
-                              className={cls(
-                                "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
-                                statusBadge(row.status).className
-                              )}
-                            >
-                              {statusBadge(row.status).label}
+                            <span className={cls("inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium", statusBadge(statusVal).className)}>
+                              {statusBadge(statusVal).label}
                             </span>
                           </td>
-                          <td className="py-4 px-4">{formatDate(row.accountCreatedAt)}</td>
+                          <td className="py-4 px-4">{created}</td>
+                        </>
+                      ) : isStudent ? (
+                        <>
+                          <td className="py-4 px-4">{displayName}</td>
+                          <td className="py-4 px-4">{row.email}</td>
+                          <td className="py-4 px-4">{row.school || "—"}</td>
+                          <td className="py-4 px-4">{row.course || "—"}</td>
+                          <td className="py-4 px-4">
+                            <span className={cls("inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium", statusBadge(statusVal).className)}>
+                              {statusBadge(statusVal).label}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4">{created}</td>
                         </>
                       ) : (
                         <>
-                          <td className="py-4 px-4">{row.companyName}</td>
+                          <td className="py-4 px-4">{displayName}</td>
                           <td className="py-4 px-4">{row.email}</td>
-                          <td className="py-4 px-4">{row.location}</td>
+                          <td className="py-4 px-4">{row.location || "—"}</td>
                           <td className="py-4 px-4">
-                            <span
-                              className={cls(
-                                "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
-                                statusBadge(row.status).className
-                              )}
-                            >
-                              {statusBadge(row.status).label}
+                            <span className={cls("inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium", statusBadge(statusVal).className)}>
+                              {statusBadge(statusVal).label}
                             </span>
                           </td>
                           <td className="py-4 px-4">
                             <span
                               className={cls(
                                 "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
-                                row.isVerified
-                                  ? "bg-emerald-100 text-emerald-700"
-                                  : "bg-yellow-100 text-yellow-700"
+                                row.isVerified ? "bg-emerald-100 text-emerald-700" : "bg-yellow-100 text-yellow-700"
                               )}
                             >
                               {row.isVerified ? "Verified" : "Pending"}
                             </span>
                           </td>
-                          <td className="py-4 px-4">{formatDate(row.accountCreatedAt)}</td>
+                          <td className="py-4 px-4">{created}</td>
                         </>
                       )}
+
+                      {/* Actions */}
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-2">
                           <button
@@ -352,25 +405,30 @@ export default function UserManagementPage() {
                               "px-3 py-1.5 rounded-md text-xs font-medium border transition",
                               togglingId === row._id
                                 ? "opacity-60 cursor-not-allowed"
-                                : row.status === "disabled"
+                                : normalize(getStatus(row)).includes("disabled") || normalize(getStatus(row)) === "blocked"
                                 ? "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
                                 : "border-gray-200 text-gray-700 hover:bg-gray-50"
                             )}
-                            title={row.status === "disabled" ? "Enable" : "Disable"}
+                            title={
+                              normalize(getStatus(row)).includes("disabled") || normalize(getStatus(row)) === "blocked"
+                                ? "Enable"
+                                : "Disable"
+                            }
                           >
                             {togglingId === row._id ? (
                               <span className="inline-flex items-center">
                                 <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
                                 Saving…
                               </span>
-                            ) : row.status === "disabled" ? (
+                            ) : normalize(getStatus(row)).includes("disabled") ||
+                              normalize(getStatus(row)) === "blocked" ? (
                               "Enable"
                             ) : (
                               "Disable"
                             )}
                           </button>
-                          
-                          {tab === "companies" && (
+
+                          {(tab === "companies" || (tab === "all" && isCompany)) && (
                             <button
                               onClick={() => handleVerify(row)}
                               disabled={togglingId === row._id}

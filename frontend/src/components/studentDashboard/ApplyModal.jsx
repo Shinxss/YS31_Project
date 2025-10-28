@@ -251,40 +251,6 @@ export default function ApplyModal({ jobId, onClose }) {
         console.warn("ℹ️ Proceeding without full notif context:", infoErr);
       }
 
-      // 3) Create company notification (non-blocking if it fails)
-      try {
-        await createCompanyNotification({
-          token,
-          applicantName: applicant?.applicantName || "Applicant",
-          applicantEmail: applicant?.applicantEmail || null,
-          applicantId: applicant?.applicantId || null,
-          companyEmail: jobCompany?.companyEmail || null,
-          companyName: jobCompany?.companyName || "Unknown Company",
-          companyId: jobCompany?.companyId || null,
-          jobTitle: jobCompany?.jobTitle || "Untitled Role",
-          jobId,
-          message: message.trim(),
-          purpose: p,
-          purposeDetail: pd,
-        });
-      } catch (notifErr) {
-        console.error("❌ Notification create failed:", notifErr);
-        toast.warn("Application sent, but notifying the company failed.");
-      }
-
-      // 4) Send company email (optional; non-blocking)
-      try {
-        if (jobCompany?.companyEmail) {
-          await sendCompanyEmail({
-            token,
-            to: jobCompany.companyEmail,
-            applicantName: applicant?.applicantName || "Applicant",
-            jobTitle: jobCompany?.jobTitle || "Untitled Role",
-          });
-        }
-      } catch (mailErr) {
-        console.error("📧 Email send failed:", mailErr);
-      }
 
       // 5) UX success
       new Audio("/src/assets/sounds/success.mp3").play().catch(() => {});

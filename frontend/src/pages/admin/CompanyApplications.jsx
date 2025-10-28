@@ -220,10 +220,6 @@ const CompanyApplications = () => {
                   <td style={{ borderBottom: '1px solid #f0f0f0', padding: '8px' }}>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                       <button onClick={() => handleView(c)}>View</button>
-                      <button onClick={() => handleAccept(c)}>Accept</button>
-                      <button onClick={() => handleReject(c)}>Reject</button>
-                      <button onClick={() => handleCancel(c)}>Cancel</button>
-                      <button onClick={() => handleDelete(c)}>Delete</button>
                     </div>
                   </td>
                 </tr>

@@ -72,17 +72,55 @@ function aggregateAppsMonthly(apps = []) {
   return base;
 }
 
-/* ---------- UI atoms (minimal styling to match screenshot) ---------- */
+/* ---------- UI atoms (colored + delta stat cards) ---------- */
 function StatCard({ icon, title, value, delta }) {
+  // Color mapping by title
+  const colorConfig = {
+    "Total Students": {
+      border: "border-orange-500",
+      icon: "text-orange-500",
+      change: "+2 from last week",
+    },
+    "Total Verified Companies": {
+      border: "border-blue-500",
+      icon: "text-blue-500",
+      change: "+2 from last week",
+    },
+    "Total Active Job Listings": {
+      border: "border-blue-500",
+      icon: "text-blue-500",
+      change: "+2 from last week",
+    },
+    "Total Applications Received": {
+      border: "border-yellow-500",
+      icon: "text-yellow-500",
+      change: "+2 from last week",
+    },
+  };
+
+  const style = colorConfig[title] || {
+    border: "border-gray-300",
+    icon: "text-gray-500",
+    change: "— from last week",
+  };
+
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-5">
+    <div
+      className={`bg-white rounded-lg border-l-4 ${style.border} shadow-sm p-5 flex flex-col justify-between hover:shadow-md transition`}
+    >
       <p className="text-xs text-gray-600 mb-2">{title}</p>
+
       <div className="flex items-end justify-between">
         <div>
-          <div className="text-3xl font-semibold">{numberFmt(value)}</div>
-          <div className="text-xs text-gray-500 mt-1">{delta}</div>
+          <div className="text-3xl font-semibold text-gray-800">
+            {numberFmt(value)}
+          </div>
+          <div className="text-xs text-gray-500 mt-1">{style.change}</div>
         </div>
-        <div className="h-10 w-10 rounded-md bg-gray-100 flex items-center justify-center">
+
+        <div
+          className={`h-10 w-10 rounded-md bg-gray-50 flex items-center justify-center ${style.icon}`}
+        >
           {icon}
         </div>
       </div>
@@ -108,14 +146,14 @@ export default function AdminDashboardHome() {
     (async () => {
       setLoading(true);
       try {
-        /* 1) Counts from /api/stats/public (same as LandingPage) */
+        /* 1) Counts from /api/stats/public */
         const s = await fetch(STATS_PUBLIC);
         const sj = await s.json();
         const students = sj.activeStudents ?? sj.students ?? 0;
         const companies = sj.companies ?? 0;
         const jobs = sj.internships ?? sj.jobs ?? 0;
 
-        /* 2) Total applications from dedicated endpoint */
+        /* 2) Total applications */
         let applications = 0;
         try {
           const aRes = await fetch(APPS_TOTAL_URL);
@@ -127,13 +165,13 @@ export default function AdminDashboardHome() {
           applications = 0;
         }
 
-        /* 3) Top job fields (derived from /api/jobs) */
+        /* 3) Top job fields */
         const j = await fetch(JOBS_URL);
         const jj = await j.json();
         const jobsArr = Array.isArray(jj?.jobs) ? jj.jobs : [];
         const fields = deriveTopFields(jobsArr, 5);
 
-        /* 4) Monthly applications: try API, else aggregate client-side */
+        /* 4) Monthly applications */
         let monthly = null;
         try {
           const m = await fetch(APPS_MONTHLY_URL);
@@ -179,7 +217,7 @@ export default function AdminDashboardHome() {
 
   return (
     <div className="p-6">
-      {/* Header like screenshot */}
+      {/* Header */}
       <h1 className="text-2xl font-extrabold">Welcome back, Admin</h1>
       <p className="text-sm text-gray-600 mt-1">Here is your platform overview</p>
 
@@ -188,83 +226,94 @@ export default function AdminDashboardHome() {
         <StatCard
           title="Total Students"
           value={totals.students}
-          icon={<Users size={18} className="text-gray-700" />}
+          icon={<Users size={18} />}
         />
         <StatCard
           title="Total Verified Companies"
           value={totals.companies}
-          icon={<Building2 size={18} className="text-gray-700" />}
+          icon={<Building2 size={18} />}
         />
         <StatCard
           title="Total Active Job Listings"
           value={totals.jobs}
-          icon={<BriefcaseBusiness size={18} className="text-gray-700" />}
+          icon={<BriefcaseBusiness size={18} />}
         />
         <StatCard
           title="Total Applications Received"
           value={totals.applications}
-          icon={<FileText size={18} className="text-gray-700" />}
+          icon={<FileText size={18} />}
         />
       </div>
 
       {/* Charts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
-        {/* Applications per Month */}
-        <div className="bg-white rounded-lg border border-gray-200 p-5">
-          <div>
-            <p className="text-sm font-semibold">Applications per Month</p>
-            <p className="text-xs text-gray-500">
-              Monthly application volume over the last 12 months
-            </p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
+          {/* Applications per Month */}
+          <div className="bg-white rounded-lg border border-gray-200 p-5 flex flex-col h-[400px]">
+            <div>
+              <p className="text-xl font-bold">Applications per Month</p>
+              <p className="text-xs text-gray-500">
+                Monthly application volume over the last 12 months
+              </p>
+            </div>
+            <div className="flex-1 mt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={monthlyApps}
+                  margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="month" height={30} />
+                  <YAxis allowDecimals={false} width={35} />
+                  <Tooltip />
+                  <Line
+                    type="monotone"
+                    dataKey="applications"
+                    name="Applications"
+                    stroke="#2563eb"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div className="h-64 mt-3">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={monthlyApps}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis allowDecimals={false} />
-                <Tooltip />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="applications"
-                  name="applications"
-                  stroke="#2563eb"
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+
+          {/* Top Job Fields */}
+          <div className="bg-white rounded-lg border border-gray-200 p-5 flex flex-col h-[400px]">
+            <div>
+              <p className="text-xl font-bold">Top Job Fields</p>
+              <p className="text-xs text-gray-500">
+                Top 5 fields with highest active job postings
+              </p>
+            </div>
+            <div className="flex-1 mt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={barData}
+                  margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 11 }}
+                    angle={-25}
+                    textAnchor="end"
+                    height={40}
+                  />
+                  <YAxis allowDecimals={false} width={35} />
+                  <Tooltip />
+                  <Bar
+                    dataKey="postings"
+                    fill="#2563eb"
+                    radius={[6, 6, 0, 0]}
+                    barSize={40}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
 
-        {/* Top Job Fields */}
-        <div className="bg-white rounded-lg border border-gray-200 p-5">
-          <div>
-            <p className="text-sm font-semibold">Top Job Fields</p>
-            <p className="text-xs text-gray-500">
-              Top 5 fields with highest active job postings
-            </p>
-          </div>
-          <div className="h-64 mt-3">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barData} margin={{ top: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fontSize: 11 }}
-                  angle={-25}
-                  textAnchor="end"
-                  height={50}
-                />
-                <YAxis allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="postings" fill="#2563eb" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
 
       {loading && <div className="text-xs text-gray-500 mt-3">Loading…</div>}
     </div>
