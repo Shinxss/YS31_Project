@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { User, Building2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../utils/auth";
+import Logo from "../assets/ic_logo.svg";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
@@ -101,11 +102,16 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-[#ECF3FC] py-16">
       <div className="text-center mb-8">
-        <div className="flex items-center justify-center gap-3">
-          <div className="w-10 h-10 rounded-md bg-[#F37526]"></div>
+        <div className="flex items-center justify-center">
+          <img
+            src={Logo}
+            alt="InternConnect logo"
+            className="w-10 h-10 rounded-md object-contain"
+          />
           <h1 className="text-3xl font-bold text-blue-900">InternConnect</h1>
         </div>
         <p className="text-gray-500 mt-2">Login Your Account</p>
+
       </div>
 
       <div className="max-w-md mx-auto bg-white rounded-2xl shadow-md p-8">

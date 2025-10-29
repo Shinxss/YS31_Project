@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { confirmAction } from "@/utils/confirm";
+import { Search } from "lucide-react";
 
 /* -------------------------------------------------------
    API base resolver
@@ -30,17 +31,17 @@ const normalize = (v = "") => String(v).trim().toLowerCase().replace(/\s+/g, " "
 const statusBadge = (raw) => {
   const s = normalize(raw);
   if (s.includes("deleted"))
-    return { label: "Deleted", cls: "bg-red-50 text-red-700 border-red-200" };
+    return { label: "Deleted", cls: "bg-red-100 text-red-600 border-red-200" };
   if (s.includes("archiv"))
-    return { label: "Archived", cls: "bg-gray-50 text-gray-700 border-gray-200" };
+    return { label: "Archived", cls: "bg-gray-100 text-gray-600 border-gray-200" };
   if (s.includes("suspend"))
-    return { label: "Suspended", cls: "bg-amber-50 text-amber-700 border-amber-200" };
+    return { label: "Suspended", cls: "bg-amber-100 text-amber-600 border-amber-200" };
   if (s.includes("pending"))
-    return { label: "Pending Review", cls: "bg-amber-50 text-amber-700 border-amber-200" };
+    return { label: "Pending Review", cls: "bg-amber-100 text-amber-600 border-amber-200" };
   if (s.includes("closed"))
-    return { label: "Closed", cls: "bg-red-50 text-red-700 border-red-200" };
+    return { label: "Closed", cls: "bg-red-100 text-red-600 border-red-200" };
   // default -> open
-  return { label: "Open", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+  return { label: "Open", cls: "bg-emerald-100 text-emerald-600 border-emerald-200" };
 };
 
 const KebabIcon = ({ className = "" }) => <span className={className} aria-hidden>⋯</span>;
@@ -629,13 +630,16 @@ export default function JobPostingsPage() {
   /* ---------- Render ---------- */
   return (
     <div className="bg-white rounded-2xl min-h-[calc(100vh-60px)]">
-      <div className="max-w-[1150px] mx-auto py-6">
+      <div className="max-w-[1200px] mx-auto py-6 px-3">
         {/* Top bar: title + create */}
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-lg font-semibold text-[#173B8A]">Job Postings</h1>
+          <div className=" mb-6">
+          <h1 className="text-2xl font-semibold text-black">Job Postings</h1>
+          <p className="text-sm font-medium text-gray-400">Manage and track your company’s active job listings.</p>
+          </div>
           <button
             onClick={goCreate}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#F37526] text-white text-sm shadow-sm hover:bg-[#fd9b5f]"
+            className="inline-flex items-center gap-3 px-4 py-2 rounded-lg bg-[#F37526] font-medium text-white text-sm shadow-sm hover:bg-[#fd9b5f]"
           >
             <span className="text-base leading-none">＋</span> Post New Job
           </button>
@@ -644,11 +648,13 @@ export default function JobPostingsPage() {
         {/* Filters row */}
         <div className="grid grid-cols-12 gap-3 items-center">
           <div className="col-span-5">
-            <div className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2">
+            <div className="flex items-center gap-2 rounded-lg border border-gray-400 bg-white px-3 py-2">
               <span className="text-gray-400"></span>
+              <Search className="w-4 h-4 text-gray-400" aria-hidden="true" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                icon={Search}
                 placeholder="Search by title…"
                 className="w-full outline-none text-sm"
               />
@@ -660,7 +666,7 @@ export default function JobPostingsPage() {
             <select
               value={catFilter}
               onChange={(e) => setCatFilter(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-gray-400 bg-white px-3 py-2 text-sm"
             >
               <option value="all">All Categories</option>
               {categories.map((c) => (
@@ -676,7 +682,7 @@ export default function JobPostingsPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-gray-400 bg-white px-3 py-2 text-sm"
             >
               <option value="all">All Statuses</option>
               <option value="open">Open</option>
@@ -693,7 +699,7 @@ export default function JobPostingsPage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-gray-400 bg-white px-3 py-2 text-sm"
             >
               <option value="date">Date Posted</option>
               <option value="title">Title (A–Z)</option>
@@ -702,15 +708,15 @@ export default function JobPostingsPage() {
         </div>
 
         {/* Tabs bar */}
-        <div className="mt-4 flex rounded-lg border border-gray-200 bg-white overflow-hidden">
+        <div className="mt-4 flex rounded-lg border border-gray-400 bg-white overflow-hidden">
           <button
-            className={`flex-1 py-2 text-sm ${tab === "active" ? "bg-gray-100 font-medium" : "text-gray-600"}`}
+            className={`flex-1 py-2 text-sm ${tab === "active" ? "text-white bg-blue-600 font-medium" : "text-gray-600"}`}
             onClick={() => setTab("active")}
           >
             Active Listings
           </button>
           <button
-            className={`flex-1 py-2 text-sm ${tab === "archived" ? "bg-gray-100 font-medium" : "text-gray-600"}`}
+            className={`flex-1 py-3 text-sm ${tab === "archived" ? "text-white bg-blue-600 font-medium" : "text-gray-600"}`}
             onClick={() => setTab("archived")}
           >
             Archived Listings
@@ -718,7 +724,7 @@ export default function JobPostingsPage() {
         </div>
 
         {/* Table */}
-        <div className="mt-4 rounded-lg border border-white bg-white overflow-visible" ref={tableRef}>
+        <div className="mt-4 rounded-lg border border-gray-300 bg-white overflow-visible" ref={tableRef}>
           <div className="grid grid-cols-12 gap-3 px-4 py-3 text-xs font-semibold text-gray-600 bg-[#F6F7FA]">
             <div className="col-span-4">Job Title</div>
             <div className="col-span-2">Category</div>
@@ -756,31 +762,31 @@ export default function JobPostingsPage() {
                   <li key={id} className="px-4 py-4 grid grid-cols-12 gap-3 items-center">
                     {/* Job Title + secondary line */}
                     <div className="col-span-4 min-w-0">
-                      <p className="text-sm text-gray-900">{j.title || "Untitled"}</p>
+                      <p className="text-sm font-semibold text-gray-900">{j.title || "Untitled"}</p>
                       <p className="text-xs text-gray-500 mt-1">{loc || "—"}</p>
                     </div>
 
                     {/* Category pill */}
                     <div className="col-span-2">
-                      <span className="inline-block rounded-full border bg-gray-100 text-gray-700 text-xs px-3 py-1">
+                      <span className="inline-block font-semibold text-gray-700 text-xs px-3 py-1">
                         {dept}
                       </span>
                     </div>
 
                     {/* Status pill */}
                     <div className="col-span-2">
-                      <span className={`inline-block rounded-full border text-xs px-3 py-1 ${st.cls}`}>
+                      <span className={`inline-block rounded-full font-medium border text-xs px-3 py-1 ${st.cls}`}>
                         {st.label}
                       </span>
                     </div>
 
                     {/* Date (NO time-ago) */}
-                    <div className="col-span-2 text-sm text-gray-900">
+                    <div className="col-span-2 text-sm font-medium text-gray-500">
                       {when ? new Date(when).toISOString().slice(0, 10) : "—"}
                     </div>
 
                     {/* Applications (bold number) */}
-                    <div className="col-span-1 text-sm font-semibold text-gray-900">
+                    <div className="col-span-1 text-sm font-medium text-gray-500">
                       {appsCount}
                     </div>
 
@@ -865,20 +871,20 @@ export default function JobPostingsPage() {
             <button
               disabled={currentPage <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className={`px-3 py-1 rounded border text-sm ${currentPage <= 1 ? "text-gray-400 border-gray-200" : "text-gray-700 hover:bg-gray-50"}`}
+              className={`px-3 py-1 rounded border text-sm ${currentPage <= 1 ? "text-gray-700 border-gray-200" : "text-gray-700 hover:bg-gray-50"}`}
             >
               Previous
             </button>
 
             {/* Simple page indicator (current) */}
-            <span className="min-w-[28px] text-center px-2 py-1 rounded bg-[#0B63F8] text-white text-sm">
+            <span className="min-w-[28px] text-center px-2 py-1 rounded bg-blue-600 text-white text-sm">
               {currentPage}
             </span>
 
             <button
               disabled={currentPage >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className={`px-3 py-1 rounded border text-sm ${currentPage >= totalPages ? "text-gray-400 border-gray-200" : "text-gray-700 hover:bg-gray-50"}`}
+              className={`px-3 py-1 rounded border text-sm ${currentPage >= totalPages ? "text-gray-700 border-gray-200" : "text-gray-700 hover:bg-gray-50"}`}
             >
               Next
             </button>

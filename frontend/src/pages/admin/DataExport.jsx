@@ -134,14 +134,14 @@ export default function DataExportPage() {
   }, [selected]);
 
   return (
-    <div className="p-6">
+    <div>
       <h1 className="text-2xl font-semibold text-gray-900">Data Export</h1>
-      <p className="text-sm text-gray-500">Export platform data in various formats</p>
+      <p className="text-sm font-medium text-gray-500">Export platform data in various formats</p>
 
-      <div className="mt-4 bg-white border border-gray-200 rounded-xl">
+      <div className="mt-10 bg-white border border-gray-200 rounded-xl">
         <div className="p-4 border-b border-gray-200">
-          <h2 className="font-medium text-gray-900">Export Data</h2>
-          <p className="text-sm text-gray-500">
+          <h2 className="font-semibold text-xl text-gray-900">Export Data</h2>
+          <p className="text-sm text-gray-500 mb-6">
             Select the data collections and format to export
           </p>
         </div>
@@ -218,7 +218,7 @@ export default function DataExportPage() {
             disabled={!canExport}
             onClick={handleExport}
             className={cls(
-              "w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-medium",
+              "w-full inline-flex items-center justify-center gap-2 mb-6 rounded-lg px-4 py-3 font-medium",
               canExport
                 ? "bg-indigo-500 text-white hover:bg-indigo-600"
                 : "bg-gray-200 text-gray-500 cursor-not-allowed"

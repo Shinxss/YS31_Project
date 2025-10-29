@@ -419,8 +419,8 @@ export default function PostJobPage({ token: propToken, onCreated }) {
   /* Render                                                         */
   /* -------------------------------------------------------------- */
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <h2 className="text-2xl font-semibold mb-4">
+    <div className="p-6 max-w-7xl mx-auto">
+      <h2 className="text-3xl font-semibold mb-7">
         {isEdit ? "Edit Job Posting" : "Create New Job Posting"}
       </h2>
 
@@ -892,7 +892,7 @@ export default function PostJobPage({ token: propToken, onCreated }) {
         <button
           type="button"
           onClick={() => setCurrentStep((s) => Math.max(1, s - 1))}
-          className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+          className="px-4 py-2 rounded-md border bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
           disabled={currentStep === 1 || saving}
         >
           Previous
@@ -905,7 +905,7 @@ export default function PostJobPage({ token: propToken, onCreated }) {
               if (validateStep(currentStep)) setCurrentStep((s) => Math.min(4, s + 1));
               else toast.warn("Please finish the required fields in this step.", { autoClose: 2000 });
             }}
-            className="px-4 py-2 rounded-md bg-[#173B8A] text-white hover:opacity-95 disabled:opacity-60"
+            className="px-4 py-2 rounded-md bg-orange-500 text-white hover:opacity-95 disabled:opacity-60"
             disabled={saving}
           >
             Next

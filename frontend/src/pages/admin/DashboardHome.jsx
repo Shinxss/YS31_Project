@@ -87,13 +87,13 @@ function StatCard({ icon, title, value, delta }) {
       change: "",
     },
     "Total Active Job Listings": {
-      border: "border-blue-500",
-      icon: "text-blue-500",
-      change: "",
-    },
-    "Total Applications Received": {
       border: "border-yellow-500",
       icon: "text-yellow-500",
+      change: "",
+    },
+    "Total Applications": {
+      border: "border-green-500",
+      icon: "text-green-500",
       change: "",
     },
   };
@@ -106,23 +106,26 @@ function StatCard({ icon, title, value, delta }) {
 
   return (
     <div
-      className={`bg-white rounded-lg border-l-4 ${style.border} shadow-sm p-5 flex flex-col justify-between hover:shadow-md transition`}
+      className={`relative bg-white rounded-lg border-l-4 ${style.border} shadow-sm p-5 flex flex-col justify-between hover:shadow-md transition`}
     >
-      <p className="text-xs text-gray-600 mb-2">{title}</p>
-
-      <div className="flex items-end justify-between">
-        <div>
-          <div className="text-3xl font-semibold text-gray-800">
-            {numberFmt(value)}
-          </div>
-          <div className="text-xs text-gray-500 mt-1">{style.change}</div>
-        </div>
+      {/* top row: title (left) + icon (right) */}
+      <div className="flex items-start justify-between">
+        <p className="text-xs text-gray-600">{title}</p>
 
         <div
-          className={`h-10 w-10 rounded-md bg-gray-50 flex items-center justify-center ${style.icon}`}
+          className={`ml-3 h-10 w-10 rounded-md bg-gray-50 flex items-center justify-center ${style.icon}`}
+          aria-hidden
         >
           {icon}
         </div>
+      </div>
+
+      {/* value centered below */}
+      <div className="mt-4">
+        <div className="text-3xl font-semibold text-gray-800">
+          {numberFmt(value)}
+        </div>
+        {delta && <div className="text-xs text-gray-500 mt-1">{delta}</div>}
       </div>
     </div>
   );
@@ -216,13 +219,13 @@ export default function AdminDashboardHome() {
   );
 
   return (
-    <div className="p-6">
+    <div>
       {/* Header */}
       <h1 className="text-2xl font-extrabold">Welcome back, Admin</h1>
       <p className="text-sm text-gray-600 mt-1">Here is your platform overview</p>
 
       {/* Stat cards row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 h-30 lg:grid-cols-4 gap-4 mt-5 mb-8">
         <StatCard
           title="Total Students"
           value={totals.students}
@@ -239,7 +242,7 @@ export default function AdminDashboardHome() {
           icon={<BriefcaseBusiness size={18} />}
         />
         <StatCard
-          title="Total Applications Received"
+          title="Total Applications"
           value={totals.applications}
           icon={<FileText size={18} />}
         />

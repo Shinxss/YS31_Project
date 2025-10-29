@@ -590,7 +590,7 @@ function FeaturedJobsGrid({ onRequestLogin }) {
             </div>
 
             {skills.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-4">
+              <div className="flex flex-wrap gap-2 mt-4 max-h-[60px] overflow-hidden">
                 {skills.map((s, idx) => (
                   <span key={idx} className="text-xs border border-gray-300 rounded-full px-3 py-1">
                     {s}

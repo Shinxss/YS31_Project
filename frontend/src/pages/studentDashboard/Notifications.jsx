@@ -222,7 +222,7 @@ export default function StudentNotifications() {
           </button>
           <button
             onClick={markAllRead}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-[#173B8A] text-white hover:bg-blue-700"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-orange-500 text-white hover:bg-blue-700"
           >
             <CheckCircle2 size={16} />
             <span className="text-sm">Mark all read</span>
@@ -245,7 +245,7 @@ export default function StudentNotifications() {
             onClick={() => setFilter(f.key)}
             className={`px-3 py-1.5 rounded-md text-sm border ${
               filter === f.key
-                ? "bg-[#173B8A] text-white border-gray-900"
+                ? "bg-blue-800 text-white border-gray-900"
                 : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
             }`}
           >

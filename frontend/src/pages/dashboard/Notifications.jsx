@@ -197,20 +197,20 @@ export default function CompanyNotifications() {
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-15">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-50 rounded-lg">
-            <Bell className="text-blue-700" size={20} />
+          <div className="p-2 bg-white rounded-lg">
+            <Bell className=" text-blue-700" size={25} />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-gray-900">Notifications</h1>
+            <h1 className="text-2xl font-semibold text-gray-900">Notifications</h1>
             <p className="text-sm text-gray-500">
               Showing only <span className="font-medium">Applied</span> updates
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center  gap-2">
           <button
             onClick={() => fetchNotifications({ showSpinner: false })}
             className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-gray-200 bg-white hover:bg-gray-50"
@@ -222,7 +222,7 @@ export default function CompanyNotifications() {
           </button>
           <button
             onClick={markAllRead}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-orange-500 text-white hover:bg-blue-700"
           >
             <CheckCircle2 size={16} />
             <span className="text-sm">Mark all read</span>
@@ -243,7 +243,7 @@ export default function CompanyNotifications() {
               onClick={() => setFilter(f.key)}
               className={`px-3 py-1.5 rounded-md text-sm border ${
                 filter === f.key
-                  ? "bg-gray-900 text-white border-gray-900"
+                  ? "bg-blue-800 text-white border-gray-900"
                   : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
               }`}
             >
@@ -321,7 +321,7 @@ export default function CompanyNotifications() {
                         {n?.data?.jobId && (
                           <a
                             href={`/company/applications?job=${n.data.jobId}`}
-                            className="inline-flex items-center justify-center px-4 py-2 text-[10px] font-medium rounded-md shadow-md bg-orange-500 text-white hover:bg-orange-600"
+                            className="inline-flex items-center justify-center px-4 py-2 text-[15px] font-medium rounded-md shadow-md bg-orange-500 text-white hover:bg-orange-600"
                             title="View applicant"
                           >
                             View applicant
@@ -344,7 +344,7 @@ export default function CompanyNotifications() {
                     )}
                     <button
                       onClick={() => removeOne(n._id)}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-gray-200 hover:bg-gray-50 text-sm text-red-600"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-red-700 hover:bg-gray-0 text-sm text-red-600"
                       title="Delete"
                     >
                       <Trash2 size={16} />

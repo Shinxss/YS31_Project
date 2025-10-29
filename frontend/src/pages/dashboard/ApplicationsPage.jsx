@@ -370,7 +370,7 @@ export default function ApplicationsPage({ token: propToken }) {
       <div className="h-[640px] flex flex-col">
         {/* Header row (static) */}
         <div className="flex items-center justify-between mb-2 shrink-0">
-          <h1 className="text-lg md:text-xl font-semibold text-gray-800">
+          <h1 className="text-lg md:text-2xl font-semibold text-gray-800">
             Applications
           </h1>
           {!loading && (
