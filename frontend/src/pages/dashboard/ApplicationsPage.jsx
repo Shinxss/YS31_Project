@@ -102,9 +102,7 @@ export default function ApplicationsPage({ token: propToken }) {
   const handleViewProfile = (app) => {
     const id = app?.student?._id;
     if (!id) return;
-    navigate(`/company/students/${id}`, {
-      state: { from: "applications", appId: app._id },
-    });
+    navigate(`/company/students/${id}`);
   };
 
   async function persistStatus(appId, nextStatus) {
@@ -456,198 +454,198 @@ export default function ApplicationsPage({ token: propToken }) {
           </div>
         )}
 
-        {/* Scrollable table container */}
+        {/* Content area */}
         <div className="flex-1 min-h-0">
-          {loading ? (
-            <div className="animate-pulse space-y-3">
-              <div className="h-16 rounded-xl bg-gray-100" />
-              <div className="h-16 rounded-xl bg-gray-100" />
-              <div className="h-16 rounded-xl bg-gray-100" />
-            </div>
-          ) : apps.length === 0 ? (
-            <div className="rounded-xl p-6 bg-gradient-to-br from-gray-50 to-white text-center">
-              <p className="text-gray-600">No applications yet.</p>
-            </div>
-          ) : filteredAndSorted.length === 0 ? (
-            <div className="rounded-xl p-4 border border-amber-200 bg-amber-50 text-amber-800 text-sm">
-              No results match your current filters.
-              <button
-                className="ml-3 underline"
-                onClick={() => {
-                  setQuery("");
-                  setStatusFilter("all");
-                  setSortOrder("default");
-                }}
-              >
-                Reset
-              </button>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-gray-100 overflow-hidden h-full flex flex-col">
-              {/* Sticky header */}
-              <div className="hidden md:grid [grid-template-columns:2.5fr_2fr_1fr_1fr_1fr] gap-3 px-4 py-3 bg-gray-50 text-xs font-semibold text-gray-500 sticky top-0 z-10">
-                <div>Student</div>
-                <div>Job Title</div>
-                <div>Applied On</div>
-                <div>Status</div>
-                <div className="text-right">Actions</div>
-              </div>
+              {loading ? (
+                <div className="animate-pulse space-y-3">
+                  <div className="h-16 rounded-xl bg-gray-100" />
+                  <div className="h-16 rounded-xl bg-gray-100" />
+                  <div className="h-16 rounded-xl bg-gray-100" />
+                </div>
+              ) : apps.length === 0 ? (
+                <div className="rounded-xl p-6 bg-gradient-to-br from-gray-50 to-white text-center">
+                  <p className="text-gray-600">No applications yet.</p>
+                </div>
+              ) : filteredAndSorted.length === 0 ? (
+                <div className="rounded-xl p-4 border border-amber-200 bg-amber-50 text-amber-800 text-sm">
+                  No results match your current filters.
+                  <button
+                    className="ml-3 underline"
+                    onClick={() => {
+                      setQuery("");
+                      setStatusFilter("all");
+                      setSortOrder("default");
+                    }}
+                  >
+                    Reset
+                  </button>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-gray-100 overflow-hidden h-full flex flex-col">
+                  {/* Sticky header */}
+                  <div className="hidden md:grid [grid-template-columns:2.5fr_2fr_1fr_1fr_1fr] gap-3 px-4 py-3 bg-gray-50 text-xs font-semibold text-gray-500 sticky top-0 z-10">
+                    <div>Student</div>
+                    <div>Job Title</div>
+                    <div>Applied On</div>
+                    <div>Status</div>
+                    <div className="text-right">Actions</div>
+                  </div>
 
-              {/* Scrollable list */}
-              <div className="flex-1 overflow-y-auto">
-                <ul className="divide-y divide-gray-100">
-                  {pagedApps.map((app) => {
-                    const student = app.student || {};
-                    const fullName =
-                      student.fullName ||
-                      [student.firstName, student.lastName]
-                        .filter(Boolean)
-                        .join(" ") ||
-                      "Unknown Applicant";
-                    const course =
-                      student.course ||
-                      (studentProfiles[student._id]?.course || "—");
-                    const jobTitle = app.job?.title || "—";
-                    const [label, pillClass] = statusLabel(app.status);
-                    const isBusy = rowBusy === app._id;
+                  {/* Scrollable list */}
+                  <div className="flex-1 overflow-y-auto">
+                    <ul className="divide-y divide-gray-100">
+                      {pagedApps.map((app) => {
+                        const student = app.student || {};
+                        const fullName =
+                          student.fullName ||
+                          [student.firstName, student.lastName]
+                            .filter(Boolean)
+                            .join(" ") ||
+                          "Unknown Applicant";
+                        const course =
+                          student.course ||
+                          (studentProfiles[student._id]?.course || "—");
+                        const jobTitle = app.job?.title || "—";
+                        const [label, pillClass] = statusLabel(app.status);
+                        const isBusy = rowBusy === app._id;
 
-                    const avatarUrl =
-                      student.profilePicture ||
-                      studentProfiles[student._id]?.profilePicture ||
-                      "";
+                        const avatarUrl =
+                          student.profilePicture ||
+                          studentProfiles[student._id]?.profilePicture ||
+                          "";
 
-                    return (
-                      <li
-                        key={app._id}
-                        className="px-4 py-4 bg-white hover:bg-gray-50 transition"
-                      >
-                        <div className="grid [grid-template-columns:5fr_4fr_1.6fr_1.4fr_1.4fr] gap-3 items-center">
-                          {/* Student (avatar + name + COURSE under name) */}
-                          <div className="min-w-0">
-                            <div className="flex items-start gap-3">
-                              <Avatar name={fullName} src={avatarUrl} />
+                        return (
+                          <li
+                            key={app._id}
+                            className="px-4 py-4 bg-white hover:bg-gray-50 transition"
+                          >
+                            <div className="grid [grid-template-columns:5fr_4fr_1.6fr_1.4fr_1.4fr] gap-3 items-center">
+                              {/* Student (avatar + name + COURSE under name) */}
                               <div className="min-w-0">
-                                <h4 className="text-sm font-semibold text-gray-800 truncate">
-                                  {fullName}
-                                </h4>
-                                <p className="text-xs text-gray-500 truncate">
-                                  {course}
+                                <div className="flex items-start gap-3">
+                                  <Avatar name={fullName} src={avatarUrl} />
+                                  <div className="min-w-0">
+                                    <h4 className="text-sm font-semibold text-gray-800 truncate">
+                                      {fullName}
+                                    </h4>
+                                    <p className="text-xs text-gray-500 truncate">
+                                      {course}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Job Title (main col) */}
+                              <div className="min-w-0">
+                                <p className="text-sm text-gray-800 truncate max-w-full">
+                                  {jobTitle}
                                 </p>
                               </div>
+
+                              {/* Applied On */}
+                              <div className="text-xs text-gray-600">
+                                {timeAgo(app.appliedAt || app.createdAt)}
+                              </div>
+
+                              {/* Status */}
+                              <div>
+                                <span
+                                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${pillClass} whitespace-nowrap`}
+                                >
+                                  {label}
+                                </span>
+                              </div>
+
+                              {/* Actions */}
+                              <div className="flex justify-end gap-2 whitespace-nowrap">
+                                <button
+                                  type="button"
+                                  onClick={() => handleViewProfile(app)}
+                                  className="px-2.5 py-1.5 rounded-lg border text-gray-700 hover:bg-gray-50 text-xs"
+                                >
+                                  View Profile
+                                </button>
+                                <button
+                                  disabled={isBusy}
+                                  onClick={() => handleReview(app)}
+                                  className="px-2.5 py-1.5 rounded-lg bg-[#F37526] text-white hover:bg-[#d35405] text-xs disabled:opacity-60"
+                                >
+                                  {isBusy ? "…" : "Review Application"}
+                                </button>
+                              </div>
                             </div>
-                          </div>
-
-                          {/* Job Title (main col) */}
-                          <div className="min-w-0">
-                            <p className="text-sm text-gray-800 truncate max-w-full">
-                              {jobTitle}
-                            </p>
-                          </div>
-
-                          {/* Applied On */}
-                          <div className="text-xs text-gray-600">
-                            {timeAgo(app.appliedAt || app.createdAt)}
-                          </div>
-
-                          {/* Status */}
-                          <div>
-                            <span
-                              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${pillClass} whitespace-nowrap`}
-                            >
-                              {label}
-                            </span>
-                          </div>
-
-                          {/* Actions */}
-                          <div className="flex justify-end gap-2 whitespace-nowrap">
-                            <button
-                              type="button"
-                              onClick={() => handleViewProfile(app)}
-                              className="px-2.5 py-1.5 rounded-lg border text-gray-700 hover:bg-gray-50 text-xs"
-                            >
-                              View Profile
-                            </button>
-                            <button
-                              disabled={isBusy}
-                              onClick={() => handleReview(app)}
-                              className="px-2.5 py-1.5 rounded-lg bg-[#F37526] text-white hover:bg-[#d35405] text-xs disabled:opacity-60"
-                            >
-                              {isBusy ? "…" : "Review Application"}
-                            </button>
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-
-              {/* Pagination controls */}
-              <div className="flex items-center justify-between px-4 py-3 border-t bg-white">
-                <div className="flex items-center gap-3 text-sm text-gray-700">
-                  <div>
-                    <label className="text-xs text-gray-500 mr-2">Show</label>
-                    <select
-                      value={perPage}
-                      onChange={(e) => setPerPage(Number(e.target.value))}
-                      className="rounded-lg border border-gray-300 px-2 py-1 bg-white focus:outline-none"
-                    >
-                      {PER_PAGE_OPTIONS.map((n) => (
-                        <option key={n} value={n}>
-                          {n}
-                        </option>
-                      ))}
-                    </select>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   </div>
 
-                  <div className="text-xs text-gray-500">
-                    {/* e.g. Showing 1–10 of 42 */}
-                    {totalItems === 0 ? (
-                      "No items"
-                    ) : (
-                      <>
-                        Showing{" "}
-                        <span className="font-medium">
-                          {(totalItems === 0 ? 0 : (page - 1) * perPage + 1)}
-                        </span>{" "}
-                        –{" "}
-                        <span className="font-medium">
-                          {Math.min(page * perPage, totalItems)}
-                        </span>{" "}
-                        of <span className="font-medium">{totalItems}</span>
-                      </>
-                    )}
+                  {/* Pagination controls */}
+                  <div className="flex items-center justify-between px-4 py-3 border-t bg-white">
+                    <div className="flex items-center gap-3 text-sm text-gray-700">
+                      <div>
+                        <label className="text-xs text-gray-500 mr-2">Show</label>
+                        <select
+                          value={perPage}
+                          onChange={(e) => setPerPage(Number(e.target.value))}
+                          className="rounded-lg border border-gray-300 px-2 py-1 bg-white focus:outline-none"
+                        >
+                          {PER_PAGE_OPTIONS.map((n) => (
+                            <option key={n} value={n}>
+                              {n}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="text-xs text-gray-500">
+                        {/* e.g. Showing 1–10 of 42 */}
+                        {totalItems === 0 ? (
+                          "No items"
+                        ) : (
+                          <>
+                            Showing{" "}
+                            <span className="font-medium">
+                              {(totalItems === 0 ? 0 : (page - 1) * perPage + 1)}
+                            </span>{" "}
+                            –{" "}
+                            <span className="font-medium">
+                              {Math.min(page * perPage, totalItems)}
+                            </span>{" "}
+                            of <span className="font-medium">{totalItems}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page <= 1}
+                        className="px-3 py-1 rounded-lg border bg-white text-sm disabled:opacity-50"
+                      >
+                        Prev
+                      </button>
+
+                      <div className="text-sm text-gray-700">
+                        Page{" "}
+                        <span className="font-medium">{page}</span> of{" "}
+                        <span className="font-medium">{totalPages}</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={page >= totalPages}
+                        className="px-3 py-1 rounded-lg border bg-white text-sm disabled:opacity-50"
+                      >
+                        Next
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page <= 1}
-                    className="px-3 py-1 rounded-lg border bg-white text-sm disabled:opacity-50"
-                  >
-                    Prev
-                  </button>
-
-                  <div className="text-sm text-gray-700">
-                    Page{" "}
-                    <span className="font-medium">{page}</span> of{" "}
-                    <span className="font-medium">{totalPages}</span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page >= totalPages}
-                    className="px-3 py-1 rounded-lg border bg-white text-sm disabled:opacity-50"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+              )}
         </div>
 
         {/* Review modal */}

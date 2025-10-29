@@ -1,8 +1,17 @@
 // src/pages/company/CompanyStudentProfile.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import {
+  Briefcase,
+  GraduationCap,
+  Award,
+  MapPin,
+  Mail,
+  Phone,
+  Calendar,
+  User,
+} from "lucide-react";
 
-/* API base (env first, Vite dev fallback) */
 const RAW_API_BASE =
   (import.meta.env?.VITE_API_BASE ||
     (typeof window !== "undefined" && /:5173|:5174/.test(window.location.origin)
@@ -10,15 +19,12 @@ const RAW_API_BASE =
       : "")).trim();
 const api = (p) => (RAW_API_BASE ? `${RAW_API_BASE}${p}` : p);
 
-const Dash = ({ v }) => <>{v ?? v === 0 ? v : "—"}</>;
-
-const Card = ({ children, className = "" }) => (
-  <div className={`bg-white shadow-lg rounded-xl ${className}`}>{children}</div>
-);
-
 export default function CompanyStudentProfile() {
-  const { id } = useParams(); // studentId
+  const { id } = useParams();
   const navigate = useNavigate();
+  const [student, setStudent] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
 
   const token =
     typeof window !== "undefined"
@@ -31,10 +37,6 @@ export default function CompanyStudentProfile() {
     [token]
   );
 
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
-  const [s, setS] = useState(null);
-
   useEffect(() => {
     let ignore = false;
     (async () => {
@@ -43,11 +45,10 @@ export default function CompanyStudentProfile() {
         setLoading(true);
         const r = await fetch(api(`/api/students/${id}/profile`), {
           headers: { ...authHeader },
-          credentials: "include",
         });
         const data = await r.json();
         if (!r.ok) throw new Error(data?.message || "Failed to load profile");
-        if (!ignore) setS(data);
+        if (!ignore) setStudent(data);
       } catch (e) {
         if (!ignore) setErr(e.message || "Failed to load profile");
       } finally {
@@ -57,205 +58,243 @@ export default function CompanyStudentProfile() {
     return () => (ignore = true);
   }, [id]);
 
+  if (loading)
+    return (
+      <div className="p-10 text-center text-gray-600">
+        Loading student profile...
+      </div>
+    );
+
+  if (err)
+    return (
+      <div className="p-10 text-center text-red-500">
+        Error: {err}
+        <br />
+        <button
+          onClick={() => navigate(-1)}
+          className="mt-4 px-4 py-2 bg-gray-100 border rounded-md"
+        >
+          ← Go Back
+        </button>
+      </div>
+    );
+
+  const s = student || {};
   const fullName =
-    s?.fullName || [s?.firstName, s?.lastName].filter(Boolean).join(" ");
+    s.fullName || [s.firstName, s.lastName].filter(Boolean).join(" ");
 
   return (
-    <div className="px-8 py-6 space-y-6 bg-indigo-50 min-h-screen">
-      {/* Top bar: back + title */}
-      <div className="flex items-center gap-4">
+    <div className="min-h-screen w-full bg-white rounded-2xl">
+      {/* HEADER */}
+      <div className="flex items-center justify-between px-8 pt-6">
+        {/* Left: Avatar + Name */}
+        <div className="flex items-center gap-5">
+          <div className="relative">
+            <div className="h-20 w-20 md:h-24 md:w-24 rounded-full border border-gray-300 overflow-hidden bg-gray-100">
+              {s.profilePicture ? (
+                <img
+                  src={s.profilePicture}
+                  alt="avatar"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center text-2xl md:text-3xl text-gray-600 font-semibold">
+                  {(s.firstName?.[0] || "").toUpperCase()}
+                  {(s.lastName?.[0] || "").toUpperCase()}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-[22px] md:text-[26px] font-semibold leading-tight text-gray-900">
+              {fullName || "Unnamed Student"}
+            </div>
+            <div className="text-sm md:text-base text-gray-500">
+              {s.course || "Information Technology"}
+            </div>
+          </div>
+        </div>
+
         <button
           onClick={() => navigate("/company/applications")}
-          className="px-4 py-2 rounded-lg border text-sm hover:bg-gray-50"
+          className="inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-semibold hover:bg-gray-50"
         >
-          ← Back to applications
+          ← Back
         </button>
       </div>
 
-      {err && (
-        <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">
-          {err}
-        </div>
-      )}
+      {/* MAIN GRID */}
+      <div className="px-6 md:px-8 pb-10">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+          {/* LEFT COLUMN */}
+          <div className="space-y-6">
+            {/* About Me */}
+            <Card>
+              <SectionTitle>About Me</SectionTitle>
+              <p className="mt-2 text-sm text-gray-700 leading-6 whitespace-pre-line">
+                {s.bio?.trim() ||
+                  "No description provided."}
+              </p>
+            </Card>
 
-      {/* Main layout */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
-        {/* LEFT CARD (matches student design) */}
-        <Card className="p-8 flex flex-col items-center text-center w-full min-w-[360px]">
-          {/* Avatar */}
-          <div className="relative w-32 h-32 mb-4">
-            {s?.profilePicture ? (
-              <img
-                src={s.profilePicture}
-                alt={fullName || "Student"}
-                className="w-full h-full object-cover rounded-full border-4 border-blue-500"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center rounded-full bg-blue-200 text-blue-800 text-3xl font-semibold border-4 border-blue-500">
-                {(fullName || " ? ").trim().slice(0, 2).replace(" ", "")}
+            {/* Skills */}
+            <Card>
+              <SectionTitle>Skills</SectionTitle>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {s.skills?.length ? (
+                  s.skills.map((skill, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center rounded-full border px-3 py-1 text-xs text-gray-700 bg-white"
+                    >
+                      {skill}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-sm text-gray-400">No skills added</span>
+                )}
               </div>
-            )}
+            </Card>
+
+            {/* Contact & Details */}
+            <Card>
+              <SectionTitle>Contact & Details</SectionTitle>
+              <div className="mt-3 space-y-4">
+                <KV label="Email" value={s.email || "—"} />
+                <KV label="Contact Number" value={s.contactNumber || "—"} />
+                <KV label="Location" value={s.location || "—"} />
+                <div className="grid grid-cols-3 gap-4">
+                  <KV label="Age" value={s.age || "—"} />
+                  <KV label="Gender" value={s.gender || "—"} />
+                  <KV label="Nationality" value={s.race || "—"} />
+                </div>
+              </div>
+            </Card>
           </div>
 
-          {/* Name + course */}
-          <h3 className="text-lg font-bold text-[#173B8A] mb-1">
-            <Dash v={fullName} />
-          </h3>
-          <p className="text-sm text-gray-600 mb-3">
-            <Dash v={s?.course || "Student"} />
-          </p>
+          {/* RIGHT COLUMN */}
+          <div className="lg:col-span-2 space-y-8">
+            <SectionBlock title="Work Experience">
+              <List type="experience" items={s.experience} icon={Briefcase} />
+            </SectionBlock>
 
-          {/* About */}
-          <div className="w-full mt-4 text-left">
-            <h4 className="text-sm font-semibold text-gray-700">About:</h4>
-            <p className="text-gray-700 text-sm mt-1 whitespace-pre-line">
-              {s?.bio?.trim() || "—"}
-            </p>
+            <SectionBlock title="Education">
+              <List type="education" items={s.education} icon={GraduationCap} />
+            </SectionBlock>
+
+            <SectionBlock title="Certifications">
+              <List type="certification" items={s.certification} icon={Award} />
+            </SectionBlock>
           </div>
-
-          {/* Skills */}
-          <div className="w-full mt-4 text-left">
-            <h4 className="text-sm font-semibold text-gray-700 mb-2">Skills:</h4>
-            {s?.skills?.length ? (
-              <div className="flex flex-wrap gap-2">
-                {s.skills.map((k, i) => (
-                  <span
-                    key={`${k}-${i}`}
-                    className="bg-gray-100 border border-gray-200 text-gray-700 text-xs px-3 py-1 rounded-full"
-                  >
-                    {k}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <span className="text-gray-400 text-sm">—</span>
-            )}
-          </div>
-        </Card>
-
-        {/* RIGHT STACK (Basic info + sections) */}
-        <div className="md:col-span-2 space-y-6">
-          {/* BASIC INFO */}
-          <Card className="p-6">
-            <h4 className="text-lg font-bold text-blue-900 mb-4">
-              Basic Information
-            </h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <div className="text-gray-500 text-xs">Email</div>
-                <div className="text-gray-900">
-                  <Dash v={s?.email} />
-                </div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs">Age</div>
-                <div className="text-gray-900">
-                  <Dash v={s?.age} />
-                </div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs">Location</div>
-                <div className="text-gray-900">
-                  <Dash v={s?.location} />
-                </div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs">Contact Number</div>
-                <div className="text-gray-900">
-                  <Dash v={s?.contactNumber} />
-                </div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs">Gender</div>
-                <div className="text-gray-900">
-                  <Dash v={s?.gender} />
-                </div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs">Nationality</div>
-                <div className="text-gray-900">
-                  <Dash v={s?.race} />
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* EXPERIENCE */}
-          <Card className="p-6">
-            <h4 className="text-lg font-bold text-blue-900 mb-4">Experience</h4>
-            {s?.experience?.length ? (
-              <ul className="space-y-4">
-                {s.experience.map((e, i) => (
-                  <li
-                    key={i}
-                    className="flex items-center justify-between bg-blue-50 rounded-lg p-4 border border-blue-100"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="bg-white p-3 rounded-md border border-gray-300">
-                        {/* icon placeholder */}
-                        <span role="img" aria-label="briefcase">💼</span>
-                      </div>
-                      <div className="leading-tight">
-                        <p className="font-medium text-gray-900">{e.jobTitle}</p>
-                        <p className="text-sm text-gray-700">{e.companyName}</p>
-                        <p className="text-sm text-gray-600">
-                          {e.startDate} {e.endDate ? `- ${e.endDate}` : "- Present"}
-                        </p>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-600 text-sm">No experience listed.</p>
-            )}
-          </Card>
-
-          {/* EDUCATION */}
-          <Card className="p-6">
-            <h4 className="text-lg font-bold text-blue-900 mb-4">Education</h4>
-            {s?.education?.length ? (
-              <ul className="space-y-4">
-                {s.education.map((ed, i) => (
-                  <li
-                    key={i}
-                    className="bg-blue-50 rounded-lg p-4 border border-blue-100"
-                  >
-                    <p className="font-medium text-gray-900">{ed.degree}</p>
-                    <p className="text-sm text-gray-700">{ed.school}</p>
-                    <p className="text-sm text-gray-600">
-                      {ed.startDate} {ed.endDate ? `- ${ed.endDate}` : "- Present"}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-600 text-sm">No education listed.</p>
-            )}
-          </Card>
-
-          {/* CERTIFICATION */}
-          <Card className="p-6">
-            <h4 className="text-lg font-bold text-blue-900 mb-4">Certification</h4>
-            {s?.certification?.length ? (
-              <ul className="space-y-4">
-                {s.certification.map((c, i) => (
-                  <li
-                    key={i}
-                    className="bg-blue-50 rounded-lg p-4 border border-blue-100"
-                  >
-                    <p className="font-medium text-gray-900">{c.title}</p>
-                    <p className="text-sm text-gray-700">{c.companyName}</p>
-                    <p className="text-sm text-gray-600">{c.dateReceived}</p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-600 text-sm">No certifications listed.</p>
-            )}
-          </Card>
         </div>
       </div>
     </div>
   );
+}
+
+/* ---------------------- UI SUBCOMPONENTS ---------------------- */
+function Card({ children }) {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      {children}
+    </div>
+  );
+}
+
+function SectionTitle({ children }) {
+  return <h3 className="text-base font-semibold text-gray-800">{children}</h3>;
+}
+
+function SectionBlock({ title, children }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-xl font-semibold text-gray-900">{title}</h3>
+      </div>
+      <div className="space-y-4">{children}</div>
+    </div>
+  );
+}
+
+function List({ type, items = [], icon: Icon }) {
+  if (!items.length) {
+    return <p className="text-sm text-gray-600">No {type} added yet.</p>;
+  }
+
+  return items.map((item, i) => {
+    const title =
+      type === "experience"
+        ? item.jobTitle
+        : type === "education"
+        ? item.degree
+        : item.title;
+
+    const org =
+      type === "experience"
+        ? item.companyName
+        : type === "education"
+        ? item.school
+        : item.companyName;
+
+    const sub =
+      type === "certification"
+        ? item.companyName
+        : `${formatYear(item.startDate)} - ${
+            item.endDate ? formatYear(item.endDate) : "Present"
+          }`;
+
+    const rightSub =
+      type === "certification" && item.dateReceived
+        ? formatMonthYear(item.dateReceived)
+        : null;
+
+    return (
+      <div
+        key={i}
+        className="flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 py-4 shadow-sm"
+      >
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+            <Icon className="h-6 w-6 text-blue-700" />
+          </div>
+          <div className="leading-tight">
+            <div className="font-medium text-gray-900">{title || "—"}</div>
+            <div className="text-sm text-gray-700">{org || "—"}</div>
+            <div className="text-sm text-gray-500">
+              {rightSub ? rightSub : sub}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  });
+}
+
+function KV({ label, value }) {
+  return (
+    <div>
+      <div className="text-xs font-medium text-gray-600">{label}</div>
+      <div className="mt-1 text-sm text-gray-900">{value || "—"}</div>
+    </div>
+  );
+}
+
+/* Date helpers */
+function formatYear(d) {
+  try {
+    return new Date(d).getFullYear();
+  } catch {
+    return "—";
+  }
+}
+function formatMonthYear(d) {
+  try {
+    return new Date(d).toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    });
+  } catch {
+    return "—";
+  }
 }

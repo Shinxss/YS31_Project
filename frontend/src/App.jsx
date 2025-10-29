@@ -86,7 +86,6 @@ export default function App() {
         <Route element={<ProtectedRoute allow={["company"]} />}>
           <Route path="/company/*" element={<CompanyDash />} />
           <Route path="/company/settings/*" element={<CompanySettings />} />
-          <Route path="/company/students/:id" element={<CompanyStudentProfile />} />
         </Route>
 
         {/* ---------- ADMIN ROUTES ---------- */}

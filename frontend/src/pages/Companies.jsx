@@ -38,19 +38,11 @@ export default function Companies() {
 
             <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                to="/employer"
-                className="inline-flex items-center justify-center gap-2 rounded-md bg-[#2742C9] px-6 py-3 text-white font-semibold hover:bg-[#203ab1] transition"
+                to="/signup"
+                className="inline-flex items-center justify-center gap-2 rounded-md bg-[#2742C9] px-6 py-3 text-white font-semibold hover:bg-[#203ab1] transition w-100 h-15"
               >
                 <Briefcase className="w-5 h-5" />
                 Post Your First Job
-              </Link>
-
-              <Link
-                to="/candidates"
-                className="inline-flex items-center justify-center gap-2 rounded-md bg-white px-6 py-3 text-[#0F1E54] font-semibold border border-[#D5DCEE] hover:bg-[#F7F9FE] transition"
-              >
-                <Search className="w-5 h-5" />
-                Browse Candidates
               </Link>
             </div>
           </div>

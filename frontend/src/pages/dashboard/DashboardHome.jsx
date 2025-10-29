@@ -703,12 +703,12 @@ export default function DashboardHome() {
 function KPICard({ title, value, sub, Icon = Briefcase }) {
   // Define colors per title
   const config = {
-    "Active Job Posts": { border: "border-yellow-500", icon: "text-yellow-500", change: "+2 from last week" },
-    "Total Applications": { border: "border-blue-500", icon: "text-blue-500", change: "+2 from last week" },
-    "Hire Rate": { border: "border-green-500", icon: "text-green-500", change: "+2 from last week" },
+    "Active Job Posts": { border: "border-yellow-500", icon: "text-yellow-500", change: "" },
+    "Total Applications": { border: "border-blue-500", icon: "text-blue-500", change: "" },
+    "Hire Rate": { border: "border-green-500", icon: "text-green-500", change: "" },
   };
 
-  const style = config[title] || { border: "border-gray-300", icon: "text-gray-400", change: "— from last week" };
+  const style = config[title] || { border: "border-gray-300", icon: "text-gray-400", change: "" };
 
   return (
     <div

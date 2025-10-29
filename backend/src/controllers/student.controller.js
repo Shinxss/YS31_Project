@@ -199,14 +199,14 @@ export async function getStudentPublicProfile(req, res) {
     if (mongoose.isValidObjectId(id)) {
       // try by Student _id first
       s = await Student.findById(id)
-        .select("firstName lastName email profilePicture course school skills bio education")
+        .select("firstName lastName email profilePicture course school skills bio education experience certification contactNumber location age gender race")
         .lean();
     }
 
     // fallback: if not found, try as user id
     if (!s && mongoose.isValidObjectId(id)) {
       s = await Student.findOne({ user: id })
-        .select("firstName lastName email profilePicture course school skills bio education")
+        .select("firstName lastName email profilePicture course school skills bio education experience certification contactNumber location age gender race")
         .lean();
     }
 
@@ -225,6 +225,14 @@ export async function getStudentPublicProfile(req, res) {
       school,
       skills: Array.isArray(s.skills) ? s.skills : [],
       bio: s.bio || "",
+      experience: Array.isArray(s.experience) ? s.experience : [],
+      education: Array.isArray(s.education) ? s.education : [],
+      certification: Array.isArray(s.certification) ? s.certification : [],
+      contactNumber: s.contactNumber || "",
+      location: s.location || "",
+      age: s.age || "",
+      gender: s.gender || "",
+      race: s.race || "",
     });
   } catch (err) {
     console.error("getStudentPublicProfile error:", err);

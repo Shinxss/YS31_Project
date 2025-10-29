@@ -79,29 +79,29 @@ function StatCard({ icon, title, value, delta }) {
     "Total Students": {
       border: "border-orange-500",
       icon: "text-orange-500",
-      change: "+2 from last week",
+      change: "",
     },
     "Total Verified Companies": {
       border: "border-blue-500",
       icon: "text-blue-500",
-      change: "+2 from last week",
+      change: "",
     },
     "Total Active Job Listings": {
       border: "border-blue-500",
       icon: "text-blue-500",
-      change: "+2 from last week",
+      change: "",
     },
     "Total Applications Received": {
       border: "border-yellow-500",
       icon: "text-yellow-500",
-      change: "+2 from last week",
+      change: "",
     },
   };
 
   const style = colorConfig[title] || {
     border: "border-gray-300",
     icon: "text-gray-500",
-    change: "— from last week",
+    change: "k",
   };
 
   return (

@@ -134,6 +134,42 @@ export default function StudentDashboardHome({
   );
   const [statsFromServer, setStatsFromServer] = useState(false);
 
+  /* ---------- Local recent applications ---------- */
+  const [localRecentApplications, setLocalRecentApplications] = useState([]);
+  const [localRecentLoading, setLocalRecentLoading] = useState(false);
+  const [localRecentError, setLocalRecentError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchRecentApps = async () => {
+      if (!student?._id || !API_BASE) return;
+      try {
+        setLocalRecentLoading(true);
+        setLocalRecentError("");
+        const res = await fetch(`${API_BASE}/api/students/${student._id}/applications`, {
+          credentials: "include",
+          headers: { ...getAuthHeaders() },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.message || "Failed to load applications");
+        if (!cancelled) {
+          setLocalRecentApplications(Array.isArray(data.applications) ? data.applications : []);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setLocalRecentError(e.message);
+          setLocalRecentApplications([]);
+        }
+      } finally {
+        if (!cancelled) setLocalRecentLoading(false);
+      }
+    };
+    fetchRecentApps();
+    return () => {
+      cancelled = true;
+    };
+  }, [student?._id, API_BASE, getAuthHeaders]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -252,6 +288,28 @@ export default function StudentDashboardHome({
     };
   }, [API_BASE, getAuthHeaders, student]);
 
+  /* ---------- Weekly stats computation ---------- */
+  const weeklyStats = useMemo(() => {
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    let sent = 0;
+    let accepted = 0;
+    let rejected = 0;
+
+    for (const app of localRecentApplications) {
+      const st = normalizeStatus(app?.status);
+      if (st === "Withdrawn") continue;
+      const appDate = new Date(app.date);
+      if (appDate >= oneWeekAgo) {
+        if (st === "Application Sent") sent++;
+        else if (st === "Accepted") accepted++;
+        else if (st === "Rejected") rejected++;
+      }
+    }
+
+    return { sent, accepted, rejected };
+  }, [localRecentApplications]);
+
   /* ---------- Filters ---------- */
   const [statusFilter, setStatusFilter] = useState("All");
 
@@ -326,21 +384,21 @@ export default function StudentDashboardHome({
       label: "Application Sent",
       value: dashboardStatsLocal.sent,
       icon: <Send size={20} className="text-yellow-500" />,
-      change: "+4 from last week",
+      change: `+${weeklyStats.sent} from last week`,
       borderClass: "border-yellow-500",
     },
     {
       label: "Application Accepted",
       value: dashboardStatsLocal.accepted,
       icon: <CheckCircle2 size={20} className="text-green-500" />,
-      change: "+2 from last week",
+      change: `+${weeklyStats.accepted} from last week`,
       borderClass: "border-green-500",
     },
     {
       label: "Application Rejected",
       value: dashboardStatsLocal.rejected,
       icon: <XCircle size={20} className="text-red-500" />,
-      change: "+1 from last week",
+      change: `+${weeklyStats.rejected} from last week`,
       borderClass: "border-red-500",
     },
     {

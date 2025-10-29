@@ -1,0 +1,4 @@
+- [x] Update backend/src/controllers/student.controller.js to include all student details in getStudentPublicProfile function
+- [x] Test the API endpoint /api/students/:id/profile to ensure it returns complete student data (server running, but needs valid token for full test)
+- [x] Verify frontend CompanyStudentProfile.jsx displays all fetched details correctly (code review shows it will now receive all needed fields)
+- [x] Ensure no existing functions are broken by the changes (getStudentProfileById remains unchanged, only getStudentPublicProfile updated)

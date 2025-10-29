@@ -131,10 +131,14 @@ export default function ReviewApplicationModal({
   const message = app?.message || "";
 
   const handleAccept = () => {
-    if (app) onStatusChange?.("Accepted", app._id || app.id);
+    if (window.confirm("Are you sure you want to accept this application?")) {
+      if (app) onStatusChange?.("Accepted", app._id || app.id);
+    }
   };
   const handleReject = () => {
-    if (app) onStatusChange?.("Rejected", app._id || app.id);
+    if (window.confirm("Are you sure you want to reject this application?")) {
+      if (app) onStatusChange?.("Rejected", app._id || app.id);
+    }
   };
 
   return (
