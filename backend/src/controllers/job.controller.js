@@ -65,6 +65,11 @@ export const createJob = async (req, res) => {
       startDateFrom,
       startDateTo,
       applicationDeadline,
+
+      // additional optional fields
+      educationLevel,
+      languages,
+      experienceLevel,
     } = req.body;
 
     // ✅ OPTIONAL: allow screening questions payload under various keys (added)
@@ -133,11 +138,22 @@ export const createJob = async (req, res) => {
     applicationDeadline: deadline,
     status: "open",
     companyEmployeeId: req.user.id,  // Add this field to associate the employee
-  };  
+  };
 
     // ✅ only set if provided (keeps schema flexible) (added)
     if (screeningArr.length) {
       jobDoc.screeningQuestions = screeningArr;
+    }
+
+    // Add optional fields if provided
+    if (educationLevel) {
+      jobDoc.educationLevel = toList(educationLevel);
+    }
+    if (languages) {
+      jobDoc.languages = toList(languages);
+    }
+    if (experienceLevel) {
+      jobDoc.experienceLevel = String(experienceLevel).trim();
     }
 
     const job = await Job.create(jobDoc);
@@ -258,7 +274,7 @@ export const getJobById = async (req, res) => {
 
     const job = await Job.findById(id)
       .select(
-        "_id title companyId companyName department location salaryMax salaryMaxNumber workType jobType description requirements responsibilities offers skills startDateRange applicationDeadline status createdAt screeningQuestions"
+        "_id title companyId companyName department location salaryMax salaryMaxNumber workType jobType description requirements responsibilities offers skills startDateRange applicationDeadline status createdAt screeningQuestions educationLevel languages experienceLevel"
       )
       .lean();
 

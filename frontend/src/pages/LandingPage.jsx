@@ -221,7 +221,7 @@ export default function LandingPage() {
             error={statsError}
           />
           <Stat
-            label="Internships"
+            label="Opportunities"
             value={stats.internships}
             loading={loadingStats}
             error={statsError}

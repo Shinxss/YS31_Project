@@ -87,9 +87,9 @@ const appStatusBadge = (raw) => {
   if (!s || s === "new" || s.includes("pending"))
     return { label: "New", cls: "bg-blue-50 text-blue-700 border-blue-200" };
   if (s.includes("review"))
-    return { label: "Reviewed", cls: "bg-amber-50 text-amber-700 border-amber-200" };
+    return { label: "Under Review", cls: "bg-amber-50 text-amber-700 border-amber-200" };
   if (s.includes("accept") || s.includes("hire"))
-    return { label: "Hired", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+    return { label: "Accepted", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
   if (s.includes("reject"))
     return { label: "Rejected", cls: "bg-rose-50 text-rose-700 border-rose-200" };
   return { label: raw || "New", cls: "bg-gray-50 text-gray-700 border-gray-200" };
@@ -387,12 +387,12 @@ export default function JobDetailPage({ token: propToken }) {
           <Fact label="Posted on" value={headerMeta.postedOn || "—"} />
           <Fact
             label="Start (from)"
-            value={fmt(job.startDateFrom || job.startFrom) || "—"}
+            value={fmt(job.startDateRange?.from || job.startDateFrom) || "—"}
             icon={<CalendarDays className="w-3.5 h-3.5" />}
           />
           <Fact
             label="Start (to)"
-            value={fmt(job.startDateTo || job.startTo) || "—"}
+            value={fmt(job.startDateRange?.to || job.startDateTo) || "—"}
             icon={<CalendarDays className="w-3.5 h-3.5" />}
           />
           <Fact
@@ -536,8 +536,9 @@ export default function JobDetailPage({ token: propToken }) {
               <ul className="divide-y divide-gray-200">
                 {apps.map((a) => {
                   const id = String(a._id || a.id || Math.random());
-                  const person = a.applicant || a.user || a.candidate || {};
+                  const person = a.student || a.applicant || a.user || a.candidate || {};
                   const name =
+                    person.fullName ||
                     person.name ||
                     `${person.firstName || ""} ${person.lastName || ""}`.trim() ||
                     person.email ||
@@ -552,8 +553,8 @@ export default function JobDetailPage({ token: propToken }) {
                     <li key={id} className="grid grid-cols-12 gap-3 items-center px-4 py-3">
                       <div className="col-span-5 flex items-center gap-3 min-w-0">
                         <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-sm text-gray-700 overflow-hidden">
-                          {person.avatar ? (
-                            <img src={person.avatar} alt={name} className="w-full h-full object-cover" />
+                          {person.profilePicture ? (
+                            <img src={person.profilePicture} alt={name} className="w-full h-full object-cover" />
                           ) : (
                             getInitials(name)
                           )}

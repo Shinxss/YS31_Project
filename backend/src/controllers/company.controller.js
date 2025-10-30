@@ -319,6 +319,8 @@ export const updateJob = async (req, res) => {
       patch.status = body.status.trim(); // "open" | "pending" | "closed" | "archived" | "deleted" | "suspended"
     }
 
+
+
     if (Object.keys(patch).length === 0) {
       return res.status(400).json({ message: "No valid fields to update" });
     }

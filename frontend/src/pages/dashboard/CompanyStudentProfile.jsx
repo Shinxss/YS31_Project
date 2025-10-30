@@ -116,12 +116,7 @@ export default function CompanyStudentProfile() {
           </div>
         </div>
 
-        <button
-          onClick={() => navigate("/company/applications")}
-          className="inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-semibold hover:bg-gray-50"
-        >
-          ← Back
-        </button>
+        
       </div>
 
       {/* MAIN GRID */}

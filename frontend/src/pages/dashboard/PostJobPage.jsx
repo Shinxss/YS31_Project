@@ -27,7 +27,8 @@ const JOB_TYPES = ["Full-time", "Intern", "Part-time", "Contract"];
 /** Matches your Job schema enum */
 const WORK_TYPES = ["On-site", "Hybrid", "Remote"];
 
-const EDUCATION_LEVELS = ["High School", "College", "Graduate"];
+const EDUCATION_LEVELS_ROW1 = ["Junior High School", "Senior High School", "Vocational / Technical"];
+const EDUCATION_LEVELS_ROW2 = ["College Level (Undergraduate)", "Bachelor’s Degree Graduate", "Master’s Degree"];
 
 /* ------------------------------------------------------------------ */
 /* Small helpers                                                      */
@@ -99,7 +100,7 @@ const EMPTY_FORM = {
   // step 3
   skills: "", // UI comma string; convert to array for payload
   requirements: [],
-  educationLevel: [],
+  educationLevel: "",
   languages: "", // UI comma string; convert to array
   experienceLevel: "", // Entry | Mid | Senior
   screeningQuestions: [],
@@ -134,7 +135,7 @@ const normalizeJobToForm = (job = {}) => {
 
     skills: Array.isArray(job.skills) ? job.skills.join(", ") : "",
     requirements: Array.isArray(job.requirements) ? job.requirements : [],
-    educationLevel: Array.isArray(job.educationLevel) ? job.educationLevel : [],
+    educationLevel: job.educationLevel || "",
     languages:
       Array.isArray(job.languages) && job.languages.length
         ? job.languages.join(", ")
@@ -662,20 +663,32 @@ export default function PostJobPage({ token: propToken, onCreated }) {
                   </div>
                 </Field>
 
-                <Field label="Education Level (select all that apply)">
-                  <div className="flex flex-wrap gap-4">
-                    {EDUCATION_LEVELS.map((lvl) => (
-                      <label key={lvl} className="inline-flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={form.educationLevel.includes(lvl)}
-                          onChange={() => toggleInArray("educationLevel", lvl)}
-                          className="h-4 w-4 text-[#173B8A] focus:ring-[#173B8A]"
+                <Field label="Education Level">
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-4">
+                      {EDUCATION_LEVELS_ROW1.map((lvl) => (
+                        <Radio
+                          key={lvl}
+                          name="eduLvl"
+                          label={lvl}
+                          checked={form.educationLevel === lvl}
+                          onChange={() => setField("educationLevel", lvl)}
                         />
-                        <span className="text-sm text-gray-700">{lvl}</span>
-                      </label>
-                    ))}
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap gap-4">
+                      {EDUCATION_LEVELS_ROW2.map((lvl) => (
+                        <Radio
+                          key={lvl}
+                          name="eduLvl"
+                          label={lvl}
+                          checked={form.educationLevel === lvl}
+                          onChange={() => setField("educationLevel", lvl)}
+                        />
+                      ))}
+                    </div>
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">Optional.</p>
                 </Field>
 
                 <Field label="Languages (comma separated)">
@@ -837,7 +850,7 @@ export default function PostJobPage({ token: propToken, onCreated }) {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-800">
-            <Meta label="Education Level" value={form.educationLevel.length ? form.educationLevel.join(", ") : "—"} />
+            <Meta label="Education Level" value={form.educationLevel || "—"} />
             <Meta label="Languages" value={languagesPreview.length ? languagesPreview.join(", ") : "—"} />
             <Meta
               label="Experience Level"
