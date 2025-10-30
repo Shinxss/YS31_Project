@@ -298,7 +298,7 @@ export const getStudentApplicationStats = async (req, res) => {
     ]);
 
     const successRate = total ? Math.round((accepted / total) * 10000) / 100 : 0;
-    return res.json({ sent: total, accepted, rejected, successRate });
+    return res.json({ ok: true, stats: { sent: total, accepted, rejected, successRate } });
   } catch (error) {
     console.error("getStudentApplicationStats error:", error);
     return res.status(500).json({ message: "Server error" });

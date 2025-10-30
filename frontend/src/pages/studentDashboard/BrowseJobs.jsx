@@ -641,12 +641,6 @@ export default function BrowseJobs() {
                       >
                         View Details
                       </button>
-
-                      {sortBy === "relevance" && (
-                        <span className="text-[10px] text-gray-500 mt-1">
-                          match {Math.round((job.__rel || 0) * 100)}%
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>

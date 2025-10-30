@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { confirmAction } from "@/utils/confirm";
 import { toast } from "react-toastify";
-import { MapPin, Clock, Building2, Eye, XCircle } from "lucide-react";
+import { MapPin, Clock, Building2, XCircle } from "lucide-react";
 
 /**
  * MyApplications (fixed-height card + scrollable list + A–Z position sort)
@@ -9,6 +10,7 @@ import { MapPin, Clock, Building2, Eye, XCircle } from "lucide-react";
  * - Adds a Cancel button that is enabled ONLY for "Application Sent".
  */
 export default function MyApplications() {
+  const navigate = useNavigate();
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [withdrawingId, setWithdrawingId] = useState(null);
@@ -142,45 +144,45 @@ export default function MyApplications() {
 
   // --- Withdraw action ---
   const deleteApp = async (appObj) => {
-  const id = appObj?._id || appObj?.id;
-  if (!id) return;
+    const id = appObj?._id || appObj?.id;
+    if (!id) return;
 
-  const can = canonicalStatus(appObj?.status) === "application sent";
-  if (!can) return;
+    const can = canonicalStatus(appObj?.status) === "application sent";
+    if (!can) return;
 
-  {
-    const ok = await confirmAction({ title: 'Cancel application?', text: 'Are you sure you want to cancel this application?', confirmText: 'Cancel Application' });
-    if (!ok) return;
-  }
-
-  try {
-    setWithdrawingId(id);
-
-    const res = await fetch(`${APPS_URL}/${id}`, {
-      method: "DELETE",
-      credentials: "include",
-      headers: { ...getAuthHeaders() }, // no Content-Type needed
-    });
-
-    if (!res.ok) {
-      let msg = `Failed to cancel (${res.status})`;
-      try {
-        const j = await res.json();
-        if (j?.message) msg = j.message;
-      } catch {}
-      throw new Error(msg);
+    {
+      const ok = await confirmAction({ title: 'Cancel application?', text: 'Are you sure you want to cancel this application?', confirmText: 'Cancel Application' });
+      if (!ok) return;
     }
 
-    // Remove locally
-    setApps((prev) => prev.filter((x) => (x._id || x.id) !== id));
-    toast.success("Application canceled and removed.");
-  } catch (err) {
-    console.error("Delete application error:", err);
-    toast.error(err.message || "Failed to cancel application");
-  } finally {
-    setWithdrawingId(null);
-  }
-};
+    try {
+      setWithdrawingId(id);
+
+      const res = await fetch(`${APPS_URL}/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: { ...getAuthHeaders() }, // no Content-Type needed
+      });
+
+      if (!res.ok) {
+        let msg = `Failed to cancel (${res.status})`;
+        try {
+          const j = await res.json();
+          if (j?.message) msg = j.message;
+        } catch {}
+        throw new Error(msg);
+      }
+
+      // Remove locally
+      setApps((prev) => prev.filter((x) => (x._id || x.id) !== id));
+      toast.success("Application canceled and removed.");
+    } catch (err) {
+      console.error("Delete application error:", err);
+      toast.error(err.message || "Failed to cancel application");
+    } finally {
+      setWithdrawingId(null);
+    }
+  };
 
   // Filter first (withdrawn never included in `apps`)
   const filtered = useMemo(() => {
@@ -239,7 +241,7 @@ export default function MyApplications() {
       {/* Fixed-height card */}
       <section className="bg-white rounded-2xl shadow-sm p-6 h:[600px] md:h-[660px] flex flex-col">
         <div className="flex items-center justify-between mb-2 shrink-0">
-          <h3 className="text-lg font-semibold text-gray-800">My Applications</h3>
+          <h3 className="text-2xl font-semibold text-gray-800">My Applications</h3>
           {!loading && (
             <span className="text-sm text-gray-500">
               {filteredAndSorted.length} shown
@@ -340,12 +342,13 @@ export default function MyApplications() {
             </div>
           ) : (
             <div className="rounded-xl border border-gray-100 overflow-hidden h-full flex flex-col">
-              {/* Sticky header */}
-              <div className="hidden md:grid grid-cols-12 gap-15 pl-4 pr-10 py-3 bg-gray-50 text-xs font-semibold text-gray-500 sticky top-0 z-10">
-                <div className="col-span-5">Company &amp; Position</div>
-                <div className="col-span-3">Location</div>
+              {/* Sticky header (desktop) */}
+              <div className="hidden md:grid grid-cols-12 gap-4 pl-4 pr-6 py-3 bg-gray-50 text-xs font-semibold text-gray-500 sticky top-0 z-10">
+                <div className="col-span-4">Company &amp; Position</div>
+                <div className="col-span-2">Location</div>
                 <div className="col-span-2">Applied On</div>
-                <div className="col-span-2 text-right">Status &amp; Action</div>
+                <div className="col-span-2">Status</div>
+                <div className="col-span-1 text-right">Actions</div>
               </div>
 
               {/* Scrollable list */}
@@ -366,11 +369,12 @@ export default function MyApplications() {
 
                     return (
                       <li key={id} className="px-4 py-4 bg-white hover:bg-gray-50 transition">
-                        <div className="grid grid-cols-12 gap-2 items-center">
-                          <div className="col-span-12 md:col-span-5">
+                        <div className="grid grid-cols-12 items-center gap-4">
+                          {/* Company & Position */}
+                          <div className="col-span-4">
                             <div className="flex items-start gap-3">
-                              <div className="p-2 rounded-xl bg-blue-50">
-                                <Eye size={18} className="opacity-70" />
+                              <div className="w-10 h-10 rounded-md bg-gray-200 flex items-center justify-center text-gray-600 font-semibold text-sm">
+                                {company.charAt(0).toUpperCase()}
                               </div>
                               <div>
                                 <h4 className="text-sm font-semibold text-gray-800">{title}</h4>
@@ -383,48 +387,54 @@ export default function MyApplications() {
                             </div>
                           </div>
 
-                          <div className="col-span-12 md:col-span-3 mt-2 md:mt-0">
-                            <div className="flex items-center gap-2 text-xs text-gray-600">
-                              <MapPin size={14} />
+                          {/* Location */}
+                          <div className="col-span-2 text-sm text-gray-600">
+                            <div className="flex items-center gap-1.5">
+                              <MapPin size={14} className="text-gray-500" />
                               <span>{location}</span>
                             </div>
                           </div>
 
-                          <div className="col-span-6 md:col-span-2 mt-2 md:mt-0">
-                            <div className="flex items-center gap-2 text-xs text-gray-600">
-                              <Clock size={14} />
+                          {/* Applied On */}
+                          <div className="col-span-2 text-sm text-gray-600">
+                            <div className="flex items-center gap-1.5">
+                              <Clock size={14} className="text-gray-500" />
                               <span>{fmtDate(created)}</span>
                             </div>
                           </div>
 
-                          <div className="col-span-6 md:col-span-2 mt-2 md:mt-0 flex md:justify-end">
-                              {/* stack vertically: status on top, cancel button below */}
-                              <div className="flex flex-col gap-5 items-start md:items-end">
-                                <StatusPill status={status} />
-                                <button
-                                  type="button"
-                                  disabled={!canCancel || busy}
-                                  onClick={() => deleteApp(a)}
-                                  className={[
-                                    "inline-flex items-center gap-1.5 text-xs font-medium rounded-lg px-1.5 py-1.5 transition",
-                                    canCancel && !busy
-                                      ? "bg-red-600 text-white hover:bg-red-700 focus:ring-2 focus:ring-red-400"
-                                      : "bg-gray-200 text-gray-500 cursor-not-allowed",
-                                  ].join(" ")}
-                                  title={
-                                    canCancel
-                                      ? "Cancel application"
-                                      : "You can no longer cancel this application"
-                                  }
-                                >
-                                  <XCircle size={14} />
-                                  {busy ? "Canceling..." : "Cancel"}
-                                </button>
-                              </div>
-                            </div>
+                          {/* Status */}
+                          <div className="col-span-3">
+                            <StatusPill status={status} />
+                          </div>
 
+                          {/* Actions */}
+                          <div className="col-span-1 ml-10 flex justify-end gap-4 ">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/student/jobs/${job._id || job.id || a.jobId}`)}
+                              className="bg-orange-500 hover:bg-orange-400 text-white text-sm font-medium px-4 py-1.5 rounded-md transition"
+                            >
+                              View
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={!canCancel || busy}
+                              onClick={() => deleteApp(a)}
+                              className={`border border-gray-300 text-sm font-medium px-4 py-1.5 rounded-md transition
+                                ${
+                                  canCancel && !busy
+                                    ? "bg-white text-gray-700 hover:bg-gray-100"
+                                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                }`}
+                            >
+                              {busy ? "Canceling..." : "Cancel"}
+                            </button>
+                          </div>
                         </div>
                       </li>
+
                     );
                   })}
                 </ul>

@@ -138,8 +138,8 @@ export default function ReviewApplicationModal({
       text: "You want to accept this application?",
       icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
+      confirmButtonColor: "#22c55e",
+      cancelButtonColor: "#6b7280",
       confirmButtonText: "Yes, accept it!",
     }).then((result) => {
       if (result.isConfirmed && app) {
@@ -155,8 +155,8 @@ export default function ReviewApplicationModal({
       text: "You want to reject this application?",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#6b7280",
       confirmButtonText: "Yes, reject it!",
     }).then((result) => {
       if (result.isConfirmed && app) {
@@ -302,13 +302,13 @@ export default function ReviewApplicationModal({
         <div className="px-5 py-3 border-t flex items-center justify-end gap-2">
           <button
             onClick={handleReject}
-            className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-900 text-sm hover:bg-gray-200"
+            className="px-3 py-1.5 rounded-lg bg-red-500 text-gray-100 text-sm hover:bg-gray-200"
           >
             Reject
           </button>
           <button
             onClick={handleAccept}
-            className="px-3 py-1.5 rounded-lg bg-[#1337B6] text-white text-sm hover:bg-[#0F2FA0]"
+            className="px-3 py-1.5 rounded-lg bg-green-500 text-white text-sm hover:bg-[#0F2FA0]"
           >
             Accept
           </button>

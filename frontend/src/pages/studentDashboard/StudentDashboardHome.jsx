@@ -141,19 +141,25 @@ export default function StudentDashboardHome({
 
   useEffect(() => {
     let cancelled = false;
-    const fetchRecentApps = async () => {
-      if (!student?._id || !API_BASE) return;
+    const fetchAllApps = async () => {
+      if (!API_BASE) return;
       try {
         setLocalRecentLoading(true);
         setLocalRecentError("");
-        const res = await fetch(`${API_BASE}/api/students/${student._id}/applications`, {
+        const res = await fetch(`${API_BASE}/api/student/applications`, {
           credentials: "include",
           headers: { ...getAuthHeaders() },
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data?.message || "Failed to load applications");
         if (!cancelled) {
-          setLocalRecentApplications(Array.isArray(data.applications) ? data.applications : []);
+          const parsed =
+            (Array.isArray(data?.applications) && data.applications) ||
+            (Array.isArray(data?.items) && data.items) ||
+            (Array.isArray(data?.data) && data.data) ||
+            (Array.isArray(data) && data) ||
+            [];
+          setLocalRecentApplications(parsed);
         }
       } catch (e) {
         if (!cancelled) {
@@ -164,19 +170,19 @@ export default function StudentDashboardHome({
         if (!cancelled) setLocalRecentLoading(false);
       }
     };
-    fetchRecentApps();
+    fetchAllApps();
     return () => {
       cancelled = true;
     };
-  }, [student?._id, API_BASE, getAuthHeaders]);
+  }, [API_BASE, getAuthHeaders]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function fetchServerStats() {
-      if (!USE_SERVER_STATS || !student?._id || !API_BASE) return false;
+      if (!USE_SERVER_STATS || !API_BASE) return false;
       try {
-        const res = await fetch(`${API_BASE}/api/students/${student._id}/dashboard-stats`, {
+        const res = await fetch(`${API_BASE}/api/student/applications/stats`, {
           credentials: "include",
           headers: { ...getAuthHeaders() },
         });
@@ -196,7 +202,7 @@ export default function StudentDashboardHome({
     (async () => {
       const ok = await fetchServerStats();
       if (!ok && !cancelled) {
-        setDashboardStatsLocal(computeDashboardStats(safeRecent));
+        setDashboardStatsLocal(computeDashboardStats(localRecentApplications));
         setStatsFromServer(false);
       }
     })();
@@ -204,13 +210,13 @@ export default function StudentDashboardHome({
     return () => {
       cancelled = true;
     };
-  }, [student?._id, API_BASE, getAuthHeaders]);
+  }, [API_BASE, getAuthHeaders, localRecentApplications]);
 
   useEffect(() => {
     if (!statsFromServer) {
-      setDashboardStatsLocal(computeDashboardStats(safeRecent));
+      setDashboardStatsLocal(computeDashboardStats(localRecentApplications));
     }
-  }, [safeRecent, statsFromServer]);
+  }, [localRecentApplications, statsFromServer]);
 
   /* ---------- Recommended for you (1 job) ---------- */
   const [recommendedJobs, setRecommendedJobs] = useState([]);

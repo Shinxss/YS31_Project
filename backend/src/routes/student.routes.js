@@ -12,10 +12,11 @@ import {
   deleteReminder
 } from "../controllers/student.controller.js";
  
-import { 
+import {
   listMyApplications,
-  uploadResume, 
-  applyToJob } from "../controllers/Applications.controller.js";
+  uploadResume,
+  applyToJob,
+  getStudentApplicationStats } from "../controllers/Applications.controller.js";
 
 
 const router = express.Router();
@@ -33,6 +34,7 @@ router.delete("/me/reminders/:reminderId", protect, deleteReminder);
 // order matters: protect → uploadResume → applyToJob
 router.post("/apply", protect, uploadResume, applyToJob);
 router.get("/applications", protect, listMyApplications);
+router.get("/applications/stats", protect, getStudentApplicationStats);
 router.get(["/:id/profile", "/:id/public"], auth, getStudentPublicProfile);
 
 export default router;
