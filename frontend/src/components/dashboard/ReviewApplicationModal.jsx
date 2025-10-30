@@ -1,5 +1,7 @@
 // src/components/dashboard/ReviewApplicationModal.jsx
 import React, { useEffect, useMemo, useState } from "react";
+import Swal from "sweetalert2";
+import { toast } from "react-toastify";
 
 /* Resolve API base (env first, Vite dev fallback) */
 const RAW_API_BASE =
@@ -131,14 +133,37 @@ export default function ReviewApplicationModal({
   const message = app?.message || "";
 
   const handleAccept = () => {
-    if (window.confirm("Are you sure you want to accept this application?")) {
-      if (app) onStatusChange?.("Accepted", app._id || app.id);
-    }
+    Swal.fire({
+      title: "Are you sure?",
+      text: "You want to accept this application?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, accept it!",
+    }).then((result) => {
+      if (result.isConfirmed && app) {
+        onStatusChange?.("Accepted", app._id || app.id);
+        toast.success("Applicant accepted successfully!");
+      }
+    });
   };
+
   const handleReject = () => {
-    if (window.confirm("Are you sure you want to reject this application?")) {
-      if (app) onStatusChange?.("Rejected", app._id || app.id);
-    }
+    Swal.fire({
+      title: "Are you sure?",
+      text: "You want to reject this application?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, reject it!",
+    }).then((result) => {
+      if (result.isConfirmed && app) {
+        onStatusChange?.("Rejected", app._id || app.id);
+        toast.error("Applicant rejected.");
+      }
+    });
   };
 
   return (

@@ -262,12 +262,13 @@ export default function PostJobPage({ token: propToken, onCreated }) {
     }
     if (step === 2) {
       if (!form.description.trim()) e.description = "Job description is required.";
-      if (!form.responsibilities.length) e.responsibilities = "Add at least one responsibility.";
-      if (!form.offers.length) e.offers = "Add at least one offer.";
+      if (form.responsibilities.length < 5) e.responsibilities = "Add at least 5 responsibilities.";
+      if (form.offers.length < 5) e.offers = "Add at least 5 offers.";
     }
     if (step === 3) {
-      if (!form.skills.trim()) e.skills = "Add required skills (comma separated).";
-      if (!form.requirements.length) e.requirements = "Add at least one other requirement.";
+      if (splitCSV(form.skills).length < 3) e.skills = "Add at least 3 required skills (comma separated).";
+      if (form.requirements.length < 5) e.requirements = "Add at least 5 other requirements.";
+      if (form.screeningQuestions.length < 1) e.screeningQuestions = "Add at least 1 screening question.";
       if (form.experienceLevel && !["Entry", "Mid", "Senior"].includes(form.experienceLevel)) {
         e.experienceLevel = "Choose Entry, Mid, or Senior.";
       }
@@ -724,7 +725,7 @@ export default function PostJobPage({ token: propToken, onCreated }) {
                   <p className="text-xs text-gray-500 mt-1">Optional.</p>
                 </Field>
 
-                <Field label="Screening Questions">
+                <Field label="Screening Questions" error={errors.screeningQuestions}>
                   <ListEditor
                     draft={screenDraft}
                     setDraft={setScreenDraft}
@@ -735,6 +736,7 @@ export default function PostJobPage({ token: propToken, onCreated }) {
                     items={form.screeningQuestions}
                     onRemove={(i) => removeAt("screeningQuestions", i)}
                     placeholder="e.g., Why this role? Paste your portfolio link."
+                    error={errors.screeningQuestions}
                   />
                 </Field>
 
@@ -955,12 +957,14 @@ function Radio({ name, label, checked, onChange }) {
   );
 }
 
-function ListEditor({ draft, setDraft, onAdd, items, onRemove, placeholder }) {
+function ListEditor({ draft, setDraft, onAdd, items, onRemove, placeholder, error }) {
   return (
     <>
       <div className="flex gap-2">
         <input
-          className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 border-gray-200"
+          className={`w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 ${
+            error ? "border-red-400" : "border-gray-200"
+          }`}
           placeholder={placeholder}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}

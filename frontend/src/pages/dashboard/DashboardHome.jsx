@@ -163,35 +163,15 @@ export default function DashboardHome() {
           appsList.find((a) => a?.companyId)?.companyId ||
           null;
 
-        // Jobs
-        const urls = [
-          API.companyJobs,
-          cid ? `${API.genericJobsAll}?companyId=${cid}` : null,
-          cid ? `${API.genericJobsActive}&companyId=${cid}` : null,
-          API.genericJobsAll,
-          API.genericJobsActive,
-        ].filter(Boolean);
-
+        // Jobs: Fetch all jobs for the company
         let jobsList = [];
-        for (const url of urls) {
-          try {
-            const r = await fetch(url, { credentials: "include", headers: { ...authHeader() } });
-            if (!r.ok) continue;
+        try {
+          const r = await fetch(API.companyJobs, { credentials: "include", headers: { ...authHeader() } });
+          if (r.ok) {
             const j = await r.json();
-            const arr = asArray(j);
-            if (arr.length) {
-              jobsList = arr;
-              break;
-            }
-          } catch {}
-        }
-
-        if (cid) {
-          jobsList = jobsList.filter((j) => {
-            const a = j.companyId && (j.companyId._id || j.companyId);
-            return String(a || "") === String(cid);
-          });
-        }
+            jobsList = asArray(j);
+          }
+        } catch {}
 
         if (!cancelled) setJobs(jobsList);
       } catch (e) {
@@ -460,9 +440,9 @@ export default function DashboardHome() {
           {/* STATS ROW */}
           <div className="flex gap-4 flex-wrap">
             <div className="basis-[32%] shrink-0">
-              <KPICard 
-                title="Active Job Posts" 
-                value={activeJobs.length} 
+              <KPICard
+                title="Total Job Posts"
+                value={jobs.length}
                 Icon={Briefcase}/>
             </div>
             <div className="basis-[32%] shrink-0">
@@ -521,10 +501,10 @@ export default function DashboardHome() {
               {/* Job list: scrollable, show 4 rows max */}
               <div className="mt-2 flex-1 overflow-hidden">
                 <ul className="divide-y divide-gray-200 overflow-y-auto h-[228px]">
-                  {activeJobs.length === 0 ? (
-                    <li className="px-4 py-3 text-sm text-gray-500">No active jobs.</li>
+                  {jobs.length === 0 ? (
+                    <li className="px-4 py-3 text-sm text-gray-500">No jobs.</li>
                   ) : (
-                    activeJobs.map((j) => {
+                    jobs.map((j) => {
                       const id = j._id || j.id || j.slug || j.title;
                       const count = appsPerJob.get(id) || 0;
                       const t = jobTrends.get(id) || { dir: "flat" };
@@ -703,7 +683,7 @@ export default function DashboardHome() {
 function KPICard({ title, value, sub, Icon = Briefcase }) {
   // Define colors per title
   const config = {
-    "Active Job Posts": { border: "border-yellow-500", icon: "text-yellow-500", change: "" },
+    "Total Job Posts": { border: "border-yellow-500", icon: "text-yellow-500", change: "" },
     "Total Applications": { border: "border-blue-500", icon: "text-blue-500", change: "" },
     "Hire Rate": { border: "border-green-500", icon: "text-green-500", change: "" },
   };

@@ -1,6 +1,12 @@
 import React, { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+
+/* ✅ Password rule + validator */
+const PASSWORD_RULE_TEXT =
+  "Password must be at least 6 characters and include 1 uppercase letter and 1 number.";
+const isStrongPassword = (pw = "") => /^(?=.*[A-Z])(?=.*\d).{6,}$/.test(pw);
 
 /**
  * Company • Password & Security (placeholder)
@@ -12,6 +18,14 @@ export function PasswordAndSecurity() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // 👁️ password visibility states
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Error states
+  const [errors, setErrors] = useState({});
 
   async function handleChangePassword(e) {
     e.preventDefault();
@@ -75,36 +89,93 @@ export function PasswordAndSecurity() {
         )}
 
         <div className="mt-4 grid grid-cols-1 gap-4">
-          <div>
+          <div className="relative">
             <label className="block text-sm font-medium text-gray-700">Current password</label>
             <input
-              type="password"
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 outline-none"
+              type={showCurrentPassword ? "text" : "password"}
+              className={`mt-1 w-full rounded-md border px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-blue-200 ${
+                errors.currentPassword ? "border-red-500" : "border-gray-300"
+              }`}
               placeholder="Current password"
               value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
+              onChange={(e) => {
+                setCurrentPassword(e.target.value);
+                setErrors((prev) => ({ ...prev, currentPassword: "" }));
+              }}
             />
+            <button
+              type="button"
+              onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+              className="absolute right-3 top-9 text-gray-500 hover:text-gray-700"
+              aria-label={showCurrentPassword ? "Hide password" : "Show password"}
+            >
+              {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+            {errors.currentPassword && (
+              <p className="text-xs text-red-600 mt-1">{errors.currentPassword}</p>
+            )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+            <div className="relative">
               <label className="block text-sm font-medium text-gray-700">New password</label>
               <input
-                type="password"
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 outline-none"
+                type={showNewPassword ? "text" : "password"}
+                className={`mt-1 w-full rounded-md border px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-blue-200 ${
+                  errors.newPassword ? "border-red-500" : "border-gray-300"
+                }`}
                 placeholder="New password"
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={(e) => {
+                  setNewPassword(e.target.value);
+                  let err = "";
+                  if (!e.target.value) err = "Password is required";
+                  else if (!isStrongPassword(e.target.value)) err = PASSWORD_RULE_TEXT;
+                  setErrors((prev) => ({ ...prev, newPassword: err }));
+                }}
               />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                className="absolute right-3 top-9 text-gray-500 hover:text-gray-700"
+                aria-label={showNewPassword ? "Hide password" : "Show password"}
+              >
+                {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+              {!errors.newPassword && (
+                <p className="text-xs text-gray-500 mt-1">{PASSWORD_RULE_TEXT}</p>
+              )}
+              {errors.newPassword && (
+                <p className="text-xs text-red-600 mt-1">{errors.newPassword}</p>
+              )}
             </div>
-            <div>
+            <div className="relative">
               <label className="block text-sm font-medium text-gray-700">Confirm new password</label>
               <input
-                type="password"
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 outline-none"
+                type={showConfirmPassword ? "text" : "password"}
+                className={`mt-1 w-full rounded-md border px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-blue-200 ${
+                  errors.confirmPassword ? "border-red-500" : "border-gray-300"
+                }`}
                 placeholder="Confirm new password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  let err = "";
+                  if (!e.target.value) err = "Confirm your password";
+                  else if (e.target.value !== newPassword) err = "Passwords do not match";
+                  setErrors((prev) => ({ ...prev, confirmPassword: err }));
+                }}
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-9 text-gray-500 hover:text-gray-700"
+                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+              {errors.confirmPassword && (
+                <p className="text-xs text-red-600 mt-1">{errors.confirmPassword}</p>
+              )}
             </div>
           </div>
         </div>

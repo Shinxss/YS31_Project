@@ -216,25 +216,24 @@ export default function CompanyAnalytics() {
           </div>
         </div>
 
-        {/* Cards row */}
         <div className="grid grid-cols-1 h-30 sm:grid-cols-3 gap-4">
           <StatCard
             title="Total Applications"
-            value={totalApplications}
+            value={<span className="text-blue-800">{totalApplications}</span>}
             color={COLORS.blue}
             icon={<ClipboardList className="h-6 w-6 text-blue-600" />}
           />
 
           <StatCard
             title="Accepted"
-            value={acceptedCount}
+            value={<span className="text-blue-800">{acceptedCount}</span>}
             color={COLORS.green}
             icon={<CheckCircle2 className="h-6 w-6 text-green-500" />}
           />
 
           <StatCard
             title="Rejected"
-            value={rejectedCount}
+            value={<span className="text-blue-800">{rejectedCount}</span>}
             color={COLORS.red}
             icon={<XCircle className="h-6 w-6 text-red-600" />}
           />

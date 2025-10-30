@@ -379,14 +379,16 @@ export default function JobPostingsPage() {
     return Array.from(set);
   }, [jobs]);
 
-  /* Partition: archived tab should contain ONLY jobs whose status includes 'archiv' */
+  /* Partition: archived tab should contain jobs whose status includes 'archiv' or 'suspend'; exclude deleted jobs entirely */
   const partitioned = useMemo(() => {
     const active = [];
     const archived = [];
 
     for (const j of jobs) {
       const s = normalize(j.status || j.state || (j.isActive ? "open" : "closed"));
-      const isArchivedStatus = s.includes("archiv"); // only status with 'archiv' counts
+      const isArchivedStatus = s.includes("archiv") || s.includes("suspend");
+      const isDeletedStatus = s.includes("deleted");
+      if (isDeletedStatus) continue; // exclude deleted jobs from both tabs
       (isArchivedStatus ? archived : active).push(j);
     }
 
@@ -686,10 +688,8 @@ export default function JobPostingsPage() {
             >
               <option value="all">All Statuses</option>
               <option value="open">Open</option>
-              <option value="pending">Pending Review</option>
               <option value="closed">Closed</option>
               <option value="archived">Archived</option>
-              <option value="deleted">Deleted</option>
               <option value="suspended">Suspended</option>
             </select>
           </div>
@@ -796,7 +796,7 @@ export default function JobPostingsPage() {
                         className="p-2 rounded hover:bg-gray-100"
                         onClick={() => setOpenMenuId((cur) => (cur === id ? null : id))}
                         aria-label="Actions"
-                        disabled={isActionLoading}
+                        disabled={isActionLoading || normalize(j.status || "").includes("suspend")}
                       >
                         <KebabIcon className="text-xl text-gray-600 leading-none" />
                       </button>
@@ -806,6 +806,7 @@ export default function JobPostingsPage() {
                           <button
                             className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
                             onClick={() => handleView(j)}
+                            disabled={normalize(j.status || "").includes("suspend")}
                           >
                             View
                           </button>
@@ -813,6 +814,7 @@ export default function JobPostingsPage() {
                           <button
                             className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
                             onClick={() => handleEdit(j)}
+                            disabled={normalize(j.status || "").includes("suspend")}
                           >
                             Edit
                           </button>
@@ -820,7 +822,7 @@ export default function JobPostingsPage() {
                           <button
                             className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
                             onClick={() => handleToggleArchive(j)}
-                            disabled={isActionLoading}
+                            disabled={isActionLoading || normalize(j.status || "").includes("suspend")}
                           >
                             {isActionLoading ? "Updating…" : isArchived ? "Unarchive" : "Archive"}
                           </button>
@@ -828,7 +830,7 @@ export default function JobPostingsPage() {
                           <button
                             className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
                             onClick={() => handleCloseOrReopen(j)}
-                            disabled={isActionLoading}
+                            disabled={isActionLoading || normalize(j.status || "").includes("suspend")}
                           >
                             {isActionLoading ? "Updating…" : normalize(j.status || "").includes("closed") ? "Reopen" : "Close Job"}
                           </button>
@@ -837,7 +839,7 @@ export default function JobPostingsPage() {
                           <button
                             className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                             onClick={() => handleDelete(j)}
-                            disabled={isActionLoading}
+                            disabled={isActionLoading || normalize(j.status || "").includes("suspend")}
                           >
                             {isActionLoading ? "Deleting…" : "Delete"}
                           </button>

@@ -321,6 +321,7 @@ export default function CompanyNotifications() {
                         {n?.data?.jobId && (
                           <a
                             href={`/company/applications?job=${n.data.jobId}`}
+                            onClick={() => markRead(n._id)}
                             className="inline-flex items-center justify-center px-4 py-2 text-[15px] font-medium rounded-md shadow-md bg-orange-500 text-white hover:bg-orange-600"
                             title="View applicant"
                           >

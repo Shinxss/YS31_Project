@@ -290,10 +290,10 @@ export default function JobListingsReviewPage() {
                   </select>
                 </div>
                 <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
-                  selectedJob.status === "open" ? "bg-green-100 text-green-700" :
-                  selectedJob.status === "closed" ? "bg-red-100 text-red-700" :
-                  selectedJob.status === "pending" ? "bg-yellow-100 text-yellow-700" :
-                  selectedJob.status === "suspended" ? "bg-orange-100 text-orange-700" :
+                  selectedJob.status === "Open" ? "bg-green-100 text-green-700" :
+                  selectedJob.status === "Closed" ? "bg-red-100 text-red-700" :
+                  selectedJob.status === "Pending" ? "bg-yellow-100 text-yellow-700" :
+                  selectedJob.status === "Suspended" ? "bg-orange-100 text-orange-700" :
                   "bg-gray-100 text-gray-700"
                 }`}>
                   {selectedJob.status || "N/A"}
