@@ -273,10 +273,6 @@ export const getJobById = async (req, res) => {
     if (!isObjectId(id)) return res.status(404).json({ message: "Job not found" });
 
     const job = await Job.findById(id)
-      .select(
-        "_id title companyId companyName department location salaryMax salaryMaxNumber workType jobType description requirements responsibilities offers skills startDateRange applicationDeadline status createdAt screeningQuestions educationLevel languages experienceLevel"
-      )
-      .lean();
 
     if (!job) return res.status(404).json({ message: "Job not found" });
 

@@ -188,7 +188,7 @@ export default function AdminNotifications() {
                   )}
                   <button
                     onClick={() => deleteNotification(notification._id)}
-                    className="text-red-600 hover:text-red-800 text-sm"
+                    className="text-red-600  px-4 py-1 border border-red-300 rounded-sm bg-red-50 hover:text-red-800 text-sm"
                   >
                     Delete
                   </button>

@@ -178,6 +178,14 @@ export default function Header({
                               <p className="text-xs text-gray-500 mt-2">
                                 {new Date(notification.createdAt).toLocaleString()}
                               </p>
+                              {!notification.isRead && (
+                                <button
+                                  onClick={() => markAsRead(notification._id)}
+                                  className="mt-2 text-xs text-blue-600 hover:text-blue-800"
+                                >
+                                  Mark as read
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>

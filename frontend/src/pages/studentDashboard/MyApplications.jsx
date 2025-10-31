@@ -151,7 +151,7 @@ export default function MyApplications() {
     if (!can) return;
 
     {
-      const ok = await confirmAction({ title: 'Cancel application?', text: 'Are you sure you want to cancel this application?', confirmText: 'Cancel Application' });
+      const ok = await confirmAction({ title: 'Cancel application?', text: 'Are you sure you want to cancel this application?', confirmText: 'Yes', cancelText: 'No' });
       if (!ok) return;
     }
 

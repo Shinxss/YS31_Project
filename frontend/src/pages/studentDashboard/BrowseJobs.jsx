@@ -549,23 +549,20 @@ export default function BrowseJobs() {
                   <div className="flex justify-between items-start">
                     <div className="flex gap-4">
                       {/* LOGO */}
-                      {SHOW_COMPANY_LOGOS &&
-                      logo &&
-                      isValidImageUrl(logo) &&
-                      !badLogos[logoKey] ? (
-                        <img
-                          src={logo}
-                          alt={companyDisplayName}
-                          className="w-10 h-10 rounded-md object-cover"
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                          onError={() =>
-                            setBadLogos((prev) => ({ ...prev, [logoKey]: true }))
-                          }
-                        />
+                     {SHOW_COMPANY_LOGOS && logo && isValidImageUrl(logo) && !badLogos[logoKey] ? (
+                        <div className="w-12 h-12 min-w-[48px] min-h-[48px] flex-shrink-0 rounded-md overflow-hidden bg-gray-100">
+                          <img
+                            src={logo}
+                            alt={companyDisplayName}
+                            className="w-full h-full object-cover object-center"
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                            onError={() => setBadLogos((prev) => ({ ...prev, [logoKey]: true }))}
+                          />
+                        </div>
                       ) : (
-                        <div className="w-10 h-10 rounded-md bg-blue-900 text-white flex items-center justify-center font-bold text-lg">
-                          {(companyDisplayName && companyDisplayName[0]) || "C"}
+                        <div className="w-12 h-12 min-w-[48px] min-h-[48px] flex-shrink-0 rounded-md bg-blue-900 text-white flex items-center justify-center font-bold text-lg">
+                          {(companyDisplayName && companyDisplayName[0]?.toUpperCase()) || "C"}
                         </div>
                       )}
 

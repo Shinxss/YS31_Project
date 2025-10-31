@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import Swal from "sweetalert2";
 
 /* ------------------------------------------------------------------ */
 /* Config                                                             */
@@ -329,6 +330,20 @@ export default function PostJobPage({ token: propToken, onCreated }) {
   /* -------------------------------------------------------------- */
   async function handleSubmit(e) {
     e.preventDefault();
+
+    // Show confirmation dialog
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: 'Do you want to submit this job posting?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#F37526',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, submit it!'
+    });
+
+    if (!result.isConfirmed) return;
+
     setMsg(null);
 
     if (!validateAll()) {
@@ -893,6 +908,21 @@ export default function PostJobPage({ token: propToken, onCreated }) {
               type="submit"
               disabled={saving}
               className="px-4 py-2 rounded-md bg-[#F37526] text-white disabled:opacity-60"
+              onClick={(e) => {
+                Swal.fire({
+                  title: 'Are you sure?',
+                  text: 'Do you want to submit this job posting?',
+                  icon: 'question',
+                  showCancelButton: true,
+                  confirmButtonColor: '#F37526',
+                  cancelButtonColor: '#d33',
+                  confirmButtonText: 'Yes, submit it!'
+                }).then((result) => {
+                  if (!result.isConfirmed) {
+                    e.preventDefault();
+                  }
+                });
+              }}
             >
               {saving ? (isEdit ? "Saving…" : "Submitting…") : isEdit ? "Save Changes" : "Submit Job"}
             </button>

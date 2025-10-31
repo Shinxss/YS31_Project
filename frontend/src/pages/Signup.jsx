@@ -14,15 +14,32 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
-/* ✅ Password rule + validator */
-const PASSWORD_RULE_TEXT =
-  "Password must be at least 6 characters and include 1 uppercase letter and 1 number.";
-const isStrongPassword = (pw = "") => /^(?=.*[A-Z])(?=.*\d).{6,}$/.test(pw);
+const PASSWORD_RULE_TEXT = "Password must be at least 8 characters long, contain at least 1 uppercase letter (A–Z), 1 lowercase letter (a–z), 1 number (0–9), 1 special character (!@#$%^&*), and no spaces.";
+
+/* ✅ Password validation checks */
+const passwordChecks = [
+  { test: /.{8,}/, message: "At least 8 characters long" },
+  { test: /[A-Z]/, message: "At least 1 uppercase letter (A–Z)" },
+  { test: /[a-z]/, message: "At least 1 lowercase letter (a–z)" },
+  { test: /\d/, message: "At least 1 number (0–9)" },
+  {
+    test: /[!@#$%^&*(),.?":{}|<>]/,
+    message: "At least 1 special character (!@#$%^&*)",
+  },
+  { test: /^\S*$/, message: "No spaces allowed" },
+];
+
+const getPasswordError = (pw = "") => {
+  const failedRule = passwordChecks.find((rule) => !rule.test.test(pw));
+  return failedRule ? failedRule.message : "";
+};
+
+const isStrongPassword = (pw = "") => !getPasswordError(pw);
 
 /* ✅ Added: basic validators for names & email */
 const isValidEmail = (val = "") => /^\s*[^@\s]+@[^@\s]+\.[^@\s]+\s*$/.test(val);
 const isHumanName = (val = "") =>
-  /^[A-Za-zÀ-ÖØ-öø-ÿ' -]{2,}$/.test(String(val).trim()); // letters, spaces, hyphen, apostrophe; min 2
+  /^[A-Za-zÀ-ÖØ-öø-ÿ ]{2,}$/.test(String(val).trim()); // letters, spaces; min 2
 
 export default function Signup() {
   const [tab, setTab] = useState("student");
@@ -112,7 +129,7 @@ export default function Signup() {
 
     if (!student.password) errs.password = "Password is required";
     if (student.password && !isStrongPassword(student.password))
-      errs.password = PASSWORD_RULE_TEXT;
+      errs.password = getPasswordError(student.password);
 
     if (!student.confirmPassword) errs.confirmPassword = "Confirm your password";
     if (
@@ -144,7 +161,7 @@ export default function Signup() {
 
     if (!company.password) errs.password = "Password is required";
     if (company.password && !isStrongPassword(company.password))
-      errs.password = PASSWORD_RULE_TEXT;
+      errs.password = getPasswordError(company.password);
 
     if (!company.confirmPassword) errs.confirmPassword = "Confirm your password";
     if (
@@ -419,14 +436,13 @@ export default function Signup() {
                     !v
                       ? "Password is required"
                       : !isStrongPassword(v)
-                      ? PASSWORD_RULE_TEXT
+                      ? getPasswordError(v)
                       : "";
                   setStudentErrors((e) => ({ ...e, password: err }));
                 }}
                 show={showPassword}
                 setShow={setShowPassword}
                 error={studentErrors.password}
-                hint={PASSWORD_RULE_TEXT}
               />
 
               <PasswordInput
@@ -594,14 +610,13 @@ export default function Signup() {
                     !v
                       ? "Password is required"
                       : !isStrongPassword(v)
-                      ? PASSWORD_RULE_TEXT
+                      ? getPasswordError(v)
                       : "";
                   setCompanyErrors((e) => ({ ...e, password: err }));
                 }}
                 show={showCompanyPassword}
                 setShow={setShowCompanyPassword}
                 error={companyErrors.password}
-                hint={PASSWORD_RULE_TEXT}
               />
 
               <PasswordInput

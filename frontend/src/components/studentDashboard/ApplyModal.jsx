@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X, Upload } from "lucide-react";
 import { toast } from "react-toastify";
+import Swal from "sweetalert2";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
@@ -366,11 +367,27 @@ export default function ApplyModal({ jobId, onClose }) {
 
           {/* Submit Button */}
           <button
-            type="submit"
+            type="button"
             disabled={submitting}
             className={`w-full py-3 text-white font-medium rounded-md transition ${
               submitting ? "bg-gray-400 cursor-not-allowed" : "bg-[#F37526] hover:bg-[#e36210]"
             }`}
+            onClick={async () => {
+              const result = await Swal.fire({
+                title: "Are you sure?",
+                text: "Do you want to submit this application?",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#F37526",
+                cancelButtonColor: "#6c757d",
+                confirmButtonText: "Yes, submit it!",
+              });
+              if (result.isConfirmed) {
+                // Trigger form submission
+                const formElement = document.querySelector('form');
+                if (formElement) formElement.requestSubmit();
+              }
+            }}
           >
             {submitting ? "Submitting..." : "Submit Application"}
           </button>

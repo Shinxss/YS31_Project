@@ -1,4 +1,4 @@
-// src/pages/company/JobDetailPage.jsx
+  // src/pages/company/JobDetailPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
