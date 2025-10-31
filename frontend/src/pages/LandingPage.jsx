@@ -118,7 +118,7 @@ export default function LandingPage() {
 
   // --- handlers for buttons/navigation/modal ---
   const goToInternships = () => navigate("/internships");
-  const goToPostOpportunities = () => navigate("/company");
+  const goToPostOpportunities = () => navigate("/login?tab=company");
 
   const openLoginModalForJob = (jobId) => {
     setSelectedJobId(jobId || null);
@@ -170,7 +170,7 @@ export default function LandingPage() {
             className="bg-blue-900 text-white font-medium px-8 py-3 rounded-md hover:bg-blue-800 transition inline-flex items-center gap-2"
           >
             <Users className="w-5 h-5" />
-            Find Internships
+            Find Opportunities
           </button>
 
           <button
@@ -367,7 +367,7 @@ export default function LandingPage() {
                 Connect with pre-screened students from top universities. Post your internship opportunities and find the perfect talent.
               </p>
               <button
-                onClick={goToPostOpportunities}
+                onClick={() => navigate("/login?tab=company")}
                 className="mt-30 border border-gray-300 hover:border-[#F37526] px-8 py-3 rounded-md font-medium transition"
               >
                 Post your First Job →

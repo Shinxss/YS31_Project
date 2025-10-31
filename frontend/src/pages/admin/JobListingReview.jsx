@@ -1,6 +1,6 @@
 // src/pages/admin/JobListingsReviewPage.jsx
-import { useEffect, useState } from "react";
-import { Loader2, X, Building2, MapPin, Calendar, Clock, DollarSign, Briefcase } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { Loader2, X, Building2, MapPin, Calendar, Clock, DollarSign, Briefcase, Search as SearchIcon, ChevronUp, MoreVertical } from "lucide-react";
 
 // API base resolver
 function resolveApiBase() {
@@ -35,6 +35,10 @@ export default function JobListingsReviewPage() {
   const [error, setError] = useState("");
   const [selectedJob, setSelectedJob] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [sortField, setSortField] = useState("default");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [openDropdownId, setOpenDropdownId] = useState(null);
 
   const openModal = (job) => {
     setSelectedJob(job);
@@ -89,11 +93,11 @@ export default function JobListingsReviewPage() {
       try {
         setLoading(true);
         setError("");
-        
+
         // Get admin auth token from localStorage
         const adminAuth = JSON.parse(localStorage.getItem("adminAuth") || "{}");
         const token = adminAuth?.token || "";
-        
+
         const res = await fetch(API.jobs, {
           method: "GET",
           headers: {
@@ -121,91 +125,226 @@ export default function JobListingsReviewPage() {
     fetchJobs();
   }, []);
 
+  const filteredJobs = useMemo(() => {
+    let list = [...jobs];
+
+    // Apply search filter
+    const q = query.trim().toLowerCase();
+    if (q) {
+      list = list.filter((job) =>
+        (job.title || "").toLowerCase().includes(q) ||
+        (job.companyName || "").toLowerCase().includes(q) ||
+        (job.location || "").toLowerCase().includes(q)
+      );
+    }
+
+    // Apply status filter
+    if (statusFilter !== "all") {
+      list = list.filter((job) => job.status === statusFilter);
+    }
+
+    // Apply sorting
+    list.sort((a, b) => {
+      if (sortField === "date") {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      } else if (sortField === "az") {
+        return (a.title || "").localeCompare(b.title || "");
+      }
+      return 0;
+    });
+
+    return list;
+  }, [jobs, query, statusFilter, sortField]);
+
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold text-gray-900">Job Listings Review</h1>
-      <p className="text-sm text-gray-500">Manage all posted job listings</p>
-
-      {/* Loading or Error State */}
-      {loading && (
-        <div className="py-10 text-center text-gray-500">
-          <Loader2 className="inline-block h-5 w-5 animate-spin mr-2" />
-          Loading job listings…
+    <section className="bg-white rounded-2xl shadow-sm p-6 h-[600px] md:h-[670px] flex flex-col">
+      <div className="h-[640px] flex flex-col">
+        {/* Header row (static) */}
+        <div className="flex items-center justify-between mb-2 shrink-0">
+          <h1 className="text-lg md:text-2xl font-semibold text-gray-800">
+            Job Listings Review
+          </h1>
+          {!loading && (
+            <span className="text-sm text-gray-500">
+              {filteredJobs.length} shown
+              {filteredJobs.length !== jobs.length ? ` of ${jobs.length}` : ""}
+            </span>
+          )}
         </div>
-      )}
+        <p className="text-sm text-gray-600 mb-4 shrink-0">
+          Manage all posted job listings
+        </p>
 
-      {error && (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 flex items-start gap-2">
-          <div>{error}</div>
+        {/* Toolbar */}
+        <div className="mb-4 shrink-0 flex flex-col sm:flex-row gap-4">
+          <div className="flex-1 relative">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by title, company, or location…"
+              className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-900/10 bg-white"
+            />
+          </div>
+
+          {/* Filters and Sort */}
+          <div className="flex gap-2">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-900/10 bg-white text-sm"
+            >
+              <option value="all">All Status</option>
+              <option value="open">Open</option>
+              <option value="pending">Pending</option>
+              <option value="closed">Closed</option>
+              <option value="archived">Archived</option>
+              <option value="suspended">Suspended</option>
+            </select>
+
+            <select
+              value={sortField}
+              onChange={(e) => setSortField(e.target.value)}
+              className="px-3 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-900/10 bg-white text-sm"
+            >
+              <option value="default">Default</option>
+              <option value="date">Date</option>
+              <option value="az">A-Z</option>
+            </select>
+          </div>
         </div>
-      )}
 
-      {/* Job Listings Table */}
-      {!loading && !error && jobs.length === 0 && (
-        <div className="py-10 text-center text-gray-500">No job listings found.</div>
-      )}
-
-      {!loading && !error && jobs.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-gray-500">
-                <th className="py-3 px-4">Title</th>
-                <th className="py-3 px-4">Company</th>
-                <th className="py-3 px-4">Location</th>
-                <th className="py-3 px-4">Job Type</th>
-                <th className="py-3 px-4">Salary</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4">Applications Count</th>
-                <th className="py-3 px-4">Created At</th>
-                <th className="py-3 px-4">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {jobs.map((job) => (
-                <tr key={job._id} className="border-b border-gray-100">
-                  <td className="py-4 px-4">{job.title || "N/A"}</td>
-                  <td className="py-4 px-4">{job.companyName || "N/A"}</td>
-                  <td className="py-4 px-4">{job.location || "N/A"}</td>
-                  <td className="py-4 px-4">{job.jobType || "N/A"}</td>
-                  <td className="py-4 px-4">{job.salaryMax || "N/A"}</td>
-                  <td className="py-4 px-4">{job.status || "N/A"}</td>
-                  <td className="py-4 px-4">{job.applicationsCount || 0}</td>
-                  <td className="py-4 px-4">
-                    {new Date(job.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-2">
+        {/* Table card */}
+        <div className="flex-1 min-h-0">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden h-full flex flex-col">
+            <div className="overflow-x-auto flex-1">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500">
+                    <th className="py-3 px-4">
                       <button
-                        className="text-indigo-600 hover:text-indigo-900 hover:underline"
-                        onClick={() => openModal(job)}
+                        onClick={() => setSortField("az")}
+                        className="flex items-center gap-1 hover:text-gray-700"
                       >
-                        View
+                        Title
+                        {sortField === "az" && <ChevronUp className="h-4 w-4" />}
                       </button>
-                      <select
-                        value={job.status || "open"}
-                        onChange={(e) => handleStatusChange(job._id, e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="px-2 py-1 rounded-md text-xs border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    </th>
+                    <th className="py-3 px-4">Company</th>
+                    <th className="py-3 px-4">Location</th>
+                    <th className="py-3 px-4">Job Type</th>
+                    <th className="py-3 px-4">Salary</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Applications</th>
+                    <th className="py-3 px-4">
+                      <button
+                        onClick={() => setSortField("date")}
+                        className="flex items-center gap-1 hover:text-gray-700"
                       >
-                        <option value="open">Open</option>
-                        <option value="pending">Pending</option>
-                        <option value="closed">Closed</option>
-                        <option value="archived">Archived</option>
-                        <option value="suspended">Suspended</option>
-                      </select>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                        Created
+                        {sortField === "date" && <ChevronUp className="h-4 w-4" />}
+                      </button>
+                    </th>
+                    <th className="py-3 px-4">Action</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {loading && (
+                    <tr>
+                      <td colSpan={9} className="py-10 text-center text-gray-500">
+                        <Loader2 className="inline-block mr-2 h-4 w-4 animate-spin" />
+                        Loading job listings…
+                      </td>
+                    </tr>
+                  )}
+
+                  {!loading && error && (
+                    <tr>
+                      <td colSpan={9} className="py-6 px-4">
+                        <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg">
+                          {error}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+
+                  {!loading && !error && filteredJobs.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="py-8 text-center text-gray-500">
+                        No job listings found.
+                      </td>
+                    </tr>
+                  )}
+
+                  {!loading &&
+                    !error &&
+                    filteredJobs.map((job) => (
+                      <tr key={job._id} className="border-b border-gray-100">
+                        <td className="py-4 px-4">{job.title || "N/A"}</td>
+                        <td className="py-4 px-4">{job.companyName || "N/A"}</td>
+                        <td className="py-4 px-4">{job.location || "N/A"}</td>
+                        <td className="py-4 px-4">{job.jobType || "N/A"}</td>
+                        <td className="py-4 px-4">{job.salaryMax || "N/A"}</td>
+                        <td className="py-4 px-4">{job.status || "N/A"}</td>
+                        <td className="py-4 px-4">{job.applicationsCount || 0}</td>
+                        <td className="py-4 px-4">
+                          {new Date(job.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2">
+                            <button
+                              className="text-white bg-orange-500 py-1 px-5 border rounded-sm hover:bg-orange-400"
+                              onClick={() => openModal(job)}
+                            >
+                              View
+                            </button>
+                            <div className="relative">
+                              <button
+                                onClick={() => setOpenDropdownId(openDropdownId === job._id ? null : job._id)}
+                                className="p-1 rounded-md hover:bg-gray-100 transition-colors"
+                              >
+                                <MoreVertical className="h-4 w-4 text-gray-500" />
+                              </button>
+                              {openDropdownId === job._id && (
+                                <div className="absolute right-0 mt-1 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                                  <div className="py-1">
+                                    <button
+                                      onClick={() => {
+                                        handleStatusChange(job._id, "open");
+                                        setOpenDropdownId(null);
+                                      }}
+                                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    >
+                                      open
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        handleStatusChange(job._id, "suspended");
+                                        setOpenDropdownId(null);
+                                      }}
+                                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    >
+                                      Suspend
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      )}
+      </div>
 
       {/* Job Details Modal */}
       {isModalOpen && selectedJob && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white bg-opacity-50">
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
@@ -404,6 +543,7 @@ export default function JobListingsReviewPage() {
           </div>
         </div>
       )}
-    </div>
+
+    </section>
   );
 }

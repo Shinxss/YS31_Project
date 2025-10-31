@@ -297,7 +297,7 @@ export default function StudentNotifications() {
                 {isUnread && <span className="absolute left-0 top-0 h-full w-1 bg-[#173B8A] rounded-l-xl" />}
 
                 <div className="flex items-start gap-3">
-                  <div className="mt-0.5 w-8 h-8 rounded-full bg-gray-200 text-gray-700 font-medium grid place-items-center shrink-0">
+                  <div className="mt-0.5 w-12 h-12 rounded-lg bg-blue-900 text-white font-medium grid place-items-center shrink-0">
                     {initialsOf(companyName || jobTitle)}
                   </div>
 
@@ -345,7 +345,7 @@ export default function StudentNotifications() {
                     )}
                     <button
                       onClick={() => removeOne(n._id)}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-gray-200 hover:bg-gray-50 text-sm text-red-600"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-red-200 hover:bg-red-50 text-sm text-red-600"
                       title="Delete"
                     >
                       <Trash2 size={16} />

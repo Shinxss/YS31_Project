@@ -6,6 +6,7 @@ import {
   RefreshCw,
   Loader2,
   Filter,
+  Users,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { confirmAction } from "@/utils/confirm";
@@ -45,12 +46,7 @@ function Chip({ children, intent = "default" }) {
   );
 }
 
-// Function to generate initials from a name
-function initialsOf(name = "") {
-  const parts = String(name).trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "U";
-  return (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase();
-}
+
 
 export default function CompanyNotifications() {
   const [items, setItems] = useState([]);
@@ -290,14 +286,14 @@ export default function CompanyNotifications() {
               <div
                 key={n._id}
                 className={`relative p-4 rounded-xl border shadow-sm transition ${
-                  isUnread ? "bg-amber-50 border-amber-200" : "bg-gray-100 border-gray-100"
+                  isUnread ? "bg-blue-50 border-blue-200" : "bg-gray-100 border-gray-100"
                 }`}
               >
-                {isUnread && <span className="absolute left-0 top-0 h-full w-1 bg-amber-500 rounded-l-xl" />}
+                {isUnread && <span className="absolute left-0 top-0 h-full w-1 bg-blue-500 rounded-l-xl" />}
 
                 <div className="flex items-start gap-3">
-                  <div className="mt-0.5 w-8 h-8 rounded-full bg-gray-200 text-gray-700 font-medium grid place-items-center shrink-0">
-                    {initialsOf(companyName || jobTitle)}
+                  <div className="mt-0.5 w-12 h-12 rounded-lg bg-blue-900 text-white font-medium grid place-items-center shrink-0">
+                    <Users size={20} />
                   </div>
 
                   <div className="min-w-0 flex-1">
@@ -305,7 +301,7 @@ export default function CompanyNotifications() {
                       <h3 className={`text-sm sm:text-base font-semibold text-gray-900 truncate ${isUnread ? "font-bold" : ""}`}>
                         {title}
                       </h3>
-                      {isUnread && <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />}
+                      {isUnread && <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />}
                       <Chip intent={statusIntent}>{status}</Chip>
                       {n.type && <Chip>{n.type}</Chip>}
                     </div>

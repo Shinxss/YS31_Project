@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { getCompanyStats } from "@/services/api";
+import { Camera, Loader2 } from "lucide-react";
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function CompanyDetails() {
@@ -23,6 +24,7 @@ export default function CompanyDetails() {
   const [previewCover, setPreviewCover] = useState("");
   const [previewProfile, setPreviewProfile] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const [picSaving, setPicSaving] = useState(false);
   const token = localStorage.getItem("ic_token");
 
   // 🧠 Load company data
@@ -59,10 +61,16 @@ export default function CompanyDetails() {
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  const handleRemovePicture = () => {
+    setProfileImage(null);
+    setPreviewProfile("");
+  };
+
   // 📷 Handle image to base64
   const handleFileChange = (e, type) => {
     const file = e.target.files[0];
     if (file) {
+      if (type === "profile") setPicSaving(true);
       const reader = new FileReader();
       reader.onloadend = () => {
         if (type === "cover") {
@@ -71,6 +79,7 @@ export default function CompanyDetails() {
         } else {
           setProfileImage(reader.result);
           setPreviewProfile(reader.result);
+          setPicSaving(false);
         }
       };
       reader.readAsDataURL(file);
@@ -139,27 +148,60 @@ export default function CompanyDetails() {
         </div>
 
         <div className="flex items-center gap-6 px-6 py-6 relative">
-          <div className="relative w-24 h-24 rounded-full border-4 border-white overflow-hidden -mt-16 bg-gray-200">
-            {previewProfile && (
-              <img
-                src={previewProfile}
-                alt="Profile"
-                className="w-full h-full object-cover"
-              />
-            )}
-            {isEditing && (
-              <label className="absolute bottom-1 right-1 bg-white p-1 rounded-full shadow cursor-pointer text-xs">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handleFileChange(e, "profile")}
+          {/* ----- Avatar wrapper (updated to match Student Profile style) ----- */}
+          <div className="relative">
+            {/* Avatar circle */}
+            <div className="relative w-24 h-24 rounded-full border-4 border-white overflow-hidden -mt-16 bg-gray-200">
+              {previewProfile ? (
+                <img
+                  src={previewProfile}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
                 />
-                📷
-              </label>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xl font-semibold text-gray-600">
+                  {(formData.companyName?.[0] || "C").toUpperCase()}
+                </div>
+              )}
+            </div>
+
+            {/* Hidden global file input so camera works from anywhere like Student Profile */}
+            <input
+              id="companyProfilePicInput"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => handleFileChange(e, "profile")}
+            />
+
+            {/* Camera badge OUTSIDE the avatar, always visible */}
+            <label
+              htmlFor="companyProfilePicInput"
+              title="Change company photo"
+              className="absolute -bottom-1 -right-1 translate-x-1/3 translate-y-1/3 cursor-pointer"
+            >
+              <div className="h-9 w-9 md:h-10 md:w-10 rounded-full bg-gray-700 text-white border border-black/20 shadow flex items-center justify-center">
+                {picSaving ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Camera className="h-5 w-5" />
+                )}
+              </div>
+            </label>
+
+            {/* Remove shows only in edit mode and when a photo exists */}
+            {isEditing && previewProfile && (
+              <button
+                onClick={handleRemovePicture}
+                title="Remove photo"
+                className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 rounded-md bg-red-500 px-2 py-1 text-[10px] md:text-xs text-white shadow"
+              >
+                Remove
+              </button>
             )}
           </div>
 
+          {/* ---------------- rest of header content ---------------- */}
           <div className="flex-1 grid grid-cols-2 gap-4">
             <div>
               <label className="block text-gray-700 font-semibold mb-1">

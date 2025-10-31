@@ -103,12 +103,28 @@ export const saveCompanyDetails = async (req, res) => {
       companySize,
     };
 
-    // 🧠 Save images if base64 is provided
+    // 🧠 Save images if base64 is provided, or handle removal
     if (coverPhoto && coverPhoto.startsWith("data:image/")) {
       const savedCover = await saveImage(coverPhoto, "uploads/company");
       if (savedCover) updateData.coverPhoto = savedCover;
     }
-    if (profileImage && profileImage.startsWith("data:image/")) {
+    if (profileImage === null || profileImage === "") {
+      // Remove profile image: set to null and delete old file
+      const currentDoc = await CompanyEmployees.findOne({
+        $or: [
+          { "owner.email": userEmail },
+          { userId },
+          { companyName: companyName },
+        ],
+      });
+      if (currentDoc && currentDoc.profileImage) {
+        const oldFilePath = path.join("uploads/company", currentDoc.profileImage);
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+        }
+      }
+      updateData.profileImage = null;
+    } else if (profileImage && profileImage.startsWith("data:image/")) {
       const savedProfile = await saveImage(profileImage, "uploads/company");
       if (savedProfile) updateData.profileImage = savedProfile;
     }

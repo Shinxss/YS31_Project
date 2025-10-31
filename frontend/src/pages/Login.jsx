@@ -30,6 +30,17 @@ export default function Login() {
     }
   }, [navigate]);
 
+  // Set tab based on URL query parameter
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get("tab");
+    if (tabParam === "company") {
+      setTab("company");
+    } else {
+      setTab("student");
+    }
+  }, []);
+
   function validate() {
     const next = { email: "", password: "" };
     const trimmed = String(email).trim();

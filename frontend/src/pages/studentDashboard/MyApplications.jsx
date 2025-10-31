@@ -373,7 +373,7 @@ export default function MyApplications() {
                           {/* Company & Position */}
                           <div className="col-span-4">
                             <div className="flex items-start gap-3">
-                              <div className="w-10 h-10 rounded-md bg-gray-200 flex items-center justify-center text-gray-600 font-semibold text-sm">
+                              <div className="w-10 h-10 rounded-md bg-blue-900 flex items-center justify-center text-white font-semibold text-sm">
                                 {company.charAt(0).toUpperCase()}
                               </div>
                               <div>

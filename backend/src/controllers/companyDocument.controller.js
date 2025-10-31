@@ -13,7 +13,7 @@ const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, COMPANY_DOCS_DIR),
   filename: (req, file, cb) => {
     const safe = file.originalname.replace(/\s+/g, "_");
-    const userId = req.body.email || "pending";
+    const userId = req.body.email || "";
     const timestamp = Date.now();
     cb(null, `${userId}-${timestamp}-${safe}`);
   },

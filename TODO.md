@@ -1,4 +1,11 @@
-- [x] Update backend/src/controllers/student.controller.js to include all student details in getStudentPublicProfile function
-- [x] Test the API endpoint /api/students/:id/profile to ensure it returns complete student data (server running, but needs valid token for full test)
-- [x] Verify frontend CompanyStudentProfile.jsx displays all fetched details correctly (code review shows it will now receive all needed fields)
-- [x] Ensure no existing functions are broken by the changes (getStudentProfileById remains unchanged, only getStudentPublicProfile updated)
+- [x] Import Camera and Loader2 from lucide-react in CompanyDetails.jsx
+- [x] Add picSaving state (boolean) in CompanyDetails.jsx
+- [x] Update handleFileChange to set picSaving during file read
+- [x] Replace emoji with Camera icon in profile pic label, show Loader2 when picSaving
+- [x] Add handleRemovePicture function to clear profileImage and previewProfile
+- [x] Add remove button that appears when isEditing and previewProfile exists
+- [x] Test the component in edit mode
+- [x] Run frontend to verify UI changes
+- [ ] Modify handleRemovePicture in CompanyDetails.jsx to set profileImage to null
+- [ ] In backend saveCompanyDetails, handle if profileImage is null or empty: set updateData.profileImage = null and delete the old file
+- [ ] Test the removal functionality to ensure profile is removed from DB and file is deleted

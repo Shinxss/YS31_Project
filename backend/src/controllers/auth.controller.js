@@ -92,8 +92,9 @@ export const sendSignupOtp = async (req, res) => {
       reqd(course, "course");
       payload = { ...payload, firstName, lastName, course };
     } else {
-      const { companyName, firstName, lastName, companyRole, industry, legalDocs, taxDocs } =
+      const { companyName: rawCompanyName, firstName, lastName, companyRole, industry, legalDocs, taxDocs } =
         req.body;
+      const companyName = String(rawCompanyName || "").trim();
       reqd(companyName, "companyName");
       reqd(firstName, "firstName");
       reqd(lastName, "lastName");

@@ -24,13 +24,13 @@ export default function Navbar() {
         {/* DESKTOP/TABLET */}
         <div className="hidden md:flex items-center gap-10">
           <nav className="flex items-center gap-10 text-sm">
-            <Link to="/internships" className="hover:text-[#F5A66E] transition">
-              Find Internships
+            <Link to="/internships" className="hover:text-[#F5A66E] hover:font-medium transition">
+              Find Opportunities
             </Link>
-            <Link to="/companies" className="hover:text-[#F5A66E] transition">
+            <Link to="/companies" className="hover:text-[#F5A66E] hover:font-medium transition">
               For Companies
             </Link>
-            <Link to="/about" className="hover:text-[#F5A66E] transition">
+            <Link to="/about" className="hover:text-[#F5A66E] hover:font-medium transition">
               About Us
             </Link>
           </nav>
@@ -38,7 +38,7 @@ export default function Navbar() {
           <div className="flex items-center gap-3">
             {/* ✅ Student Login */}
             <Link
-              to="/student/login"
+              to="/login?tab=student"
               className="px-4 py-2 border border-white/30 rounded-md hover:bg-white hover:text-[#173B8A] transition text-sm inline-flex items-center gap-2"
             >
               <User className="w-4 h-4" />
@@ -47,7 +47,7 @@ export default function Navbar() {
 
             {/* ✅ Employer Login */}
             <Link
-              to="/company/login"
+              to="/login?tab=company"
               className="px-4 py-2 border border-white/30 rounded-md hover:bg-white hover:text-[#173B8A] transition text-sm inline-flex items-center gap-2"
             >
               <Building2 className="w-4 h-4" />

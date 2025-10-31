@@ -16,11 +16,21 @@ const shapeCompany = async (c) => {
 
   // Format location as Address, City, Province, Zip Code
   const location = [
-    c.address || "—", 
-    c.city || "—", 
-    c.province || "—", 
+    c.address || "—",
+    c.city || "—",
+    c.province || "—",
     c.zipCode || "—"
   ].join(", ");
+
+  // Format documents
+  const legalDocuments = (c.legalRegistrationDocs || []).map((doc) => ({
+    name: doc.split('/').pop() || 'Legal Document',
+    url: `${process.env.VITE_API_BASE_URL || 'http://localhost:5000'}/uploads/company-docs/${doc}`
+  }));
+  const taxDocuments = (c.taxIdentityDocs || []).map((doc) => ({
+    name: doc.split('/').pop() || 'Tax Document',
+    url: `${process.env.VITE_API_BASE_URL || 'http://localhost:5000'}/uploads/company-docs/${doc}`
+  }));
 
   return {
     _id: c._id,
@@ -33,6 +43,8 @@ const shapeCompany = async (c) => {
     jobPostCount: jobPostCount,
     createdAt: c.createdAt || "—",
     isVerified: c.isVerified || false,
+    legalRegistrationDocs: legalDocuments,
+    taxIdentityDocs: taxDocuments,
   };
 };
 
@@ -40,7 +52,7 @@ const shapeCompany = async (c) => {
 export const listCompanies = async (req, res) => {
   try {
     const rows = await Company.find({}, {
-      companyName: 1, email: 1, owner: 1, industry: 1, address: 1, city: 1, province: 1, zipCode: 1, createdAt: 1, isVerified: 1
+      companyName: 1, email: 1, owner: 1, industry: 1, address: 1, city: 1, province: 1, zipCode: 1, createdAt: 1, isVerified: 1, legalRegistrationDocs: 1, taxIdentityDocs: 1
     }).lean();
 
     // Get status and createdAt from the users collection based on the company owner email
