@@ -4,6 +4,7 @@ import { User, Building2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../utils/auth";
 import Logo from "../assets/ic_logo.svg";
+import Swal from "sweetalert2";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
@@ -87,6 +88,17 @@ export default function Login() {
           if (data?.message?.includes("admin approval") || data?.message?.includes("verification")) {
             setMsg(data.message);
             setErrors({ email: "", password: "" });
+          } else if (data?.message?.toLowerCase().includes("disabled")) {
+            // Account is disabled - show SweetAlert
+            Swal.fire({
+              title: "Account Disabled",
+              text: data.message || "Your account has been temporarily disabled. Please contact support or your administrator for more information.",
+              icon: "warning",
+              confirmButtonText: "OK",
+              confirmButtonColor: "#F37526",
+            });
+            setErrors({ email: "", password: "" });
+            return; // Don't proceed with login
           } else {
             setErrors((prev) => ({
               ...prev,
@@ -155,7 +167,7 @@ export default function Login() {
             }}
             type="button"
           >
-            <Building2 className="w-4 h-4" /> Employer
+            <Building2 className="w-4 h-4" /> Company
           </button>
         </div>
 
@@ -205,7 +217,7 @@ export default function Login() {
               ? "Signing in..."
               : tab === "student"
               ? "Sign in as Student"
-              : "Sign in as Employer"}
+              : "Sign in as Company"}
           </button>
 
           <p className="text-center text-sm text-gray-600">

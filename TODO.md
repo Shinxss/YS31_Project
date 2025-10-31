@@ -1,11 +1,7 @@
-- [x] Import Camera and Loader2 from lucide-react in CompanyDetails.jsx
-- [x] Add picSaving state (boolean) in CompanyDetails.jsx
-- [x] Update handleFileChange to set picSaving during file read
-- [x] Replace emoji with Camera icon in profile pic label, show Loader2 when picSaving
-- [x] Add handleRemovePicture function to clear profileImage and previewProfile
-- [x] Add remove button that appears when isEditing and previewProfile exists
-- [x] Test the component in edit mode
-- [x] Run frontend to verify UI changes
-- [ ] Modify handleRemovePicture in CompanyDetails.jsx to set profileImage to null
-- [ ] In backend saveCompanyDetails, handle if profileImage is null or empty: set updateData.profileImage = null and delete the old file
-- [ ] Test the removal functionality to ensure profile is removed from DB and file is deleted
+# TODO: Implement SweetAlert for Disabled Account in Login.jsx
+
+- [x] Import SweetAlert2 in Login.jsx
+- [x] Modify handleSubmit function to detect disabled account (403 status and message check)
+- [x] Add SweetAlert popup with title "Account Disabled" and backend message
+- [x] Add backend check for disabled user status in auth.controller.js
+- [ ] Verify the implementation works correctly

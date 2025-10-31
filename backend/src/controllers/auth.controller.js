@@ -467,14 +467,21 @@ export const login = async (req, res) => {
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) return res.status(401).json({ message: "Invalid credentials" });
 
+    // Check if user account is disabled
+    if (user.status === "disabled") {
+      return res.status(403).json({
+        message: "Your account has been temporarily disabled. Please contact support or your administrator for more information."
+      });
+    }
+
     // Check if company is verified (only for company role)
     if (user.role === "company") {
       const CompanyEmployees = (await import("../models/companyEmployees.model.js")).default;
       const company = await CompanyEmployees.findOne({ "owner.email": user.email }).lean();
-      
+
       if (company && !company.isVerified) {
-        return res.status(403).json({ 
-          message: "Please wait for admin approval. Your account is pending verification." 
+        return res.status(403).json({
+          message: "Please wait for admin approval. Your account is pending verification."
         });
       }
     }

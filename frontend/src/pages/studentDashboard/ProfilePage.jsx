@@ -341,9 +341,9 @@ export default function ProfilePage() {
                   </div>
                 </>
               ) : (
-                <p className="mt-2 text-sm text-gray-700 leading-6">
+                <p className="mt-2 text-sm text-gray-400 leading-6">
                   {profile.bio ||
-                    "A 3rd-year Information Technology student passionate about software development, networking, and system design. Skilled in web and database technologies with hands-on experience in full-stack apps and network infrastructures."}
+                    "No bio yet"}
                 </p>
               )}
             </Card>
