@@ -710,13 +710,13 @@ export default function JobPostingsPage() {
         {/* Tabs bar */}
         <div className="mt-4 flex rounded-lg border border-gray-400 bg-white overflow-hidden">
           <button
-            className={`flex-1 py-2 text-sm ${tab === "active" ? "text-white bg-blue-600 font-medium" : "text-gray-600"}`}
+            className={`flex-1 py-2 text-sm ${tab === "active" ? "text-white bg-blue-900 font-medium" : "text-gray-600"}`}
             onClick={() => setTab("active")}
           >
             Active Listings
           </button>
           <button
-            className={`flex-1 py-3 text-sm ${tab === "archived" ? "text-white bg-blue-600 font-medium" : "text-gray-600"}`}
+            className={`flex-1 py-3 text-sm ${tab === "archived" ? "text-white bg-blue-900 font-medium" : "text-gray-600"}`}
             onClick={() => setTab("archived")}
           >
             Archived Listings
@@ -879,7 +879,7 @@ export default function JobPostingsPage() {
             </button>
 
             {/* Simple page indicator (current) */}
-            <span className="min-w-[28px] text-center px-2 py-1 rounded bg-blue-600 text-white text-sm">
+            <span className="min-w-[28px] text-center px-2 py-1 rounded bg-blue-900 text-white text-sm">
               {currentPage}
             </span>
 

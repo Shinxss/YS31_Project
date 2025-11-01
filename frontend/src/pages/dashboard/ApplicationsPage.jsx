@@ -483,7 +483,7 @@ export default function ApplicationsPage({ token: propToken }) {
               ) : (
                 <div className="rounded-xl border border-gray-100 overflow-hidden h-full flex flex-col">
                   {/* Sticky header */}
-                  <div className="hidden md:grid [grid-template-columns:2.5fr_2fr_1fr_1fr_1fr] gap-3 px-4 py-3 bg-gray-50 text-xs font-semibold text-gray-500 sticky top-0 z-10">
+                  <div className="hidden md:grid [grid-template-columns:2.5fr_1.5fr_1fr_1fr_1fr] gap-3 px-4 py-3 bg-gray-50 text-xs font-semibold text-gray-500 sticky top-0 z-10">
                     <div>Student</div>
                     <div>Job Title</div>
                     <div>Applied On</div>

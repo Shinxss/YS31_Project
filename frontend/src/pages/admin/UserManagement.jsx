@@ -53,17 +53,10 @@ const formatDate = (value) => {
   return d && !isNaN(d.getTime()) ? d.toLocaleDateString() : "—";
 };
 
-const getInitials = (row) => {
-  const isCompany = row.__role === "company";
-  if (isCompany) {
-    const name = row.companyName || row.name || "";
-    const words = name.split(" ").filter(word => word.length > 1 && !/^[A-Z]\.$/.test(word));
-    return words.map(word => word.charAt(0)).join("").toUpperCase();
-  } else {
-    const first = row.firstName || "";
-    const last = row.lastName || "";
-    return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
-  }
+const getInitials = (name) => {
+  if (!name) return '';
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  return parts.map(part => part.charAt(0)).join("").toUpperCase().slice(0, 2);
 };
 
 // tolerate different schema field names
@@ -336,7 +329,7 @@ export default function UserManagementPage() {
               className={cls(
                 "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition",
                 tab === key
-                  ? "bg-blue-600 text-white shadow-sm"
+                  ? "bg-blue-900 text-white shadow-sm"
                   : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
               )}
               aria-pressed={tab === key}
@@ -436,7 +429,16 @@ export default function UserManagementPage() {
 
                       const statusVal = getStatus(row);
                       const created = formatDate(getCreatedAt(row));
-                      const avatarUrl = row.avatar ? `${RAW_API_BASE}${row.avatar}` : null;
+                      let avatarUrl = null;
+                      if (tab === "companies" || (tab === "all" && row.__role === "company")) {
+                        avatarUrl = row.profileImage ? `${RAW_API_BASE}/uploads/company/${row.profileImage}` : null;
+                      } else {
+                        if (row.profilePicture && row.profilePicture.startsWith('data:image/')) {
+                          avatarUrl = row.profilePicture;
+                        } else if (row.profilePicture) {
+                          avatarUrl = `${RAW_API_BASE}/uploads/students/${row.profilePicture}`;
+                        }
+                      }
 
                       return (
                         <tr key={row._id || idx} className="border-b border-gray-100">
@@ -447,8 +449,8 @@ export default function UserManagementPage() {
                                   {avatarUrl ? (
                                     <img src={avatarUrl} alt="Profile" className="w-8 h-8 rounded-full object-cover" />
                                   ) : (
-                                    <div className="w-8 h-8 bg-gray-300 text-gray-700 flex items-center justify-center text-xs font-semibold rounded">
-                                      {getInitials(row)}
+                                    <div className="w-8 h-8 bg-blue-900 text-white flex items-center justify-center text-xs font-semibold rounded">
+                                      {getInitials(isCompany ? row.companyName || row.name || "" : `${row.firstName || ""} ${row.lastName || ""}`.trim() || row.name || "")}
                                     </div>
                                   )}
                                   <div>
@@ -489,8 +491,8 @@ export default function UserManagementPage() {
                                   {avatarUrl ? (
                                     <img src={avatarUrl} alt="Profile" className="w-8 h-8 rounded-full object-cover" />
                                   ) : (
-                                    <div className="w-8 h-8 bg-gray-300 text-gray-700 flex items-center justify-center text-xs font-semibold rounded">
-                                      {getInitials(row)}
+                                    <div className="w-8 h-8 bg-blue-900 text-white flex items-center justify-center text-xs font-semibold rounded">
+                                      {getInitials(isStudent ? `${row.firstName || ""} ${row.lastName || ""}`.trim() || row.name || "" : row.companyName || row.name || "")}
                                     </div>
                                   )}
                                   <div>
@@ -516,8 +518,8 @@ export default function UserManagementPage() {
                                   {avatarUrl ? (
                                     <img src={avatarUrl} alt="Profile" className="w-8 h-8 rounded-full object-cover" />
                                   ) : (
-                                    <div className="w-8 h-8 bg-gray-300 text-gray-700 flex items-center justify-center text-xs font-semibold rounded">
-                                      {getInitials(row)}
+                                    <div className="w-8 h-8 bg-blue-900 text-white flex items-center justify-center text-xs font-semibold rounded">
+                                      {getInitials(row.companyName || row.name || "")}
                                     </div>
                                   )}
                                   <div>

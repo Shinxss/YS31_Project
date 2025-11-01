@@ -51,7 +51,7 @@ export default function Navbar() {
               className="px-4 py-2 border border-white/30 rounded-md hover:bg-white hover:text-[#173B8A] transition text-sm inline-flex items-center gap-2"
             >
               <Building2 className="w-4 h-4" />
-              Employer Login
+              Company Login
             </Link>
 
             <Link

@@ -239,7 +239,7 @@ export default function CompanyNotifications() {
               onClick={() => setFilter(f.key)}
               className={`px-3 py-1.5 rounded-md text-sm border ${
                 filter === f.key
-                  ? "bg-blue-800 text-white border-gray-900"
+                  ? "bg-blue-900 text-white"
                   : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
               }`}
             >

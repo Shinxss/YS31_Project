@@ -45,6 +45,7 @@ const shapeCompany = async (c) => {
     isVerified: c.isVerified || false,
     legalRegistrationDocs: legalDocuments,
     taxIdentityDocs: taxDocuments,
+    profileImage: c.profileImage || "",
   };
 };
 
@@ -52,7 +53,7 @@ const shapeCompany = async (c) => {
 export const listCompanies = async (req, res) => {
   try {
     const rows = await Company.find({}, {
-      companyName: 1, email: 1, owner: 1, industry: 1, address: 1, city: 1, province: 1, zipCode: 1, createdAt: 1, isVerified: 1, legalRegistrationDocs: 1, taxIdentityDocs: 1
+      companyName: 1, email: 1, owner: 1, industry: 1, address: 1, city: 1, province: 1, zipCode: 1, createdAt: 1, isVerified: 1, legalRegistrationDocs: 1, taxIdentityDocs: 1, profileImage: 1
     }).lean();
 
     // Get status and createdAt from the users collection based on the company owner email
@@ -188,6 +189,7 @@ const shapeStudent = (s) => {
     experienceCount: s.experience?.length || 0,  // Count of experience entries
     educationCount: s.education?.length || 0,  // Count of education entries
     certificationCount: s.certification?.length || 0,  // Count of certifications
+    profilePicture: s.profilePicture || "",
   };
 };
 
@@ -196,7 +198,7 @@ export const listStudents = async (req, res) => {
   try {
     const students = await Student.find({}, {
       firstName: 1, lastName: 1, email: 1, course: 1, age: 1, gender: 1, location: 1,
-      applications: 1, skills: 1, experience: 1, education: 1, certification: 1
+      applications: 1, skills: 1, experience: 1, education: 1, certification: 1, profilePicture: 1
     }).lean();
 
     // Get status and createdAt from the users collection based on student email

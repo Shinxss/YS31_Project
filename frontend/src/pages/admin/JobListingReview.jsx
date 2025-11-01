@@ -196,9 +196,6 @@ export default function JobListingsReviewPage() {
             >
               <option value="all">All Status</option>
               <option value="open">Open</option>
-              <option value="pending">Pending</option>
-              <option value="closed">Closed</option>
-              <option value="archived">Archived</option>
               <option value="suspended">Suspended</option>
             </select>
 
@@ -286,7 +283,15 @@ export default function JobListingsReviewPage() {
                         <td className="py-4 px-4">{job.location || "N/A"}</td>
                         <td className="py-4 px-4">{job.jobType || "N/A"}</td>
                         <td className="py-4 px-4">{job.salaryMax || "N/A"}</td>
-                        <td className="py-4 px-4">{job.status || "N/A"}</td>
+                        <td className="py-4 px-4">
+                          <span className={`inline-flex px-3 py-1 rounded-full ${
+                            job.status === "open" ? "bg-emerald-100 text-emerald-700" :
+                            job.status === "suspended" ? "bg-rose-100 text-rose-700" :
+                            "bg-gray-100 text-gray-700"
+                          }`}>
+                            {(job.status || "N/A").charAt(0).toUpperCase() + (job.status || "N/A").slice(1)}
+                          </span>
+                        </td>
                         <td className="py-4 px-4">{job.applicationsCount || 0}</td>
                         <td className="py-4 px-4">
                           {new Date(job.createdAt).toLocaleDateString()}
@@ -316,7 +321,7 @@ export default function JobListingsReviewPage() {
                                       }}
                                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                     >
-                                      open
+                                      Open
                                     </button>
                                     <button
                                       onClick={() => {
@@ -344,7 +349,7 @@ export default function JobListingsReviewPage() {
 
       {/* Job Details Modal */}
       {isModalOpen && selectedJob && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white bg-opacity-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-sm">
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
@@ -422,20 +427,15 @@ export default function JobListingsReviewPage() {
                     className="px-3 py-1 rounded-md text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="open">Open</option>
-                    <option value="pending">Pending</option>
-                    <option value="closed">Closed</option>
-                    <option value="archived">Archived</option>
                     <option value="suspended">Suspended</option>
                   </select>
                 </div>
-                <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
-                  selectedJob.status === "Open" ? "bg-green-100 text-green-700" :
-                  selectedJob.status === "Closed" ? "bg-red-100 text-red-700" :
-                  selectedJob.status === "Pending" ? "bg-yellow-100 text-yellow-700" :
-                  selectedJob.status === "Suspended" ? "bg-orange-100 text-orange-700" :
+                <span className={`inline-flex px-3 py-1 rounded-full ${
+                  selectedJob.status === "open" ? "bg-emerald-100 text-emerald-700" :
+                  selectedJob.status === "suspended" ? "bg-rose-100 text-rose-700" :
                   "bg-gray-100 text-gray-700"
                 }`}>
-                  {selectedJob.status || "N/A"}
+                  {(selectedJob.status || "N/A").charAt(0).toUpperCase() + (selectedJob.status || "N/A").slice(1)}
                 </span>
               </div>
 

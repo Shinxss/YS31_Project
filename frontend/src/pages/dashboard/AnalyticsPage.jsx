@@ -258,17 +258,17 @@ export default function CompanyAnalytics() {
                     <Legend verticalAlign="top" height={24} />
                     <Line
                       type="monotone"
-                      dataKey="accepted"
-                      name="Accepted"
-                      stroke={COLORS.green}
+                      dataKey="rejected"
+                      name="Rejected"
+                      stroke={COLORS.red}
                       strokeWidth={3}
                       dot={{ r: 3 }}
                     />
                     <Line
                       type="monotone"
-                      dataKey="rejected"
-                      name="Rejected"
-                      stroke={COLORS.red}
+                      dataKey="accepted"
+                      name="Accepted"
+                      stroke={COLORS.green}
                       strokeWidth={3}
                       dot={{ r: 3 }}
                     />

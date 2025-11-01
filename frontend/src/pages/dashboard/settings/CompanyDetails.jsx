@@ -61,9 +61,31 @@ export default function CompanyDetails() {
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  const handleRemovePicture = () => {
-    setProfileImage(null);
-    setPreviewProfile("");
+  const handleRemovePicture = async () => {
+    try {
+      setPicSaving(true);
+      const payload = { profileImage: null };
+
+      const res = await fetch(`${API_BASE}/api/company/details/save`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error("Failed to remove profile image");
+      toast.success("Profile image removed successfully!");
+      setProfileImage(null);
+      setPreviewProfile("");
+      await fetchCompanyData();
+    } catch (err) {
+      console.error("Remove profile image failed:", err);
+      toast.error("Failed to remove profile image");
+    } finally {
+      setPicSaving(false);
+    }
   };
 
   // 📷 Handle image to base64
@@ -79,10 +101,36 @@ export default function CompanyDetails() {
         } else {
           setProfileImage(reader.result);
           setPreviewProfile(reader.result);
-          setPicSaving(false);
+          // Automatically save profile image
+          saveProfileImage(reader.result);
         }
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  // 🔄 Auto-save profile image
+  const saveProfileImage = async (base64Image) => {
+    try {
+      const payload = { profileImage: base64Image };
+
+      const res = await fetch(`${API_BASE}/api/company/details/save`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error("Failed to save profile image");
+      toast.success("Profile image updated successfully!");
+      setPicSaving(false);
+      await fetchCompanyData(); // Refresh data to get the saved filename
+    } catch (err) {
+      console.error("Save profile image failed:", err);
+      toast.error("Failed to save profile image");
+      setPicSaving(false);
     }
   };
 

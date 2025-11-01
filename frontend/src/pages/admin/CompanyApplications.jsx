@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import Swal from 'sweetalert2'
 import 'sweetalert2/dist/sweetalert2.min.css'
 import { confirmAction } from '@/utils/confirm'
+import { Search } from 'lucide-react'
 
 const CompanyApplications = () => {
   const [companies, setCompanies] = useState([])
@@ -240,7 +241,8 @@ const CompanyApplications = () => {
                 {/* Search box */}
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
-                  <div className="rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
+                  <div className="rounded-lg border border-gray-200 bg-white p-1 shadow-sm flex items-center">
+                    <Search className="w-5 h-5 text-gray-400 ml-2 mr-2" />
                     <input
                       type="search"
                       placeholder="Search by company name or email..."
@@ -303,10 +305,10 @@ const CompanyApplications = () => {
                           <div className="flex-1 flex items-center gap-4">
                             {/* Avatar/Profile */}
                             <div className="flex-shrink-0">
-                              {c.logo ? (
+                              {c.profileImage ? (
                                 <img
-                                  src={c.logo}
-                                  alt={`${c.name || c.companyName} logo`}
+                                  src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/uploads/company/${c.profileImage}`}
+                                  alt={`${c.name || c.companyName} profile`}
                                   className="w-12 h-12 object-cover border border-gray-200 rounded-md"
                                 />
                               ) : (
