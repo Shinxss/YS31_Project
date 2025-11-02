@@ -39,6 +39,8 @@ export default function JobListingsReviewPage() {
   const [sortField, setSortField] = useState("default");
   const [statusFilter, setStatusFilter] = useState("all");
   const [openDropdownId, setOpenDropdownId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
 
   const openModal = (job) => {
     setSelectedJob(job);
@@ -155,6 +157,19 @@ export default function JobListingsReviewPage() {
 
     return list;
   }, [jobs, query, statusFilter, sortField]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredJobs.length / itemsPerPage);
+  const paginatedJobs = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredJobs.slice(startIndex, endIndex);
+  }, [filteredJobs, currentPage, itemsPerPage]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query, statusFilter, sortField]);
 
   return (
     <section className="bg-white rounded-2xl shadow-sm p-6 h-[600px] md:h-[670px] flex flex-col">
@@ -276,7 +291,7 @@ export default function JobListingsReviewPage() {
 
                   {!loading &&
                     !error &&
-                    filteredJobs.map((job) => (
+                    paginatedJobs.map((job) => (
                       <tr key={job._id} className="border-b border-gray-100">
                         <td className="py-4 px-4">{job.title || "N/A"}</td>
                         <td className="py-4 px-4">{job.companyName || "N/A"}</td>
@@ -345,6 +360,46 @@ export default function JobListingsReviewPage() {
             </div>
           </div>
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6">
+            <div className="text-sm text-gray-700">
+              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredJobs.length)} of {filteredJobs.length} jobs
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-3 py-2 text-sm font-medium rounded-md ${
+                      currentPage === page
+                        ? 'text-white bg-blue-900 border border-blue-900'
+                        : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Job Details Modal */}

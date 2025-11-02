@@ -1,3 +1,1 @@
-- [ ] Update backend/src/controllers/admin.users.controller.js to include profilePicture for students and profileImage for companies in API responses
-- [ ] Update frontend/src/pages/admin/UserManagement.jsx to use correct profile picture fields based on user type
-- [ ] Test the changes to ensure profile pictures display correctly
+- Update notification popover in dashboard/HeaderBar.jsx to make unread notifications orange floating cards with hover effects, matching StudentHeaderBar.jsx style.

@@ -48,6 +48,23 @@ export default function Header({
     }
   };
 
+  // Mark notification as read
+  const markAsRead = async (id) => {
+    try {
+      const token = localStorage.getItem("ic_token");
+      const res = await fetch(`${import.meta.env.VITE_API_BASE || "http://localhost:5000"}/api/admin/users/notifications/${id}/read`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to mark as read");
+      // Update local state
+      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error("Failed to mark as read:", error);
+    }
+  };
+
   // Fetch unread count
   const fetchUnreadCount = async () => {
     try {
@@ -152,17 +169,16 @@ export default function Header({
                     </div>
                   ) : notifications.length === 0 ? (
                     <div className="p-8 text-center text-gray-500">
-                      <Bell className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                      <Bell className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                       <p>No notifications</p>
                     </div>
                   ) : (
-                    <div className="max-h-96 overflow-y-auto">
+                    <div className="p-3 max-h-[60vh] overflow-y-auto grid gap-3">
                       {notifications.map((notification) => (
                         <div
                           key={notification._id}
-                          className={`p-4 border-b border-gray-100 ${
-                            !notification.isRead ? 'bg-blue-50' : 'bg-white'
-                          }`}
+                          className={`relative rounded-xl border shadow-sm hover:shadow-md transition hover:-translate-y-0.5 p-3 break-words
+                            ${!notification.isRead ? "bg-orange-50" : "bg-gray-100"}`}
                         >
                           <div className="flex items-start gap-3">
                             <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
@@ -178,14 +194,22 @@ export default function Header({
                               <p className="text-xs text-gray-500 mt-2">
                                 {new Date(notification.createdAt).toLocaleString()}
                               </p>
-                              {!notification.isRead && (
+                              <div className="flex gap-2 mt-2">
+                                {!notification.isRead && (
+                                  <button
+                                    onClick={() => markAsRead(notification._id)}
+                                    className="text-xs text-blue-600 hover:text-blue-800"
+                                  >
+                                    Mark as read
+                                  </button>
+                                )}
                                 <button
-                                  onClick={() => markAsRead(notification._id)}
-                                  className="mt-2 text-xs text-blue-600 hover:text-blue-800"
+                                  onClick={() => window.location.assign('/admin/company-applications')}
+                                  className="text-xs text-orange-600 hover:text-orange-800"
                                 >
-                                  Mark as read
+                                  View Company
                                 </button>
-                              )}
+                              </div>
                             </div>
                           </div>
                         </div>

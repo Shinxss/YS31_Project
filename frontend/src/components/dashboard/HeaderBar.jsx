@@ -187,7 +187,7 @@ function NotificationPopover({ open, onClose, API_BASE, getAuthHeaders }) {
         ) : items.length === 0 ? (
           <div className="p-8 text-sm text-gray-500 text-center">No notifications yet</div>
         ) : (
-          <ul className="max-h-[60vh] overflow-y-auto divide-y">
+          <div className="p-3 max-h-[60vh] overflow-y-auto grid gap-3">
             {items.map((n) => {
               const isUnread = !n?.isRead;
               const jobTitle = n?.data?.jobTitle || "the job";
@@ -198,7 +198,11 @@ function NotificationPopover({ open, onClose, API_BASE, getAuthHeaders }) {
                 "Applicant";
 
               return (
-                <li key={n._id} className="px-3 py-3 bg-white">
+                <div
+                  key={n._id}
+                  className={`relative rounded-xl border shadow-sm hover:shadow-md transition hover:-translate-y-0.5 p-3 break-words
+                    ${isUnread ? "bg-orange-50" : "bg-gray-100"}`}
+                >
                   <div className="flex items-start gap-3">
                     {/* avatar with green dot */}
                     <div className="relative">
@@ -238,10 +242,10 @@ function NotificationPopover({ open, onClose, API_BASE, getAuthHeaders }) {
                       </div>
                     </div>
                   </div>
-                </li>
+                </div>
               );
             })}
-          </ul>
+          </div>
         )}
 
         {refreshing && (

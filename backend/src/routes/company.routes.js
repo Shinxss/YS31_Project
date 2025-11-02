@@ -7,7 +7,8 @@ import {
   validateCompanyName,
   saveCompanyDetails,
   getCompanyDetails,
-  updateJob, 
+  listCompanyJobs,
+  updateJob,
   deleteJob,
   getApplicantsByJobId
 } from "../controllers/company.controller.js";

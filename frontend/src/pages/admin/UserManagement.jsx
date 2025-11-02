@@ -76,6 +76,8 @@ export default function UserManagementPage() {
   const [error, setError] = useState("");
   const [sortField, setSortField] = useState("default");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
 
   // fetch both when "all", otherwise only the active tab
   useEffect(() => {
@@ -185,6 +187,19 @@ export default function UserManagementPage() {
 
     return list;
   }, [query, tab, students, companies, allRows, statusFilter, sortField]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filtered.slice(startIndex, endIndex);
+  }, [filtered, currentPage, itemsPerPage]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query, statusFilter, sortField, tab]);
 
   const COLSPAN = 7;
 
@@ -419,7 +434,7 @@ export default function UserManagementPage() {
 
                   {!loading &&
                     !error &&
-                    filtered.map((row, idx) => {
+                    paginatedUsers.map((row, idx) => {
                       const isCompany = tab === "companies" || (tab === "all" && row.__role === "company");
                       const isStudent = !isCompany;
 
@@ -607,6 +622,34 @@ export default function UserManagementPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200">
+                <div className="text-sm text-gray-700">
+                  Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filtered.length)} of {filtered.length} results
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-gray-700">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

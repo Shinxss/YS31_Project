@@ -350,7 +350,7 @@ export default function JobDetailPage({ token: propToken }) {
         <div className="flex items-center gap-2 mt-4">
           <button
             onClick={goEdit}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-md border hover:bg-gray-50"
+            className="inline-flex items-center gap-2 px-3 py-2 bg-orange-500 text-white rounded-md border hover:bg-orange-400"
           >
             <Edit2 className="w-4 h-4" />
             Edit job
@@ -359,7 +359,7 @@ export default function JobDetailPage({ token: propToken }) {
           <button
             disabled={busyAction}
             onClick={doArchiveToggle}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-md border hover:bg-gray-50"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-md border hover:bg-gray-100"
           >
             <Archive className="w-4 h-4" />
             {normalize(job.status || "").includes("archiv") ? "Unarchive job" : "Archive job"}

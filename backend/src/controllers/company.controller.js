@@ -209,6 +209,7 @@ export async function listCompanyJobs(req, res) {
     const companyId = await resolveCompanyId(req);
     if (!companyId) return res.status(403).json({ message: "Company not found for user." });
 
+    // Fetch all jobs for the company, regardless of who posted them (owner or HR)
     const jobs = await Job.find({
       $or: [
         { companyId: companyId },                    // when Job.companyId = CompanyEmployees _id

@@ -14,6 +14,8 @@ const CompanyApplications = () => {
   const [refreshKey, setRefreshKey] = useState(0)
   const [query, setQuery] = useState('')
   const [sortBy, setSortBy] = useState('name-asc')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
 
   const apiUrl = useMemo(() => {
     const companiesEndpoint = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_COMPANIES_ENDPOINT)
@@ -224,6 +226,19 @@ const CompanyApplications = () => {
     return filtered
   }, [companies, query, sortBy])
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredAndSorted.length / itemsPerPage)
+  const paginatedCompanies = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return filteredAndSorted.slice(startIndex, endIndex)
+  }, [filteredAndSorted, currentPage, itemsPerPage])
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [query, sortBy])
+
   return (
     // Outer page background and background-card wrapper
     <div>
@@ -297,7 +312,7 @@ const CompanyApplications = () => {
                       </div>
                     )}
 
-                    {filteredAndSorted.map((c) => (
+                    {paginatedCompanies.map((c) => (
                       // Card per company — only card visuals changed, buttons untouched
                       <div key={c.id || c._id} className="mb-4">
                         <div className="bg-white border border-gray-200 rounded-lg p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center">
@@ -347,6 +362,46 @@ const CompanyApplications = () => {
             </div>
           </div>
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6">
+            <div className="text-sm text-gray-700">
+              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredAndSorted.length)} of {filteredAndSorted.length} companies
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-3 py-2 text-sm font-medium rounded-md ${
+                      currentPage === page
+                        ? 'text-white bg-blue-600 border border-blue-600'
+                        : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modal using Tailwind — updated visual to match provided screenshot */}
