@@ -153,6 +153,7 @@ export const sendSignupOtp = async (req, res) => {
       to: email,
       otp: code,
       expiryTime: 10,
+      purpose: 'signup',
     });
 
     return res.json({ message: "OTP sent" });
@@ -394,7 +395,7 @@ export const sendPasswordResetOtp = async (req, res) => {
     await PasswordResetToken.deleteMany({ email });
     await PasswordResetToken.create({ email, codeHash, expiresAt, attempts: 0 });
 
-    await sendOtpEmail({ to: email, otp: code, expiryTime: 10 });
+    await sendOtpEmail({ to: email, otp: code, expiryTime: 10, purpose: 'passwordReset' });
 
     return res.json({ message: "OTP sent" });
   } catch (err) {

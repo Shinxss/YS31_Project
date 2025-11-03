@@ -86,13 +86,19 @@ export async function sendPlainEmail({ to, subject, text }) {
   }
 }
 
-export async function sendOtpEmail({ to, otp, expiryTime }) {
+export async function sendOtpEmail({ to, otp, expiryTime, purpose = 'signup' }) {
   const from = process.env.SMTP_FROM || "no-reply@example.com";
-  const subject = "Your One-Time Password (OTP) for InternConnect";
-  
+  const subject = purpose === 'passwordReset'
+    ? "Your Password Reset OTP for InternConnect"
+    : "Your One-Time Password (OTP) for InternConnect";
+
+  const actionText = purpose === 'passwordReset'
+    ? "resetting your password"
+    : "create a new account";
+
   const html = `
     <p>Dear User,</p>
-    <p>You recently requested a One-Time Password (OTP) to securely verify your identity for creating a new account.</p>
+    <p>You recently requested a One-Time Password (OTP) to securely verify your identity for ${actionText}.</p>
     <p>Please use the following code to complete your process:</p>
     <h2 style="font-size: 24px; font-weight: normal; color: #1A33A2;">${otp}</h2>
     <p>This code is valid for <strong>${expiryTime}</strong> minutes and will expire after that time for security reasons.</p>
@@ -108,7 +114,7 @@ export async function sendOtpEmail({ to, otp, expiryTime }) {
   const text = `
     Dear User,
 
-    You recently requested a One-Time Password (OTP) to securely verify your identity for creating a new account.
+    You recently requested a One-Time Password (OTP) to securely verify your identity for ${actionText}.
     Please use the following code to complete your process: ${otp}
 
     This code is valid for ${expiryTime} minutes and will expire after that time for security reasons.

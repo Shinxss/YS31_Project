@@ -151,7 +151,7 @@ export default function Header({
                 className="absolute right-0 top-12 w-96 max-h-[70vh] bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
               >
                 {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50">
+                <div className="flex items-center justify-between px-4 py-1 border-b bg-gray-50">
                   <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
                   <button
                     onClick={() => setOpenPopover(false)}
